@@ -76,7 +76,8 @@ func (d *DBClient) do(method, path string, body any, extraHeaders map[string]str
 // ── DB 행 타입 ────────────────────────────────────────────────────────────────
 
 type profileRow struct {
-	ID string `json:"id"`
+	ID       string `json:"id"`
+	Username string `json:"username"`
 }
 
 type gameRecordRow struct {
@@ -112,6 +113,63 @@ func gameMemKey(dbName string) string {
 	default:
 		return dbName
 	}
+}
+
+// GetProfileByUUID는 profiles 테이블에서 id(UUID)로 조회하여 username(닉네임)을 반환합니다.
+// 없으면 빈 문자열을 반환합니다.
+func (d *DBClient) GetProfileByUUID(uuid string) string {
+	path := "/profiles?select=username&id=eq." + url.QueryEscape(uuid) + "&limit=1"
+	resp, err := d.do("GET", path, nil, nil)
+	if err != nil {
+		log.Printf("[DB] GetProfileByUUID 실패 [%s]: %v", uuid[:min(8, len(uuid))], err)
+		return ""
+	}
+	defer resp.Body.Close()
+
+	var rows []profileRow
+	if err := json.NewDecoder(resp.Body).Decode(&rows); err != nil || len(rows) == 0 {
+		return ""
+	}
+	return rows[0].Username
+}
+
+// CheckNicknameUnique는 profiles 테이블에 해당 username이 존재하는지 확인합니다.
+// excludeUUID가 비어있지 않으면 해당 id를 가진 행은 제외합니다 (본인 닉네임 유지 시).
+// 반환: true = 사용 가능(중복 없음), false = 이미 사용 중
+func (d *DBClient) CheckNicknameUnique(nickname string, excludeUUID string) bool {
+	path := "/profiles?select=id&username=eq." + url.QueryEscape(nickname) + "&limit=1"
+	if excludeUUID != "" {
+		path += "&id=neq." + url.QueryEscape(excludeUUID)
+	}
+	resp, err := d.do("GET", path, nil, nil)
+	if err != nil {
+		log.Printf("[DB] CheckNicknameUnique 실패: %v", err)
+		return false // 오류 시 사용 불가로 처리
+	}
+	defer resp.Body.Close()
+
+	var rows []profileRow
+	if err := json.NewDecoder(resp.Body).Decode(&rows); err != nil {
+		return false
+	}
+	return len(rows) == 0
+}
+
+// UpsertProfile은 profiles 테이블에 id(UUID)와 username(닉네임)을 삽입하거나 업데이트합니다.
+func (d *DBClient) UpsertProfile(uuid, nickname string) error {
+	body := map[string]string{"id": uuid, "username": nickname}
+	resp, err := d.do("POST", "/profiles", body, map[string]string{
+		"Prefer": "resolution=merge-duplicates,return=minimal",
+	})
+	if err != nil {
+		return fmt.Errorf("profiles upsert 실패: %w", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != 200 && resp.StatusCode != 201 && resp.StatusCode != 204 {
+		return fmt.Errorf("profiles upsert 실패 (status %d)", resp.StatusCode)
+	}
+	log.Printf("[DB] UpsertProfile 완료 [%s] → %s", uuid[:min(8, len(uuid))], nickname)
+	return nil
 }
 
 // ── 공개 메서드 ───────────────────────────────────────────────────────────────

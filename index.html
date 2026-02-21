@@ -855,6 +855,27 @@
     }
     #rules-close:hover { border-color: var(--text-secondary); }
 
+    /* ── Profile / Opponent Record Modals ── */
+    #profile-modal, #opponent-record-modal {
+      display: none; position: fixed; inset: 0;
+      align-items: center; justify-content: center; z-index: 9500;
+    }
+    #profile-modal.show, #opponent-record-modal.show { display: flex; }
+    #profile-backdrop, #opponent-record-backdrop { position: absolute; inset: 0; background: rgba(0,0,0,0.7); }
+    #profile-box, #opponent-record-box {
+      position: relative; z-index: 1; background: var(--bg-secondary);
+      border: 1px solid var(--border); border-radius: var(--radius-lg);
+      padding: 24px; max-width: 360px; width: 92%; animation: popIn 0.2s ease;
+    }
+    #profile-box h3, #opponent-record-box h3 { font-size: 16px; margin-bottom: 12px; }
+    #opponent-record-content { font-size: 13px; line-height: 1.8; }
+    .opponent-record-row { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid var(--border); }
+    .opponent-record-row:last-child { border-bottom: none; }
+    .opponent-record-label { color: var(--text-secondary); }
+    .opponent-record-val { font-weight: 600; }
+    .clickable-nickname { cursor: pointer; text-decoration: underline; }
+    .clickable-nickname:hover { color: var(--accent); }
+
     /* ══ TOAST ════════════════════════════════════════════════════════════════ */
     #toast-container {
       position: fixed; bottom: 24px; right: 24px;
@@ -1055,6 +1076,7 @@
       </div>
     </div>
     <button class="header-btn danger" id="btn-leave" style="display:none" onclick="leaveRoom()">🚪 나가기</button>
+    <button class="header-btn" id="btn-profile" onclick="openProfileModal()" title="프로필 수정" style="display:none;">👤</button>
     <button class="header-btn" id="btn-debug" onclick="toggleDebugPanel()" title="개발자 도구">⚙️</button>
   </div>
 </header>
@@ -1078,6 +1100,13 @@
         <input class="auth-input" type="password" id="auth-password" placeholder="비밀번호" autocomplete="current-password" onkeydown="onAuthKeyDown(event)" />
         <div id="auth-confirm-group">
           <input class="auth-input" type="password" id="auth-password-confirm" placeholder="비밀번호 확인" autocomplete="new-password" onkeydown="onAuthKeyDown(event)" />
+        </div>
+        <div id="auth-nickname-group" style="display:none;">
+          <div style="display:flex;gap:8px;align-items:center;">
+            <input class="auth-input" type="text" id="auth-nickname" placeholder="닉네임" autocomplete="username" style="flex:1;" maxlength="20" onkeydown="onAuthKeyDown(event)" />
+            <button type="button" class="header-btn" id="btn-check-nickname" onclick="checkNickname()">중복확인</button>
+          </div>
+          <div id="auth-nickname-status" style="font-size:11px;color:var(--text-muted);margin-top:4px;"></div>
         </div>
         <!-- 로그인 모드 버튼 -->
         <div id="auth-login-btn-row" class="auth-btn-row">
@@ -1446,6 +1475,33 @@
   </div>
 </div>
 
+<!-- ══ Profile Modal (닉네임 수정) ═══════════════════════════════════════════ -->
+<div id="profile-modal">
+  <div id="profile-backdrop" onclick="closeProfileModal()"></div>
+  <div id="profile-box">
+    <h3>👤 프로필 수정</h3>
+    <div style="display:flex;gap:8px;align-items:center;margin:12px 0;">
+      <input class="auth-input" type="text" id="profile-nickname" placeholder="닉네임" maxlength="20" style="flex:1;" />
+      <button type="button" class="header-btn" onclick="checkNicknameProfile()">중복확인</button>
+    </div>
+    <div id="profile-nickname-status" style="font-size:12px;color:var(--text-muted);margin-bottom:12px;"></div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;">
+      <button class="header-btn" onclick="closeProfileModal()">취소</button>
+      <button class="header-btn" style="background:var(--accent);color:#000;border:none;" onclick="saveProfileNickname()">저장</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ Opponent Record Modal (상대 전적) ═══════════════════════════════════════ -->
+<div id="opponent-record-modal">
+  <div id="opponent-record-backdrop" onclick="closeOpponentRecordModal()"></div>
+  <div id="opponent-record-box">
+    <h3 id="opponent-record-title">— 전적</h3>
+    <div id="opponent-record-content"></div>
+    <button class="header-btn" onclick="closeOpponentRecordModal()" style="margin-top:12px;">닫기</button>
+  </div>
+</div>
+
 <!-- ══ Game Result Modal ══════════════════════════════════════════════════════ -->
 <div id="result-modal">
   <div id="result-modal-backdrop" onclick="closeResultModal()"></div>
@@ -1470,6 +1526,9 @@
   let currentUserId = '';  // 인증된 이메일 주소 (auth 이후 설정)
   let currentToken  = '';  // Supabase JWT access_token (auth 이후 설정)
   let pendingJoin   = null; // { roomId } — auth+connect 후 자동 입장
+  let pendingNickname = null; // 회원가입 직후 설정할 닉네임
+  let _lastNicknameCheckAvailable = false;
+  let _onNicknameCheckDone = null;
 
   // Gomoku
   let gomokuMyColor    = 0;
@@ -1512,6 +1571,9 @@
     const isSignup = mode === 'signup';
     document.getElementById('auth-panel-title').textContent  = isSignup ? '📝 회원가입' : '🔐 로그인';
     document.getElementById('auth-confirm-group').style.display = isSignup ? 'block' : 'none';
+    document.getElementById('auth-nickname-group').style.display = isSignup ? 'block' : 'none';
+    document.getElementById('auth-nickname').value = '';
+    document.getElementById('auth-nickname-status').textContent = '';
     document.getElementById('auth-login-btn-row').style.display   = isSignup ? 'none' : '';
     document.getElementById('auth-login-switch').style.display    = isSignup ? 'none' : '';
     document.getElementById('auth-signup-btn-row').style.display  = isSignup ? '' : 'none';
@@ -1525,6 +1587,80 @@
     if (e.key !== 'Enter') return;
     if (_authMode === 'signup') authSignup();
     else authLogin();
+  }
+
+  function checkNickname() {
+    const nickname = document.getElementById('auth-nickname').value.trim();
+    const statusEl = document.getElementById('auth-nickname-status');
+    if (!nickname) { statusEl.textContent = '닉네임을 입력하세요.'; statusEl.style.color = 'var(--danger)'; return; }
+    if (nickname.length < 2 || nickname.length > 20) { statusEl.textContent = '닉네임은 2~20자로 입력하세요.'; statusEl.style.color = 'var(--danger)'; return; }
+    if (!ws || ws.readyState !== WebSocket.OPEN) { statusEl.textContent = '먼저 연결해 주세요.'; statusEl.style.color = 'var(--danger)'; return; }
+    statusEl.textContent = '확인 중...'; statusEl.style.color = 'var(--text-secondary)';
+    _onNicknameCheckDone = (available) => {
+      _onNicknameCheckDone = null;
+      if (available) { statusEl.textContent = '✓ 사용 가능한 닉네임입니다.'; statusEl.style.color = 'var(--success)'; }
+      else { statusEl.textContent = '✗ 이미 사용 중인 닉네임입니다.'; statusEl.style.color = 'var(--danger)'; }
+    };
+    sendRaw(JSON.stringify({ action: 'check_nickname', payload: { nickname } }));
+  }
+
+  function sendSetNickname(nickname) {
+    if (!ws || ws.readyState !== WebSocket.OPEN) return;
+    sendRaw(JSON.stringify({ action: 'set_nickname', payload: { nickname } }));
+  }
+
+  function openProfileModal() {
+    document.getElementById('profile-nickname').value = currentUserId;
+    document.getElementById('profile-nickname-status').textContent = '';
+    document.getElementById('profile-modal').classList.add('show');
+  }
+  function closeProfileModal() {
+    document.getElementById('profile-modal').classList.remove('show');
+  }
+  function checkNicknameProfile() {
+    const nickname = document.getElementById('profile-nickname').value.trim();
+    const statusEl = document.getElementById('profile-nickname-status');
+    if (!nickname) { statusEl.textContent = '닉네임을 입력하세요.'; statusEl.style.color = 'var(--danger)'; return; }
+    if (nickname.length < 2 || nickname.length > 20) { statusEl.textContent = '닉네임은 2~20자로 입력하세요.'; statusEl.style.color = 'var(--danger)'; return; }
+    if (!ws || ws.readyState !== WebSocket.OPEN) { statusEl.textContent = '연결이 끊어졌습니다.'; statusEl.style.color = 'var(--danger)'; return; }
+    statusEl.textContent = '확인 중...'; statusEl.style.color = 'var(--text-secondary)';
+    _onNicknameCheckDone = (available) => {
+      _onNicknameCheckDone = null;
+      if (available) { statusEl.textContent = '✓ 사용 가능한 닉네임입니다.'; statusEl.style.color = 'var(--success)'; }
+      else { statusEl.textContent = '✗ 이미 사용 중인 닉네임입니다.'; statusEl.style.color = 'var(--danger)'; }
+    };
+    sendRaw(JSON.stringify({ action: 'check_nickname', payload: { nickname } }));
+  }
+  function saveProfileNickname() {
+    const nickname = document.getElementById('profile-nickname').value.trim();
+    if (!nickname || nickname.length < 2 || nickname.length > 20) {
+      showToast('닉네임은 2~20자로 입력하세요.', 'error'); return;
+    }
+    if (!ws || ws.readyState !== WebSocket.OPEN) { showToast('연결이 끊어졌습니다.', 'error'); return; }
+    sendRaw(JSON.stringify({ action: 'set_nickname', payload: { nickname } }));
+    closeProfileModal();
+    showToast('닉네임이 변경되었습니다.', 'info');
+  }
+
+  function requestOpponentRecord(userId) {
+    if (!userId || userId === currentUserId) return;
+    if (!ws || ws.readyState !== WebSocket.OPEN) { showToast('연결이 끊어졌습니다.', 'error'); return; }
+    sendRaw(JSON.stringify({ action: 'get_user_record', payload: { userId } }));
+  }
+  function showOpponentRecordModal(userId, records) {
+    const fmt = r => r ? `${r.wins}승 ${r.losses}패 ${r.draws}무` : '0승 0패 0무';
+    const labels = { total: '전체', omok: '🀱 오목', blackjack: '🃏 블랙잭', tictactoe: '⭕❌ 틱택토', connect4: '🔴🟡 4목', indian: '🃏 인디언' };
+    let html = '';
+    for (const [key, label] of Object.entries(labels)) {
+      const r = records && records[key];
+      html += `<div class="opponent-record-row"><span class="opponent-record-label">${label}</span><span class="opponent-record-val">${fmt(r)}</span></div>`;
+    }
+    document.getElementById('opponent-record-title').textContent = `${userId} 전적`;
+    document.getElementById('opponent-record-content').innerHTML = html || '<div>전적 없음</div>';
+    document.getElementById('opponent-record-modal').classList.add('show');
+  }
+  function closeOpponentRecordModal() {
+    document.getElementById('opponent-record-modal').classList.remove('show');
   }
 
   function setAuthStatus(msg, cls = '') {
@@ -1550,18 +1686,22 @@
     const email    = document.getElementById('auth-email').value.trim();
     const password = document.getElementById('auth-password').value;
     const confirm  = document.getElementById('auth-password-confirm').value;
+    const nickname = document.getElementById('auth-nickname').value.trim();
     if (!email || !password) { setAuthStatus('이메일과 비밀번호를 입력하세요.', 'error'); return; }
     if (password.length < 6)  { setAuthStatus('비밀번호는 6자 이상이어야 합니다.', 'error'); return; }
     if (password !== confirm)  { setAuthStatus('비밀번호가 일치하지 않습니다.', 'error'); return; }
+    if (nickname && (nickname.length < 2 || nickname.length > 20)) {
+      setAuthStatus('닉네임은 2~20자로 입력하세요.', 'error'); return;
+    }
     setAuthStatus('가입 중...', 'loading');
     const { data, error } = await supabaseClient.auth.signUp({ email, password });
     if (error) { setAuthStatus(error.message, 'error'); return; }
     if (data.session) {
-      // 이메일 확인 불필요한 경우 즉시 로그인
       currentToken  = data.session.access_token;
       currentUserId = data.user.email;
       showLoggedIn(data.user.email);
       connect();
+      if (nickname) pendingNickname = nickname;
     } else {
       setAuthStatus('📧 가입 확인 이메일을 발송했습니다. 이메일을 확인해 주세요.', 'loading');
     }
@@ -1577,11 +1717,12 @@
     showToast('로그아웃 되었습니다.', 'info');
   }
 
-  function showLoggedIn(email) {
+  function showLoggedIn(displayName) {
     document.getElementById('auth-panel').style.display      = 'none';
     document.getElementById('auth-logged-in').classList.add('visible');
-    document.getElementById('auth-user-email').textContent   = email;
+    document.getElementById('auth-user-email').textContent   = displayName || currentUserId;
     document.getElementById('game-cards').style.display      = 'flex';
+    document.getElementById('btn-profile').style.display     = '';
     setAuthStatus('');
   }
 
@@ -1589,6 +1730,7 @@
     document.getElementById('auth-panel').style.display      = '';
     document.getElementById('auth-logged-in').classList.remove('visible');
     document.getElementById('game-cards').style.display      = 'none';
+    document.getElementById('btn-profile').style.display     = 'none';
     document.getElementById('auth-email').value    = '';
     document.getElementById('auth-password').value = '';
   }
@@ -1998,6 +2140,9 @@
   function escapeHTML(str) {
     return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
   }
+  function escapeForJsAttr(str) {
+    return String(str).replace(/\\/g,'\\\\').replace(/"/g,'\\"').replace(/'/g,"\\'");
+  }
   function formatJSON(raw) {
     try { return JSON.stringify(JSON.parse(raw), null, 2); } catch { return raw; }
   }
@@ -2045,11 +2190,24 @@
           switch (parsed.type) {
             case 'auth_ok':
               addLog('info', raw);
-              // 서버 인증 완료 → 대기 중인 방 입장 처리
+              if (parsed.userId) currentUserId = parsed.userId;
+              document.getElementById('auth-user-email').textContent = currentUserId;
+              document.getElementById('btn-profile').style.display = '';
+              // 대기 중인 방 입장 또는 닉네임 설정
               if (pendingJoin) {
                 sendJoin(pendingJoin.roomId);
                 pendingJoin = null;
+              } else if (pendingNickname) {
+                sendSetNickname(pendingNickname);
+                pendingNickname = null;
               }
+              break;
+            case 'nickname_check':
+              _lastNicknameCheckAvailable = parsed.available;
+              if (typeof _onNicknameCheckDone === 'function') _onNicknameCheckDone(parsed.available);
+              break;
+            case 'opponent_record':
+              showOpponentRecordModal(parsed.userId, parsed.records);
               break;
             case 'system':
               addLog('system', raw);
@@ -2410,7 +2568,8 @@
       const col = gomokuColorMap[turnUserId];
       stoneEl.textContent = col === 1 ? '⚫' : col === 2 ? '⚪' : '●';
       const isMine = turnUserId === currentUserId;
-      userEl.textContent = isMine ? `${turnUserId} (나)` : turnUserId;
+      const suffix = isMine ? ' (나)' : '';
+      userEl.innerHTML = `<span class="clickable-nickname" onclick="requestOpponentRecord('${escapeForJsAttr(turnUserId)}')" title="전적 보기">${escapeHTML(turnUserId)}</span>${suffix}`;
       userEl.style.color = isMine ? '#3fb950' : 'var(--text-primary)';
     }
   }
@@ -2436,8 +2595,8 @@
   function updateColorInfo(colors) {
     const el = document.getElementById('gomoku-color-info');
     if (!colors || !Object.keys(colors).length) return;
-    el.textContent = Object.entries(colors)
-      .map(([uid, col]) => `${col === 1 ? '⚫' : '⚪'} ${uid}`)
+    el.innerHTML = Object.entries(colors)
+      .map(([uid, col]) => `${col === 1 ? '⚫' : '⚪'} <span class="clickable-nickname" onclick="requestOpponentRecord('${escapeForJsAttr(uid)}')" title="전적 보기">${escapeHTML(uid)}</span>`)
       .join('  vs  ');
   }
 
@@ -2552,7 +2711,7 @@
         statusEl.textContent = `${sym} 내 차례입니다!`;
         statusEl.style.color = 'var(--accent)';
       } else if (tttTurnId) {
-        statusEl.textContent = `⏳ ${tttTurnId}의 차례...`;
+        statusEl.innerHTML = `⏳ <span class="clickable-nickname" onclick="requestOpponentRecord('${escapeForJsAttr(tttTurnId)}')" title="전적 보기">${escapeHTML(tttTurnId)}</span>의 차례...`;
         statusEl.style.color = 'var(--text-secondary)';
       }
     }
@@ -2560,8 +2719,8 @@
     // 색상 정보
     const infoEl = document.getElementById('ttt-color-info');
     if (infoEl && data.colors) {
-      infoEl.textContent = Object.entries(data.colors)
-        .map(([uid, col]) => `${col === 1 ? '⭕ O' : '❌ X'}: ${uid}`)
+      infoEl.innerHTML = Object.entries(data.colors)
+        .map(([uid, col]) => `${col === 1 ? '⭕ O' : '❌ X'}: <span class="clickable-nickname" onclick="requestOpponentRecord('${escapeForJsAttr(uid)}')" title="전적 보기">${escapeHTML(uid)}</span>`)
         .join('  |  ');
     }
 
@@ -2627,7 +2786,7 @@
         statusEl.textContent = `${sym} 내 차례입니다! 열을 선택하세요.`;
         statusEl.style.color = 'var(--accent)';
       } else if (c4TurnId) {
-        statusEl.textContent = `⏳ ${c4TurnId}의 차례...`;
+        statusEl.innerHTML = `⏳ <span class="clickable-nickname" onclick="requestOpponentRecord('${escapeForJsAttr(c4TurnId)}')" title="전적 보기">${escapeHTML(c4TurnId)}</span>의 차례...`;
         statusEl.style.color = 'var(--text-secondary)';
       }
     }
@@ -2635,8 +2794,8 @@
     // 색상 정보
     const infoEl = document.getElementById('c4-color-info');
     if (infoEl && data.colors) {
-      infoEl.textContent = Object.entries(data.colors)
-        .map(([uid, col]) => `${col === 1 ? '🔴 빨강' : '🟡 노랑'}: ${uid}`)
+      infoEl.innerHTML = Object.entries(data.colors)
+        .map(([uid, col]) => `${col === 1 ? '🔴 빨강' : '🟡 노랑'}: <span class="clickable-nickname" onclick="requestOpponentRecord('${escapeForJsAttr(uid)}')" title="전적 보기">${escapeHTML(uid)}</span>`)
         .join('  |  ');
     }
 
@@ -2743,18 +2902,24 @@
           : '🎯 내 차례 — 콜(승부) 또는 포기를 선택하세요!';
         statusEl.style.color = 'var(--accent)';
       } else {
-        statusEl.textContent = `⏳ ${data.turn}의 선택을 기다리는 중...`;
+        statusEl.innerHTML = `⏳ <span class="clickable-nickname" onclick="requestOpponentRecord('${escapeForJsAttr(data.turn)}')" title="전적 보기">${escapeHTML(data.turn)}</span>의 선택을 기다리는 중...`;
         statusEl.style.color = 'var(--text-secondary)';
       }
     }
 
     // 상대방 정보
-    document.getElementById('indian-opp-name').textContent = data.opponentName || '—';
+    const oppName = data.opponentName || '—';
+    document.getElementById('indian-opp-name').innerHTML = oppName !== '—'
+      ? `<span class="clickable-nickname" onclick="requestOpponentRecord('${escapeForJsAttr(oppName)}')" title="전적 보기">${escapeHTML(oppName)}</span>`
+      : '—';
     document.getElementById('indian-opp-hearts').innerHTML = renderHeartsBar(data.opponentHearts);
     document.getElementById('indian-opp-card-wrap').innerHTML = renderIndianCard(data.opponentCard);
 
     // 내 정보
-    document.getElementById('indian-my-name').textContent = data.myName || '—';
+    const myName = data.myName || '—';
+    document.getElementById('indian-my-name').innerHTML = myName !== '—'
+      ? `<span class="clickable-nickname" onclick="requestOpponentRecord('${escapeForJsAttr(myName)}')" title="전적 보기">${escapeHTML(myName)}</span>`
+      : '—';
     document.getElementById('indian-my-hearts').innerHTML = renderHeartsBar(data.myHearts);
     document.getElementById('indian-my-card-wrap').innerHTML = renderIndianCard(data.myCard);
 

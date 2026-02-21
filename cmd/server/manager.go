@@ -281,15 +281,26 @@ func (m *RoomManager) HandleMessage(client *Client, rawMsg []byte) {
 			return
 		}
 		client.UserUUID = uuid
-		client.UserID   = email
-		log.Printf("[AUTH] 인증 완료: [%s] uuid=[%s]", email, uuid[:8])
+
+		// 닉네임 조회: profiles에 있으면 UserID=닉네임, 없으면 이메일 ID부분(골뱅이 앞) 임시 설정
+		nickname := db.GetProfileByUUID(uuid)
+		if nickname != "" {
+			client.UserID = nickname
+		} else {
+			if idx := strings.Index(email, "@"); idx > 0 {
+				client.UserID = email[:idx]
+			} else {
+				client.UserID = email
+			}
+		}
+		log.Printf("[AUTH] 인증 완료: [%s] uuid=[%s]", client.UserID, uuid[:8])
 
 		// 인증 성공 응답 (클라이언트는 이 응답을 받고 pendingJoin 처리)
 		client.SendJSON(struct {
 			Type    string `json:"type"`
 			UserID  string `json:"userId"`
 			Message string `json:"message"`
-		}{"auth_ok", email, "인증 성공: " + email})
+		}{"auth_ok", client.UserID, "인증 성공: " + client.UserID})
 
 		// 전적 복구 (비동기)
 		go func() {
@@ -297,7 +308,7 @@ func (m *RoomManager) HandleMessage(client *Client, rawMsg []byte) {
 			if loaded != nil {
 				client.Records = loaded
 				client.SendJSON(RecordUpdateResponse{Type: "record_update", Records: client.Records})
-				log.Printf("[AUTH] [%s] 전적 복구 완료", email)
+				log.Printf("[AUTH] [%s] 전적 복구 완료", client.UserID)
 			}
 		}()
 
@@ -353,6 +364,97 @@ func (m *RoomManager) HandleMessage(client *Client, rawMsg []byte) {
 			return
 		}
 		m.leaveRoom(client)
+
+	case "check_nickname":
+		if client.UserUUID == "" {
+			client.SendJSON(ServerResponse{Type: "error", Message: "먼저 인증이 필요합니다"})
+			return
+		}
+		if db == nil {
+			client.SendJSON(ServerResponse{Type: "error", Message: "서버 DB 미연결"})
+			return
+		}
+		var p struct {
+			Nickname string `json:"nickname"`
+		}
+		if err := json.Unmarshal(req.Payload, &p); err != nil || p.Nickname == "" {
+			client.SendJSON(ServerResponse{Type: "error", Message: "nickname이 필요합니다"})
+			return
+		}
+		available := db.CheckNicknameUnique(p.Nickname, client.UserUUID)
+		client.SendJSON(struct {
+			Type      string `json:"type"`
+			Available bool   `json:"available"`
+		}{"nickname_check", available})
+
+	case "set_nickname":
+		if client.UserUUID == "" {
+			client.SendJSON(ServerResponse{Type: "error", Message: "먼저 인증이 필요합니다"})
+			return
+		}
+		if db == nil {
+			client.SendJSON(ServerResponse{Type: "error", Message: "서버 DB 미연결"})
+			return
+		}
+		var p struct {
+			Nickname string `json:"nickname"`
+		}
+		if err := json.Unmarshal(req.Payload, &p); err != nil || p.Nickname == "" {
+			client.SendJSON(ServerResponse{Type: "error", Message: "nickname이 필요합니다"})
+			return
+		}
+		// 본인 현재 닉네임과 같으면 중복 검사 생략
+		if p.Nickname != client.UserID && !db.CheckNicknameUnique(p.Nickname, client.UserUUID) {
+			client.SendJSON(ServerResponse{Type: "error", Message: "이미 사용 중인 닉네임입니다"})
+			return
+		}
+		if err := db.UpsertProfile(client.UserUUID, p.Nickname); err != nil {
+			client.SendJSON(ServerResponse{Type: "error", Message: "닉네임 저장 실패: " + err.Error()})
+			return
+		}
+		client.UserID = p.Nickname
+		client.SendJSON(struct {
+			Type   string `json:"type"`
+			UserID string `json:"userId"`
+		}{"auth_ok", client.UserID})
+
+	case "get_user_record":
+		if client.RoomID == "" {
+			client.SendJSON(ServerResponse{Type: "error", Message: "방에 입장한 상태에서만 상대 전적을 조회할 수 있습니다"})
+			return
+		}
+		var p struct {
+			UserID string `json:"userId"`
+		}
+		if err := json.Unmarshal(req.Payload, &p); err != nil || p.UserID == "" {
+			client.SendJSON(ServerResponse{Type: "error", Message: "userId가 필요합니다"})
+			return
+		}
+		m.mu.RLock()
+		room, ok := m.rooms[client.RoomID]
+		m.mu.RUnlock()
+		if !ok {
+			client.SendJSON(ServerResponse{Type: "error", Message: "방을 찾을 수 없습니다"})
+			return
+		}
+		room.mu.RLock()
+		var target *Client
+		for c := range room.clients {
+			if c.UserID == p.UserID {
+				target = c
+				break
+			}
+		}
+		room.mu.RUnlock()
+		if target == nil {
+			client.SendJSON(ServerResponse{Type: "error", Message: "해당 유저를 찾을 수 없습니다"})
+			return
+		}
+		client.SendJSON(struct {
+			Type    string                 `json:"type"`
+			UserID  string                 `json:"userId"`
+			Records map[string]*GameRecord `json:"records"`
+		}{"opponent_record", p.UserID, target.Records})
 
 	case "game_action":
 		// 코어는 게임 로직을 전혀 모릅니다.
