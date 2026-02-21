@@ -35,7 +35,7 @@
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
       background: var(--bg-primary);
       color: var(--text-primary);
-      height: 100vh;
+      height: 100dvh;
       display: flex;
       flex-direction: column;
       overflow: hidden;
@@ -413,6 +413,7 @@
       padding: 12px 18px; background: var(--bg-tertiary);
       border: 1px solid var(--border); border-radius: var(--radius);
       width: 100%; max-width: 460px; flex-shrink: 0;
+      position: sticky; top: 0; z-index: 20; box-shadow: 0 4px 10px rgba(0,0,0,0.3);
     }
     #status-turn-block { display: flex; align-items: center; gap: 10px; }
     #status-stone-icon { font-size: 26px; line-height: 1; }
@@ -535,6 +536,202 @@
       padding: 8px 18px 12px; font-size: 13px; font-weight: 600;
       color: var(--gold); min-height: 34px; text-align: center;
     }
+
+    /* ══ TICTACTOE ═══════════════════════════════════════════════════════════ */
+    #tictactoe-container {
+      display: none; flex-direction: column; align-items: center; gap: 16px;
+    }
+    #ttt-status {
+      font-size: 15px; font-weight: 600; color: var(--text-primary);
+      background: var(--bg-tertiary); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 10px 20px; text-align: center;
+      min-width: 200px;
+    }
+    #ttt-board {
+      display: grid;
+      grid-template-columns: repeat(3, 96px);
+      grid-template-rows: repeat(3, 96px);
+      gap: 0;
+      background: var(--border);
+      border: 2px solid var(--border); border-radius: 8px; overflow: hidden;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+    }
+    .ttt-cell {
+      width: 96px; height: 96px;
+      background: var(--bg-secondary);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 48px; cursor: pointer; user-select: none;
+      transition: background 0.15s;
+      border: 1px solid var(--border);
+    }
+    .ttt-cell:hover.ttt-can-place { background: var(--bg-tertiary); }
+    .ttt-cell.ttt-o { cursor: default; color: #58a6ff; }
+    .ttt-cell.ttt-x { cursor: default; color: #f78166; }
+    .ttt-cell-inner {
+      animation: tttPop 0.18s cubic-bezier(0.22,1,0.36,1);
+    }
+    @keyframes tttPop {
+      from { transform: scale(0.3); opacity: 0.4; }
+      to   { transform: scale(1);   opacity: 1; }
+    }
+    #ttt-color-info {
+      font-size: 13px; color: var(--text-secondary); text-align: center; line-height: 1.8;
+    }
+
+    /* ══ CONNECT 4 ════════════════════════════════════════════════════════════ */
+    #connect4-container {
+      display: none; flex-direction: column; align-items: center; gap: 14px;
+    }
+    #c4-status {
+      font-size: 15px; font-weight: 600; color: var(--text-primary);
+      background: var(--bg-tertiary); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 10px 20px; text-align: center;
+      min-width: 220px;
+    }
+    #c4-color-info {
+      font-size: 13px; color: var(--text-secondary); text-align: center; line-height: 1.8;
+    }
+    /* 열 선택 버튼 행 */
+    #c4-col-btns {
+      display: grid;
+      grid-template-columns: repeat(7, 52px);
+      gap: 3px;
+    }
+    .c4-col-btn {
+      width: 52px; height: 30px;
+      background: var(--bg-tertiary); border: 1px solid var(--border);
+      border-radius: 6px 6px 0 0;
+      color: var(--text-secondary); font-size: 14px; font-weight: 700;
+      cursor: pointer; display: flex; align-items: center; justify-content: center;
+      transition: background 0.15s, color 0.15s;
+    }
+    .c4-col-btn:hover:not(:disabled) { background: var(--accent); color: #000; }
+    .c4-col-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+    /* 파란 보드 프레임 */
+    #c4-board-wrap {
+      background: #1d4ed8;
+      padding: 6px;
+      border-radius: 10px;
+      box-shadow: 0 6px 24px rgba(0,0,0,0.5);
+    }
+    /* 6행 7열 그리드 */
+    #c4-board {
+      display: grid;
+      grid-template-columns: repeat(7, 52px);
+      grid-template-rows: repeat(6, 52px);
+      gap: 3px;
+    }
+    /* 각 셀 = 원형 구멍 */
+    .c4-cell {
+      width: 52px; height: 52px;
+      border-radius: 50%;
+      background: #0f172a; /* 빈 구멍 — 어두운 색으로 깊이감 */
+      box-shadow: inset 0 3px 8px rgba(0,0,0,0.6);
+      transition: background 0.1s;
+    }
+    .c4-cell.c4-red {
+      background: radial-gradient(circle at 38% 35%, #ff6b6b, #dc2626);
+      box-shadow: inset 0 -3px 8px rgba(0,0,0,0.4), 0 2px 6px rgba(220,38,38,0.5);
+      animation: c4Drop 0.22s cubic-bezier(0.22,1,0.36,1);
+    }
+    .c4-cell.c4-yellow {
+      background: radial-gradient(circle at 38% 35%, #fde68a, #f59e0b);
+      box-shadow: inset 0 -3px 8px rgba(0,0,0,0.3), 0 2px 6px rgba(245,158,11,0.5);
+      animation: c4Drop 0.22s cubic-bezier(0.22,1,0.36,1);
+    }
+    .c4-cell.c4-last {
+      outline: 3px solid rgba(255,255,255,0.7);
+      outline-offset: -3px;
+    }
+    @keyframes c4Drop {
+      from { transform: scaleY(0.4) translateY(-30%); opacity: 0.6; }
+      to   { transform: none; opacity: 1; }
+    }
+
+    /* ══ INDIAN POKER ════════════════════════════════════════════════════════ */
+    #indian-container {
+      display: none; flex-direction: column; align-items: center; gap: 10px;
+      width: 100%; max-width: 360px;
+    }
+    #indian-round-bar {
+      font-size: 13px; font-weight: 600; color: var(--text-secondary);
+      background: var(--bg-tertiary); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 6px 16px; text-align: center;
+    }
+    #indian-status {
+      font-size: 15px; font-weight: 700; color: var(--text-primary);
+      text-align: center; min-height: 22px;
+    }
+    /* 플레이어 영역 (상대 / 나) */
+    .indian-player-area {
+      width: 100%; background: var(--bg-tertiary);
+      border: 1px solid var(--border); border-radius: 12px;
+      padding: 14px 18px; display: flex; align-items: center; gap: 14px;
+    }
+    .indian-player-area.opponent-area { flex-direction: row-reverse; }
+    .indian-player-info { flex: 1; display: flex; flex-direction: column; gap: 4px; }
+    .indian-player-name {
+      font-size: 13px; font-weight: 600; color: var(--text-secondary);
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .indian-hearts-bar {
+      display: flex; flex-wrap: wrap; gap: 2px; line-height: 1;
+    }
+    .indian-heart { font-size: 16px; transition: opacity 0.2s; }
+    .indian-heart.lost { opacity: 0.18; filter: grayscale(1); }
+    .indian-hearts-count {
+      font-size: 20px; font-weight: 800; color: #f87171; margin-left: 4px;
+    }
+    /* 카드 표시 */
+    .indian-card-wrap { flex-shrink: 0; }
+    .indian-card-face {
+      width: 58px; height: 84px;
+      background: #fff; border: 1px solid #ccc; border-radius: 8px;
+      display: flex; flex-direction: column; justify-content: space-between;
+      padding: 5px 6px; font-weight: 800;
+      box-shadow: 2px 3px 10px rgba(0,0,0,0.5);
+      animation: indianCardReveal 0.25s cubic-bezier(0.22,1,0.36,1);
+    }
+    .indian-card-face.red-suit { color: #dc2626; }
+    .indian-card-face.black-suit { color: #111; }
+    .indian-card-val-top { font-size: 13px; line-height: 1; }
+    .indian-card-suit-center { font-size: 22px; text-align: center; line-height: 1; }
+    .indian-card-val-bot { font-size: 13px; line-height: 1; transform: rotate(180deg); align-self: flex-end; }
+    .indian-card-back {
+      width: 58px; height: 84px; border-radius: 8px;
+      background: repeating-linear-gradient(-45deg, #1e3a8a 0px, #1e3a8a 6px, #2563eb 6px, #2563eb 12px);
+      border: 1px solid #1e40af;
+      box-shadow: 2px 3px 10px rgba(0,0,0,0.5);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 28px;
+    }
+    @keyframes indianCardReveal {
+      from { opacity: 0; transform: rotateY(90deg) scale(0.8); }
+      to   { opacity: 1; transform: none; }
+    }
+    /* VS 구분선 */
+    .indian-vs-bar {
+      width: 100%; display: flex; align-items: center; gap: 10px;
+      color: var(--text-secondary); font-size: 12px; font-weight: 700;
+    }
+    .indian-vs-bar::before, .indian-vs-bar::after {
+      content: ''; flex: 1; height: 1px; background: var(--border);
+    }
+    /* 액션 버튼 */
+    #indian-actions {
+      display: flex; gap: 12px; margin-top: 4px;
+    }
+    .indian-btn {
+      padding: 10px 24px; border: none; border-radius: var(--radius);
+      font-size: 15px; font-weight: 700; cursor: pointer;
+      transition: transform 0.1s, opacity 0.15s;
+    }
+    .indian-btn:active { transform: scale(0.96); }
+    .indian-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+    #btn-indian-showdown { background: #dc2626; color: #fff; }
+    #btn-indian-showdown:hover:not(:disabled) { background: #ef4444; }
+    #btn-indian-giveup   { background: var(--bg-tertiary); color: var(--text-primary); border: 1px solid var(--border); }
+    #btn-indian-giveup:hover:not(:disabled)   { background: var(--bg-secondary); }
 
     /* ══ DEBUG PANEL (slide-in from right) ══════════════════════════════════ */
     #debug-backdrop {
@@ -673,7 +870,7 @@
       #record-badge-wrapper { order: -1; }
 
       /* ── 로비 ── */
-      #lobby-view { padding: 12px 8px; }
+      #lobby-view { padding: 12px 8px 60px; }
       #game-cards { grid-template-columns: 1fr; gap: 10px; }
       .game-card { padding: 14px 12px; }
 
@@ -685,13 +882,15 @@
       #room-view.active {
         display: flex !important;
         flex-direction: column;
-        overflow-y: auto;
+        overflow: hidden;
+        height: 100%;
       }
       #game-area {
         flex: 1 1 auto;
         min-height: 0;
         border-right: none;
         border-bottom: 1px solid var(--border);
+        overflow-y: auto;
       }
       #game-area-content {
         padding: 10px 6px;
@@ -699,9 +898,9 @@
 
       /* ── 채팅 패널: 하단 고정, 높이 제한 ── */
       #chat-panel {
-        flex: 0 0 auto;
-        height: 35vh;
-        max-height: 250px;
+        flex: 0 0 40vh;
+        max-height: 280px;
+        height: auto;
         border-top: 1px solid var(--border);
       }
       #chat-messages { padding: 8px; }
@@ -868,6 +1067,66 @@
           </div>
         </div>
       </div>
+
+      <!-- 틱택토 -->
+      <div class="game-card">
+        <div class="card-icon">⭕</div>
+        <div class="card-title">틱택토 (Tic-Tac-Toe)</div>
+        <div class="card-desc">3×3 보드에서 가로·세로·대각선 3목을 먼저 완성하면 승리! 승무패(W/L/D) 전적이 기록됩니다.</div>
+        <div class="card-badge pvp">PVP</div>
+        <div class="card-actions-bottom">
+          <div class="card-top-actions">
+            <button class="card-btn-rule"   onclick="showRules('tictactoe')">📖 룰</button>
+            <button class="card-btn-create" onclick="createRoom('tictactoe')">➕ 방 만들기</button>
+          </div>
+          <div class="card-join-row">
+            <input type="text" class="card-code-input" id="code-input-tictactoe"
+                   maxlength="6" placeholder="코드 6자리"
+                   autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false" />
+            <button class="card-btn-join-code" onclick="joinWithCode('tictactoe','code-input-tictactoe')">입장</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 인디언 포커 -->
+      <div class="game-card">
+        <div class="card-icon">🎴</div>
+        <div class="card-title">인디언 포커</div>
+        <div class="card-desc">상대 카드는 보이지만 내 카드는 안 보여요! 하트 10개로 시작, 서바이벌 승부!</div>
+        <div class="card-badge pvp">PVP</div>
+        <div class="card-actions-bottom">
+          <div class="card-top-actions">
+            <button class="card-btn-rule"   onclick="showRules('indian')">📖 룰</button>
+            <button class="card-btn-create" onclick="createRoom('indian')">➕ 방 만들기</button>
+          </div>
+          <div class="card-join-row">
+            <input type="text" class="card-code-input" id="code-input-indian"
+                   maxlength="6" placeholder="코드 6자리"
+                   autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false" />
+            <button class="card-btn-join-code" onclick="joinWithCode('indian','code-input-indian')">입장</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 4목 (Connect 4) -->
+      <div class="game-card">
+        <div class="card-icon">🔴🟡</div>
+        <div class="card-title">4목 (Connect 4)</div>
+        <div class="card-desc">6×7 보드에서 교대로 열을 선택해 돌을 떨어뜨려 가로·세로·대각선 4개를 먼저 이으면 승리!</div>
+        <div class="card-badge pvp">PVP</div>
+        <div class="card-actions-bottom">
+          <div class="card-top-actions">
+            <button class="card-btn-rule"   onclick="showRules('connect4')">📖 룰</button>
+            <button class="card-btn-create" onclick="createRoom('connect4')">➕ 방 만들기</button>
+          </div>
+          <div class="card-join-row">
+            <input type="text" class="card-code-input" id="code-input-connect4"
+                   maxlength="6" placeholder="코드 6자리"
+                   autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false" />
+            <button class="card-btn-join-code" onclick="joinWithCode('connect4','code-input-connect4')">입장</button>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -949,6 +1208,55 @@
           <!-- 관전자 메시지 (Phase 4.3) -->
           <div id="bj-spectator-msg">👀 관전 중입니다</div>
           <div id="bj-message"></div>
+        </div>
+
+        <!-- Tictactoe container -->
+        <div id="tictactoe-container">
+          <div id="ttt-status">상대방을 기다리는 중...</div>
+          <div id="ttt-color-info"></div>
+          <div id="ttt-board"></div>
+        </div>
+
+        <!-- Indian Poker container -->
+        <div id="indian-container">
+          <div id="indian-round-bar">라운드 —</div>
+          <div id="indian-status">상대방을 기다리는 중...</div>
+
+          <!-- 상대방 영역 -->
+          <div class="indian-player-area opponent-area">
+            <div class="indian-card-wrap" id="indian-opp-card-wrap"></div>
+            <div class="indian-player-info">
+              <div class="indian-player-name" id="indian-opp-name">—</div>
+              <div class="indian-hearts-bar" id="indian-opp-hearts"></div>
+            </div>
+          </div>
+
+          <div class="indian-vs-bar">VS</div>
+
+          <!-- 내 영역 -->
+          <div class="indian-player-area my-area">
+            <div class="indian-card-wrap" id="indian-my-card-wrap"></div>
+            <div class="indian-player-info">
+              <div class="indian-player-name" id="indian-my-name">—</div>
+              <div class="indian-hearts-bar" id="indian-my-hearts"></div>
+            </div>
+          </div>
+
+          <!-- 액션 버튼 -->
+          <div id="indian-actions">
+            <button id="btn-indian-showdown" class="indian-btn" onclick="indianShowdown()" disabled>⚔️ 승부</button>
+            <button id="btn-indian-giveup"   class="indian-btn" onclick="indianGiveUp()"   disabled>🏳️ 포기</button>
+          </div>
+        </div>
+
+        <!-- Connect4 container -->
+        <div id="connect4-container">
+          <div id="c4-status">상대방을 기다리는 중...</div>
+          <div id="c4-color-info"></div>
+          <div id="c4-col-btns"></div>
+          <div id="c4-board-wrap">
+            <div id="c4-board"></div>
+          </div>
         </div>
 
       </div><!-- /game-area-content -->
@@ -1252,6 +1560,9 @@
       setGomokuEnded();
       document.getElementById('gomoku-container').style.display    = 'none';
       document.getElementById('blackjack-container').style.display = 'none';
+      document.getElementById('tictactoe-container').style.display = 'none';
+      document.getElementById('connect4-container').style.display  = 'none';
+      document.getElementById('indian-container').style.display    = 'none';
       document.getElementById('board-placeholder').style.display   = 'flex';
       // Reset rematch UI
       document.getElementById('rematch-area').classList.remove('visible');
@@ -1416,6 +1727,76 @@
           <li>무승부(Push): <strong>전적 변동 없음</strong></li>
           <li>패배 / 버스트: <strong>1패 기록</strong></li>
         </ul>`
+    },
+    tictactoe: {
+      title: '⭕ 틱택토 룰',
+      html: `
+        <h3>게임 개요</h3>
+        <ul>
+          <li>3×3 보드에서 <strong>가로·세로·대각선으로 3목</strong>을 먼저 완성하면 승리합니다.</li>
+          <li>2명이 입장하면 O(선공)와 X(후공)가 결정됩니다.</li>
+        </ul>
+        <h3>진행 방식</h3>
+        <ul>
+          <li>O와 X가 번갈아 가며 빈칸에 표시합니다.</li>
+          <li>9칸이 모두 채워지고 승부가 나지 않으면 <strong>무승부</strong>입니다.</li>
+        </ul>
+        <h3>전적 기록</h3>
+        <ul>
+          <li>승리 시: <strong>1승 기록</strong></li>
+          <li>무승부: <strong>1무 기록</strong></li>
+          <li>패배 시: <strong>1패 기록</strong></li>
+        </ul>`
+    },
+    indian: {
+      title: '🎴 인디언 포커 룰',
+      html: `
+        <h3>게임 개요</h3>
+        <ul>
+          <li>자신의 카드는 볼 수 없고, <strong>상대방의 카드만 볼 수 있습니다.</strong></li>
+          <li>각 플레이어는 ❤️×10 하트로 시작하며, 하트가 0 이하가 되면 탈락합니다.</li>
+        </ul>
+        <h3>라운드 진행</h3>
+        <ul>
+          <li>매 라운드 각 플레이어는 카드를 1장 받습니다. 상대 카드를 보고 판단하세요.</li>
+          <li>선공이 먼저 선택합니다:</li>
+          <li>&nbsp;&nbsp;🏳️ <strong>포기</strong>: 선공 ❤️ -1. 라운드 종료.</li>
+          <li>&nbsp;&nbsp;⚔️ <strong>승부</strong>: 후공에게 차례가 넘어갑니다.</li>
+          <li>후공이 선택합니다:</li>
+          <li>&nbsp;&nbsp;🏳️ <strong>포기</strong>: 후공 ❤️ -1. 라운드 종료.</li>
+          <li>&nbsp;&nbsp;⚔️ <strong>승부(콜)</strong>: 카드를 공개하여 승패를 판정합니다.</li>
+        </ul>
+        <h3>승패 판정 (카드 공개 시)</h3>
+        <ul>
+          <li>숫자(2 < 3 < … < K < A)가 높은 쪽 승리.</li>
+          <li>숫자가 같으면 문양(♣ < ♦ < ♥ < ♠)으로 결정.</li>
+          <li>승자: ❤️ <strong>+2</strong> / 패자: ❤️ <strong>-2</strong></li>
+        </ul>
+        <h3>라운드마다 선후공 교체</h3>
+        <ul>
+          <li>매 라운드 선공과 후공이 교대합니다.</li>
+        </ul>`
+    },
+    connect4: {
+      title: '🔴🟡 4목 (Connect 4) 룰',
+      html: `
+        <h3>게임 개요</h3>
+        <ul>
+          <li>6행 × 7열 보드에서 <strong>가로·세로·대각선으로 4개</strong>를 먼저 이으면 승리합니다.</li>
+          <li>2명이 입장하면 🔴 빨강(선공)과 🟡 노랑(후공)이 결정됩니다.</li>
+        </ul>
+        <h3>진행 방식</h3>
+        <ul>
+          <li>턴마다 열(1~7)을 하나 선택하면, 돌이 <strong>중력에 의해 해당 열의 가장 아래 빈 칸</strong>으로 떨어집니다.</li>
+          <li>열이 꽉 찼으면 해당 열을 선택할 수 없습니다.</li>
+          <li>42칸이 모두 차고 승부가 나지 않으면 <strong>무승부</strong>입니다.</li>
+        </ul>
+        <h3>전적 기록</h3>
+        <ul>
+          <li>승리 시: <strong>1승 기록</strong></li>
+          <li>무승부: <strong>1무 기록</strong></li>
+          <li>패배 시: <strong>1패 기록</strong></li>
+        </ul>`
     }
   };
 
@@ -1572,6 +1953,21 @@
               showBlackjackUI();
               renderBlackjackState(parsed.data);
               break;
+            case 'tictactoe_state':
+              addLog('ttt-state', raw);
+              showTicTacToeUI();
+              renderTicTacToe(parsed.data);
+              break;
+            case 'connect4_state':
+              addLog('c4-state', raw);
+              showConnect4UI();
+              renderConnect4(parsed.data);
+              break;
+            case 'indian_state':
+              addLog('indian-state', raw);
+              showIndianUI();
+              renderIndian(parsed.data);
+              break;
             case 'dealer_action':
               addLog('bj-dealer', raw);
               renderBlackjackState(parsed.data);
@@ -1719,6 +2115,9 @@
   function showGomokuBoard() {
     document.getElementById('board-placeholder').style.display    = 'none';
     document.getElementById('blackjack-container').style.display  = 'none';
+    document.getElementById('tictactoe-container').style.display  = 'none';
+    document.getElementById('connect4-container').style.display   = 'none';
+    document.getElementById('indian-container').style.display     = 'none';
     document.getElementById('gomoku-container').style.display     = 'flex';
     if (!gomokuBoardReady) { createGomokuBoard(); gomokuBoardReady = true; }
     scaleBoardToFit();
@@ -1858,6 +2257,9 @@
   function showBlackjackUI() {
     document.getElementById('board-placeholder').style.display    = 'none';
     document.getElementById('gomoku-container').style.display     = 'none';
+    document.getElementById('tictactoe-container').style.display  = 'none';
+    document.getElementById('connect4-container').style.display   = 'none';
+    document.getElementById('indian-container').style.display     = 'none';
     document.getElementById('blackjack-container').style.display  = 'flex';
   }
 
@@ -1920,6 +2322,269 @@
   function bjStand() {
     if (!ws || ws.readyState !== WebSocket.OPEN) return;
     sendRaw(JSON.stringify({ action: 'game_action', payload: { cmd: 'stand' } }));
+  }
+
+  // ── Tictactoe UI ───────────────────────────────────────────────────────────
+
+  let tttMyColor = 0;    // 1=O, 2=X (0=미정)
+  let tttTurnId  = '';   // 현재 차례인 유저 ID
+
+  function showTicTacToeUI() {
+    document.getElementById('board-placeholder').style.display    = 'none';
+    document.getElementById('gomoku-container').style.display     = 'none';
+    document.getElementById('blackjack-container').style.display  = 'none';
+    document.getElementById('connect4-container').style.display   = 'none';
+    document.getElementById('indian-container').style.display     = 'none';
+    document.getElementById('tictactoe-container').style.display  = 'flex';
+  }
+
+  function renderTicTacToe(data) {
+    if (!data) return;
+    tttTurnId = data.turn || '';
+
+    // 내 색 확인
+    if (data.colors && data.colors[currentUserId]) {
+      tttMyColor = data.colors[currentUserId];
+    }
+
+    // 상태 바 텍스트
+    const statusEl = document.getElementById('ttt-status');
+    if (statusEl) {
+      if (tttTurnId === currentUserId) {
+        const sym = tttMyColor === 1 ? '⭕' : '❌';
+        statusEl.textContent = `${sym} 내 차례입니다!`;
+        statusEl.style.color = 'var(--accent)';
+      } else if (tttTurnId) {
+        statusEl.textContent = `⏳ ${tttTurnId}의 차례...`;
+        statusEl.style.color = 'var(--text-secondary)';
+      }
+    }
+
+    // 색상 정보
+    const infoEl = document.getElementById('ttt-color-info');
+    if (infoEl && data.colors) {
+      infoEl.textContent = Object.entries(data.colors)
+        .map(([uid, col]) => `${col === 1 ? '⭕ O' : '❌ X'}: ${uid}`)
+        .join('  |  ');
+    }
+
+    // 3×3 보드 렌더링
+    const boardEl = document.getElementById('ttt-board');
+    if (!boardEl || !data.board) return;
+    boardEl.innerHTML = '';
+    const isMyTurn = tttTurnId === currentUserId;
+
+    for (let r = 0; r < 3; r++) {
+      for (let c = 0; c < 3; c++) {
+        const val  = data.board[r][c]; // 0, 1, 2
+        const cell = document.createElement('div');
+        cell.className = 'ttt-cell';
+
+        if (val === 1) {
+          cell.classList.add('ttt-o');
+          cell.innerHTML = '<span class="ttt-cell-inner">⭕</span>';
+        } else if (val === 2) {
+          cell.classList.add('ttt-x');
+          cell.innerHTML = '<span class="ttt-cell-inner">❌</span>';
+        } else if (isMyTurn) {
+          cell.classList.add('ttt-can-place');
+          cell.addEventListener('click', () => onTttCellClick(r, c));
+        }
+
+        boardEl.appendChild(cell);
+      }
+    }
+  }
+
+  function onTttCellClick(r, c) {
+    if (!ws || ws.readyState !== WebSocket.OPEN) return;
+    if (tttTurnId !== currentUserId) return;
+    sendRaw(JSON.stringify({ action: 'game_action', payload: { cmd: 'place', r, c } }));
+  }
+
+  // ── Connect 4 UI ───────────────────────────────────────────────────────────
+
+  let c4MyColor = 0;  // 1=빨강, 2=노랑 (0=미정)
+  let c4TurnId  = ''; // 현재 차례인 유저 ID
+
+  function showConnect4UI() {
+    document.getElementById('board-placeholder').style.display    = 'none';
+    document.getElementById('gomoku-container').style.display     = 'none';
+    document.getElementById('blackjack-container').style.display  = 'none';
+    document.getElementById('tictactoe-container').style.display  = 'none';
+    document.getElementById('indian-container').style.display     = 'none';
+    document.getElementById('connect4-container').style.display   = 'flex';
+  }
+
+  function renderConnect4(data) {
+    if (!data) return;
+    c4TurnId = data.turn || '';
+
+    // 내 색 확인
+    if (data.colors && data.colors[currentUserId]) {
+      c4MyColor = data.colors[currentUserId];
+    }
+
+    const isMyTurn = c4TurnId === currentUserId;
+
+    // 상태 바
+    const statusEl = document.getElementById('c4-status');
+    if (statusEl) {
+      if (isMyTurn) {
+        const sym = c4MyColor === 1 ? '🔴' : '🟡';
+        statusEl.textContent = `${sym} 내 차례입니다! 열을 선택하세요.`;
+        statusEl.style.color = 'var(--accent)';
+      } else if (c4TurnId) {
+        statusEl.textContent = `⏳ ${c4TurnId}의 차례...`;
+        statusEl.style.color = 'var(--text-secondary)';
+      }
+    }
+
+    // 색상 정보
+    const infoEl = document.getElementById('c4-color-info');
+    if (infoEl && data.colors) {
+      infoEl.textContent = Object.entries(data.colors)
+        .map(([uid, col]) => `${col === 1 ? '🔴 빨강' : '🟡 노랑'}: ${uid}`)
+        .join('  |  ');
+    }
+
+    // 열 선택 버튼 렌더링
+    const colBtnsEl = document.getElementById('c4-col-btns');
+    if (colBtnsEl) {
+      colBtnsEl.innerHTML = '';
+      for (let c = 0; c < 7; c++) {
+        const btn = document.createElement('button');
+        btn.className = 'c4-col-btn';
+        btn.textContent = '▼';
+        btn.disabled = !isMyTurn;
+        if (isMyTurn) {
+          btn.addEventListener('click', () => onC4ColClick(c));
+        }
+        colBtnsEl.appendChild(btn);
+      }
+    }
+
+    // 6×7 보드 렌더링
+    const boardEl = document.getElementById('c4-board');
+    if (!boardEl || !data.board) return;
+    boardEl.innerHTML = '';
+
+    for (let r = 0; r < 6; r++) {
+      for (let c = 0; c < 7; c++) {
+        const val  = data.board[r][c];
+        const cell = document.createElement('div');
+        cell.className = 'c4-cell';
+
+        if (val === 1) {
+          cell.classList.add('c4-red');
+          // 마지막 착수 강조
+          if (r === data.lastRow && c === data.lastCol) cell.classList.add('c4-last');
+        } else if (val === 2) {
+          cell.classList.add('c4-yellow');
+          if (r === data.lastRow && c === data.lastCol) cell.classList.add('c4-last');
+        }
+
+        boardEl.appendChild(cell);
+      }
+    }
+  }
+
+  function onC4ColClick(col) {
+    if (!ws || ws.readyState !== WebSocket.OPEN) return;
+    if (c4TurnId !== currentUserId) return;
+    sendRaw(JSON.stringify({ action: 'game_action', payload: { cmd: 'place', col } }));
+  }
+
+  // ── Indian Poker UI ────────────────────────────────────────────────────────
+
+  function showIndianUI() {
+    document.getElementById('board-placeholder').style.display    = 'none';
+    document.getElementById('gomoku-container').style.display     = 'none';
+    document.getElementById('blackjack-container').style.display  = 'none';
+    document.getElementById('tictactoe-container').style.display  = 'none';
+    document.getElementById('connect4-container').style.display   = 'none';
+    document.getElementById('indian-container').style.display     = 'flex';
+  }
+
+  /** 하트 바 HTML 생성 (최대 10칸, 초과분은 숫자로 표시) */
+  function renderHeartsBar(count) {
+    const MAX_ICONS = 10;
+    let html = '';
+    const iconCount = Math.min(count, MAX_ICONS);
+    for (let i = 0; i < MAX_ICONS; i++) {
+      html += `<span class="indian-heart${i >= iconCount ? ' lost' : ''}">❤️</span>`;
+    }
+    if (count > MAX_ICONS) {
+      html += `<span class="indian-hearts-count">+${count - MAX_ICONS}</span>`;
+    }
+    return html;
+  }
+
+  /** 카드 HTML 생성 */
+  function renderIndianCard(card) {
+    if (!card || card.hidden) {
+      // 뒷면
+      return `<div class="indian-card-back">🎴</div>`;
+    }
+    const isRed = card.suit === '♥' || card.suit === '♦';
+    return `
+      <div class="indian-card-face ${isRed ? 'red-suit' : 'black-suit'}">
+        <div class="indian-card-val-top">${card.value}</div>
+        <div class="indian-card-suit-center">${card.suit}</div>
+        <div class="indian-card-val-bot">${card.value}</div>
+      </div>`;
+  }
+
+  function renderIndian(data) {
+    if (!data) return;
+
+    const isMyTurn = data.turn === currentUserId;
+    const isSpectator = data.myName !== currentUserId && data.opponentName !== currentUserId;
+
+    // 라운드 바
+    const roundEl = document.getElementById('indian-round-bar');
+    if (roundEl) roundEl.textContent = `라운드 ${data.round}`;
+
+    // 상태 바
+    const statusEl = document.getElementById('indian-status');
+    if (statusEl) {
+      if (data.phase === 'waiting') {
+        statusEl.textContent = '상대방을 기다리는 중...';
+      } else if (isMyTurn && !isSpectator) {
+        statusEl.textContent = data.phase === 'first_action'
+          ? '🎯 내 차례 — 승부 또는 포기를 선택하세요!'
+          : '🎯 내 차례 — 콜(승부) 또는 포기를 선택하세요!';
+        statusEl.style.color = 'var(--accent)';
+      } else {
+        statusEl.textContent = `⏳ ${data.turn}의 선택을 기다리는 중...`;
+        statusEl.style.color = 'var(--text-secondary)';
+      }
+    }
+
+    // 상대방 정보
+    document.getElementById('indian-opp-name').textContent = data.opponentName || '—';
+    document.getElementById('indian-opp-hearts').innerHTML = renderHeartsBar(data.opponentHearts);
+    document.getElementById('indian-opp-card-wrap').innerHTML = renderIndianCard(data.opponentCard);
+
+    // 내 정보
+    document.getElementById('indian-my-name').textContent = data.myName || '—';
+    document.getElementById('indian-my-hearts').innerHTML = renderHeartsBar(data.myHearts);
+    document.getElementById('indian-my-card-wrap').innerHTML = renderIndianCard(data.myCard);
+
+    // 액션 버튼 활성화 (내 턴이고 관전자가 아닐 때)
+    const canAct = isMyTurn && !isSpectator && data.phase !== 'waiting';
+    document.getElementById('btn-indian-showdown').disabled = !canAct;
+    document.getElementById('btn-indian-giveup').disabled   = !canAct;
+  }
+
+  function indianShowdown() {
+    if (!ws || ws.readyState !== WebSocket.OPEN) return;
+    sendRaw(JSON.stringify({ action: 'game_action', payload: { cmd: 'showdown' } }));
+  }
+
+  function indianGiveUp() {
+    if (!ws || ws.readyState !== WebSocket.OPEN) return;
+    sendRaw(JSON.stringify({ action: 'game_action', payload: { cmd: 'give_up' } }));
   }
 </script>
 </body>

@@ -51,9 +51,12 @@ type Room struct {
 // 적합한 게임 플러그인을 자동으로 주입합니다.
 //
 // 접두사 규칙:
-//   - "omok"       → GomokuGame    (1:1 PVP 오목, 렌주룰)
-//   - "blackjack"  → BlackjackGame (PVE 블랙잭, 관전 지원)
-//   - 그 외        → nil           (일반 채팅방, 게임 없음)
+//   - "omok"       → GomokuGame      (1:1 PVP 오목, 렌주룰)
+//   - "blackjack"  → BlackjackGame   (PVE 블랙잭, 관전 지원)
+//   - "tictactoe"  → TicTacToeGame   (1:1 PVP 틱택토)
+//   - "connect4"   → Connect4Game    (1:1 PVP 4목)
+//   - "indian"     → IndianGame      (1:1 PVP 인디언 포커, 하트 서바이벌)
+//   - 그 외        → nil             (일반 채팅방, 게임 없음)
 func newRoom(id string) *Room {
 	room := &Room{
 		ID:      id,
@@ -65,6 +68,12 @@ func newRoom(id string) *Room {
 		room.Plugin = NewGomokuGame(room)
 	case strings.HasPrefix(id, "blackjack"):
 		room.Plugin = NewBlackjackGame(room)
+	case strings.HasPrefix(id, "tictactoe"):
+		room.Plugin = NewTicTacToeGame(room)
+	case strings.HasPrefix(id, "connect4"):
+		room.Plugin = NewConnect4Game(room)
+	case strings.HasPrefix(id, "indian"):
+		room.Plugin = NewIndianGame(room)
 	default:
 		// nil — 게임 플러그인 없는 순수 채팅방
 	}
