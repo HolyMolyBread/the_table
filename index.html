@@ -669,7 +669,7 @@
 
       /* ── 앱 셸 ── */
       #app { flex-direction: column; }
-      #header { padding: 8px 12px; }
+      header { height: auto; min-height: 56px; flex-wrap: wrap; gap: 8px; justify-content: center; padding: 10px; }
       #record-badge-wrapper { order: -1; }
 
       /* ── 로비 ── */
@@ -939,7 +939,7 @@
           </div>
           <div id="bj-actions">
             <div id="bj-start-buttons">
-              <button class="bj-btn bj-btn-bet" onclick="bjStart()">🎮 게임 시작 (100점)</button>
+              <button class="bj-btn bj-btn-bet" onclick="bjStart()">🎮 게임 시작</button>
             </div>
             <div id="bj-game-buttons" style="display:none">
               <button class="bj-btn bj-btn-hit"   onclick="bjHit()">Hit</button>
@@ -1729,8 +1729,8 @@
     const board   = document.getElementById('gomoku-board');
     const scaler  = document.getElementById('gomoku-board-scaler');
     if (!board || !scaler) return;
-    const boardW  = 450; // 30px × 15칸 + padding 28px × 2 = 478 → 실제 렌더 기준
-    const available = scaler.clientWidth || window.innerWidth;
+    const boardW  = 490; // 보드 실제 크기 + 여백 고려
+    const available = window.innerWidth - 20;
     if (available < boardW) {
       const ratio = available / boardW;
       board.style.transform       = `scale(${ratio})`;
