@@ -39,16 +39,18 @@ type Connect4Data struct {
 //   - 2명 모두 입장 시 게임을 시작합니다.
 //   - 열(col)을 선택하면 중력에 의해 해당 열의 가장 아래 빈 행에 돌이 놓입니다.
 //   - 가로·세로·대각선으로 4개를 먼저 이으면 승리, 보드가 꽉 차면 무승부입니다.
+//   - 게임 종료 후 리매치 기능을 지원합니다.
 type Connect4Game struct {
-	room        *Room
-	board       [c4Rows][c4Cols]int // 0=빈칸, 1=빨강, 2=노랑
-	players     [2]*Client          // [0]=빨강(선공), [1]=노랑(후공)
-	currentTurn int                 // 0 또는 1
-	gameStarted bool
-	lastCol     int             // 마지막 착수 열 (-1=없음)
-	lastRow     int             // 마지막 착수 행 (-1=없음)
-	stopTick    chan struct{}
-	mu          sync.Mutex
+	room         *Room
+	board        [c4Rows][c4Cols]int // 0=빈칸, 1=빨강, 2=노랑
+	players      [2]*Client         // [0]=빨강(선공), [1]=노랑(후공)
+	currentTurn  int                // 0 또는 1
+	gameStarted  bool
+	lastCol      int            // 마지막 착수 열 (-1=없음)
+	lastRow      int            // 마지막 착수 행 (-1=없음)
+	stopTick     chan struct{}
+	rematchReady [2]bool
+	mu           sync.Mutex
 }
 
 func NewConnect4Game(room *Room) *Connect4Game {
@@ -142,6 +144,8 @@ func (g *Connect4Game) OnLeave(client *Client) {
 		g.room.broadcastAll(data)
 		log.Printf("[CONNECT4] room:[%s] 몰수승: winner=[%s] loser=[%s]",
 			g.room.ID, winner.UserID, loser.UserID)
+	} else if g.players[0] != nil && g.players[1] != nil {
+		g.rematchReady = [2]bool{}
 	}
 
 	g.resetLocked()
@@ -170,6 +174,8 @@ func (g *Connect4Game) HandleAction(client *Client, action string, payload json.
 	switch p.Cmd {
 	case "place":
 		g.handlePlace(client, p.Col)
+	case "rematch":
+		g.handleRematch(client)
 	default:
 		client.SendJSON(ServerResponse{
 			Type:    "error",
@@ -227,14 +233,15 @@ func (g *Connect4Game) handlePlace(client *Client, col int) {
 		loser.RecordResult("connect4", "lose")
 
 		data, _ := json.Marshal(GameResultResponse{
-			Type:    "game_result",
-			Message: fmt.Sprintf("🏆 [%s](%s) 4목 달성! 승리!", winner.UserID, symbol),
-			RoomID:  g.room.ID,
+			Type:           "game_result",
+			Message:        fmt.Sprintf("🏆 [%s](%s) 4목 달성! 승리!", winner.UserID, symbol),
+			RoomID:         g.room.ID,
+			RematchEnabled: true,
 		})
 		g.room.broadcastAll(data)
 		log.Printf("[CONNECT4] room:[%s] 승리: [%s](%s)", g.room.ID, winner.UserID, symbol)
 		g.stopTurnTimerLocked()
-		g.resetLocked()
+		g.endGameLocked()
 		return
 	}
 
@@ -245,14 +252,15 @@ func (g *Connect4Game) handlePlace(client *Client, col int) {
 			}
 		}
 		data, _ := json.Marshal(GameResultResponse{
-			Type:    "game_result",
-			Message: "🤝 무승부입니다!",
-			RoomID:  g.room.ID,
+			Type:           "game_result",
+			Message:        "🤝 무승부입니다!",
+			RoomID:         g.room.ID,
+			RematchEnabled: true,
 		})
 		g.room.broadcastAll(data)
 		log.Printf("[CONNECT4] room:[%s] 무승부", g.room.ID)
 		g.stopTurnTimerLocked()
-		g.resetLocked()
+		g.endGameLocked()
 		return
 	}
 
@@ -322,10 +330,15 @@ func (g *Connect4Game) handleTimeOver(timedOutPlayer *Client) {
 	winner.RecordResult("connect4", "win")
 	loser.RecordResult("connect4", "lose")
 	msg := fmt.Sprintf("⏰ [%s]님 시간 초과! [%s]의 승리!", loser.UserID, winner.UserID)
-	data, _ := json.Marshal(GameResultResponse{Type: "game_result", Message: msg, RoomID: g.room.ID})
+	data, _ := json.Marshal(GameResultResponse{
+		Type:           "game_result",
+		Message:        msg,
+		RoomID:         g.room.ID,
+		RematchEnabled: true,
+	})
 	g.room.broadcastAll(data)
 	log.Printf("[CONNECT4] room:[%s] 시간초과: loser=[%s]", g.room.ID, loser.UserID)
-	g.resetLocked()
+	g.endGameLocked()
 }
 
 // ── 승부 판정 ─────────────────────────────────────────────────────────────────
@@ -393,12 +406,87 @@ func (g *Connect4Game) makeDataLocked() Connect4Data {
 	}
 }
 
-// resetLocked는 게임 상태를 완전히 초기화합니다.
+// endGameLocked는 게임을 종료하지만 players를 유지합니다 (리매치용).
+func (g *Connect4Game) endGameLocked() {
+	g.board        = [c4Rows][c4Cols]int{}
+	g.gameStarted  = false
+	g.lastCol      = -1
+	g.lastRow      = -1
+	g.rematchReady = [2]bool{}
+}
+
+// resetLocked는 게임 상태와 players를 모두 초기화합니다.
 func (g *Connect4Game) resetLocked() {
-	g.board       = [c4Rows][c4Cols]int{}
-	g.gameStarted = false
+	g.endGameLocked()
 	g.players     = [2]*Client{}
 	g.currentTurn = 0
-	g.lastCol     = -1
-	g.lastRow     = -1
+}
+
+// handleRematch는 리매치 요청을 처리합니다.
+func (g *Connect4Game) handleRematch(client *Client) {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+
+	if g.gameStarted {
+		client.SendJSON(ServerResponse{Type: "error", Message: "게임 진행 중에는 리매치를 요청할 수 없습니다."})
+		return
+	}
+
+	idx := -1
+	for i, p := range g.players {
+		if p == client {
+			idx = i
+			break
+		}
+	}
+	if idx == -1 {
+		client.SendJSON(ServerResponse{Type: "error", Message: "이 방의 플레이어가 아닙니다."})
+		return
+	}
+	if g.players[0] == nil || g.players[1] == nil {
+		client.SendJSON(ServerResponse{Type: "error", Message: "상대방이 없습니다."})
+		return
+	}
+
+	g.rematchReady[idx] = true
+	readyCount := 0
+	for _, r := range g.rematchReady {
+		if r {
+			readyCount++
+		}
+	}
+
+	upd, _ := json.Marshal(RematchUpdateMessage{
+		Type:       "rematch_update",
+		RoomID:     g.room.ID,
+		ReadyCount: readyCount,
+	})
+	g.room.broadcastAll(upd)
+
+	if readyCount < 2 {
+		return
+	}
+
+	// 양쪽 레디 → 빨강/노랑 교체 후 새 게임 시작
+	g.players[0], g.players[1] = g.players[1], g.players[0]
+	g.board = [c4Rows][c4Cols]int{}
+	g.lastCol = -1
+	g.lastRow = -1
+	g.rematchReady = [2]bool{}
+	g.gameStarted = true
+	g.currentTurn = 0
+
+	notice, _ := json.Marshal(ServerResponse{
+		Type: "game_notice",
+		Message: fmt.Sprintf(
+			"🔄 리매치 시작! 🔴 빨강: [%s]  🟡 노랑: [%s]  — 빨강이 선공입니다.",
+			g.players[0].UserID, g.players[1].UserID,
+		),
+		RoomID: g.room.ID,
+	})
+	g.room.broadcastAll(notice)
+	g.broadcastStateLocked()
+	g.startTurnTimerLocked()
+	log.Printf("[CONNECT4] room:[%s] 리매치: 빨강=[%s] 노랑=[%s]",
+		g.room.ID, g.players[0].UserID, g.players[1].UserID)
 }

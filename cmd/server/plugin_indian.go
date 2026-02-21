@@ -76,7 +76,7 @@ type IndianData struct {
 //   - 상대방의 카드는 보이지만 자신의 카드는 볼 수 없습니다.
 //   - 선공 포기 → 선공 하트 -1 / 선공 승부 → 후공에게 차례 이전
 //   - 후공 포기 → 후공 하트 -1 / 후공 승부(콜) → 카드 공개, 승자 +2 패자 -2
-//   - 하트가 0 이하가 되면 게임 종료, 전적 기록 후 방 해산
+//   - 하트가 0 이하가 되면 게임 종료. 리매치 시 양쪽 하트 10개로 재시작.
 type IndianGame struct {
 	room           *Room
 	players        [2]*Client // [0]=선공, [1]=후공 (라운드마다 교체)
@@ -88,6 +88,7 @@ type IndianGame struct {
 	round          int
 	gameStarted    bool
 	stopTick       chan struct{}
+	rematchReady   [2]bool
 	mu             sync.Mutex
 }
 
@@ -176,6 +177,8 @@ func (g *IndianGame) OnLeave(client *Client) {
 		g.room.broadcastAll(data)
 		log.Printf("[INDIAN] room:[%s] 몰수승: winner=[%s] loser=[%s]",
 			g.room.ID, winner.UserID, loser.UserID)
+	} else if g.players[0] != nil && g.players[1] != nil {
+		g.rematchReady = [2]bool{}
 	}
 
 	g.resetLocked()
@@ -204,6 +207,8 @@ func (g *IndianGame) HandleAction(client *Client, action string, payload json.Ra
 		g.handleShowdown(client)
 	case "give_up":
 		g.handleGiveUp(client)
+	case "rematch":
+		g.handleRematch(client)
 	default:
 		client.SendJSON(ServerResponse{
 			Type:    "error",
@@ -339,7 +344,7 @@ func (g *IndianGame) resolveShowdownLocked() {
 	g.nextRoundLocked()
 }
 
-// endGameLocked은 게임을 종료하고 전적을 기록합니다.
+// endGameLocked은 게임을 종료하고 전적을 기록합니다. players는 유지하여 리매치를 허용합니다.
 // g.mu 보유 상태에서 호출합니다.
 func (g *IndianGame) endGameLocked(winnerIdx, loserIdx int) {
 	winner := g.players[winnerIdx]
@@ -354,15 +359,24 @@ func (g *IndianGame) endGameLocked(winnerIdx, loserIdx int) {
 		loser.UserID, g.hearts[loserIdx],
 	)
 	data, _ := json.Marshal(GameResultResponse{
-		Type:    "game_result",
-		Message: msg,
-		RoomID:  g.room.ID,
+		Type:           "game_result",
+		Message:        msg,
+		RoomID:         g.room.ID,
+		RematchEnabled: true,
 	})
 	g.room.broadcastAll(data)
 	log.Printf("[INDIAN] room:[%s] 게임 종료: winner=[%s] loser=[%s]",
 		g.room.ID, winner.UserID, loser.UserID)
 
-	g.resetLocked()
+	g.gameStarted = false
+	g.hearts = [2]int{}
+	g.cards = [2]Card{}
+	g.deck = nil
+	g.round = 0
+	g.phase = "waiting"
+	g.currentTurn = 0
+	g.rematchReady = [2]bool{}
+	g.stopTurnTimerLocked()
 }
 
 // ── 라운드 관리 ───────────────────────────────────────────────────────────────
@@ -604,15 +618,86 @@ func (g *IndianGame) handleTimeOver(timedOutPlayer *Client) {
 	g.nextRoundLocked()
 }
 
-// resetLocked는 게임 상태를 완전히 초기화합니다.
+// resetLocked는 게임 상태와 players를 모두 초기화합니다.
 func (g *IndianGame) resetLocked() {
-	g.gameStarted = false
-	g.players     = [2]*Client{}
-	g.hearts      = [2]int{}
-	g.cards       = [2]Card{}
-	g.deck        = nil
-	g.round       = 0
-	g.phase       = "waiting"
+	g.gameStarted  = false
+	g.players      = [2]*Client{}
+	g.hearts       = [2]int{}
+	g.cards        = [2]Card{}
+	g.deck         = nil
+	g.round        = 0
+	g.phase        = "waiting"
+	g.currentTurn  = 0
+	g.rematchReady = [2]bool{}
+	g.stopTick     = nil
+}
+
+// handleRematch는 리매치 요청을 처리합니다.
+func (g *IndianGame) handleRematch(client *Client) {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+
+	if g.gameStarted {
+		client.SendJSON(ServerResponse{Type: "error", Message: "게임 진행 중에는 리매치를 요청할 수 없습니다."})
+		return
+	}
+
+	idx := -1
+	for i, p := range g.players {
+		if p == client {
+			idx = i
+			break
+		}
+	}
+	if idx == -1 {
+		client.SendJSON(ServerResponse{Type: "error", Message: "이 방의 플레이어가 아닙니다."})
+		return
+	}
+	if g.players[0] == nil || g.players[1] == nil {
+		client.SendJSON(ServerResponse{Type: "error", Message: "상대방이 없습니다."})
+		return
+	}
+
+	g.rematchReady[idx] = true
+	readyCount := 0
+	for _, r := range g.rematchReady {
+		if r {
+			readyCount++
+		}
+	}
+
+	upd, _ := json.Marshal(RematchUpdateMessage{
+		Type:       "rematch_update",
+		RoomID:     g.room.ID,
+		ReadyCount: readyCount,
+	})
+	g.room.broadcastAll(upd)
+
+	if readyCount < 2 {
+		return
+	}
+
+	// 양쪽 레디 → 하트 10개로 초기화, 선후공 교체 후 새 게임 시작
+	g.players[0], g.players[1] = g.players[1], g.players[0]
+	g.hearts = [2]int{indianStartHearts, indianStartHearts}
+	g.cards = [2]Card{}
+	g.deck = nil
+	g.round = 0
+	g.phase = "waiting"
 	g.currentTurn = 0
-	g.stopTick    = nil
+	g.rematchReady = [2]bool{}
+	g.gameStarted = true
+
+	notice, _ := json.Marshal(ServerResponse{
+		Type: "game_notice",
+		Message: fmt.Sprintf(
+			"🔄 리매치 시작! [%s] vs [%s] — 각각 ❤️×%d 하트로 다시 시작합니다!",
+			g.players[0].UserID, g.players[1].UserID, indianStartHearts,
+		),
+		RoomID: g.room.ID,
+	})
+	g.room.broadcastAll(notice)
+	g.startRoundLocked()
+	log.Printf("[INDIAN] room:[%s] 리매치: [%s] vs [%s]",
+		g.room.ID, g.players[0].UserID, g.players[1].UserID)
 }

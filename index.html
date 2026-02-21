@@ -364,6 +364,7 @@
       #chat-panel.collapsed #chat-input-area { display: none; }
     }
     @media (max-width: 768px) {
+      #chat-panel.collapsed { flex: 0 0 auto !important; min-height: unset; height: auto; }
       #chat-panel.collapsed #chat-input-area { display: flex !important; }
     }
     #chat-room-badge {
@@ -1083,6 +1084,7 @@
     </div>
 
     <div id="game-cards">
+      <!-- 게임 순서 변경 시 이 블록을 이동하세요 -->
       <!-- 오목 -->
       <div class="game-card">
         <div class="card-icon">🀱</div>
@@ -1102,7 +1104,7 @@
           </div>
         </div>
       </div>
-
+      <!-- 게임 순서 변경 시 이 블록을 이동하세요 -->
       <!-- 블랙잭 -->
       <div class="game-card">
         <div class="card-icon">🃏</div>
@@ -1122,7 +1124,7 @@
           </div>
         </div>
       </div>
-
+      <!-- 게임 순서 변경 시 이 블록을 이동하세요 -->
       <!-- 틱택토 -->
       <div class="game-card">
         <div class="card-icon">⭕❌</div>
@@ -1142,7 +1144,7 @@
           </div>
         </div>
       </div>
-
+      <!-- 게임 순서 변경 시 이 블록을 이동하세요 -->
       <!-- 인디언 포커 -->
       <div class="game-card">
         <div class="card-icon">🃏</div>
@@ -1162,7 +1164,7 @@
           </div>
         </div>
       </div>
-
+      <!-- 게임 순서 변경 시 이 블록을 이동하세요 -->
       <!-- 4목 (Connect 4) -->
       <div class="game-card">
         <div class="card-icon">🔴🟡</div>
@@ -1225,13 +1227,6 @@
           </div>
           <div id="gomoku-color-info"></div>
           <div id="gomoku-board-scaler"><div id="gomoku-board"></div></div>
-          <!-- 리매치 영역 (Phase 4.3) -->
-          <div id="rematch-area">
-            <button id="btn-rematch" onclick="sendRematch()">
-              🔄 한 판 더 (<span id="rematch-count">0</span>/2)
-            </button>
-            <div id="rematch-hint">상대방도 버튼을 누르면 새 게임이 시작됩니다</div>
-          </div>
           <!-- 오목 관전 메시지 (Phase 4.3.1) -->
           <div id="gomoku-spectator-msg" style="display:none; padding:14px 18px; font-size:14px; font-weight:600; color:var(--text-secondary); text-align:center;">
             👀 관전 중입니다
@@ -1330,6 +1325,14 @@
           <div id="c4-board-wrap">
             <div id="c4-board"></div>
           </div>
+        </div>
+
+        <!-- 리매치 영역 (공통 PVP) -->
+        <div id="rematch-area">
+          <button id="btn-rematch" onclick="sendRematch()">
+            🔄 한 판 더 (<span id="rematch-count">0</span>/2)
+          </button>
+          <div id="rematch-hint">상대방도 버튼을 누르면 새 게임이 시작됩니다</div>
         </div>
 
       </div><!-- /game-area-content -->
@@ -2026,11 +2029,13 @@
                 renderBoard({ board: parsed.data.board, turn: '', colors: parsed.data.colors || {}, lastMove: parsed.data.lastMove || [-1,-1] });
                 setGomokuEnded();
               }
-              // 오목 리매치 버튼 표시
-              if (parsed.rematchEnabled && currentRoomId.startsWith('omok')) {
+              // 리매치 버튼 표시 (rematchEnabled 시 모든 PVP 게임 공통)
+              if (parsed.rematchEnabled) {
                 document.getElementById('rematch-count').textContent = '0';
                 document.getElementById('btn-rematch').disabled = false;
-                document.getElementById('rematch-area').classList.add('visible');
+                const rematchArea = document.getElementById('rematch-area');
+                rematchArea.style.display = 'flex';
+                rematchArea.classList.add('visible');
               }
               break;
             case 'game_notice':
@@ -2041,13 +2046,15 @@
               const count = parsed.readyCount ?? 0;
               document.getElementById('rematch-count').textContent = count;
               if (count >= 2) {
-                // 양쪽 레디 → 새 게임 시작. 리매치 버튼·관전 메시지 초기화
-                gomokuEnded = false;
+                // 양쪽 레디 → 새 게임 시작. 리매치 버튼 숨김
+                document.getElementById('rematch-area').style.display = 'none';
                 document.getElementById('rematch-area').classList.remove('visible');
                 document.getElementById('btn-rematch').disabled = false;
-                document.getElementById('gomoku-spectator-msg').style.display = 'none';
+                if (currentRoomId.startsWith('omok')) {
+                  gomokuEnded = false;
+                  document.getElementById('gomoku-spectator-msg').style.display = 'none';
+                }
               }
-              // count < 2: 서버가 별도로 처리 — 클라이언트는 카운트만 갱신
               break;
             }
             case 'blackjack_state':
@@ -2227,6 +2234,8 @@
       const el = document.getElementById(id);
       if (el) el.style.display = id === showId ? 'flex' : 'none';
     });
+    const rematchEl = document.getElementById('rematch-area');
+    if (rematchEl) rematchEl.style.display = 'none';
   }
 
   // ── Gomoku Board UI ────────────────────────────────────────────────────────
