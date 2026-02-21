@@ -1,0 +1,27 @@
+# 보안: 환경 변수 및 민감 파일 제외
+.env
+*.env
+
+# 보안: SQL 스키마/마이그레이션 파일 제외
+temp_sql/
+
+# 보안: 감사 문서 제외 (내부 보안 정보 포함)
+SECURITY_AUDIT.md
+
+# 개발 도구 및 버전 관리 제외
+.git/
+.gitignore
+.cursor/
+
+# 문서 제외
+ARCHITECTURE.md
+README.md
+*.md
+
+# Go 빌드 아티팩트 제외
+*.exe
+server
+
+# 불필요한 에디터 파일
+.vscode/
+*.log
