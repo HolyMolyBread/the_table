@@ -5,11 +5,13 @@ import (
 	"fmt"
 	"log"
 	"sync"
+	"time"
 )
 
 const (
-	c4Rows = 6 // 보드 행 수
-	c4Cols = 7 // 보드 열 수
+	c4Rows           = 6  // 보드 행 수
+	c4Cols           = 7  // 보드 열 수
+	c4TurnTimeLimit  = 15 // 턴당 제한 시간(초)
 )
 
 // ── 응답 타입 ─────────────────────────────────────────────────────────────────
@@ -43,8 +45,9 @@ type Connect4Game struct {
 	players     [2]*Client          // [0]=빨강(선공), [1]=노랑(후공)
 	currentTurn int                 // 0 또는 1
 	gameStarted bool
-	lastCol     int // 마지막 착수 열 (-1=없음)
-	lastRow     int // 마지막 착수 행 (-1=없음)
+	lastCol     int             // 마지막 착수 열 (-1=없음)
+	lastRow     int             // 마지막 착수 행 (-1=없음)
+	stopTick    chan struct{}
 	mu          sync.Mutex
 }
 
@@ -84,6 +87,7 @@ func (g *Connect4Game) OnJoin(client *Client) {
 		})
 		g.room.broadcastAll(notice)
 		g.broadcastStateLocked()
+		g.startTurnTimerLocked()
 
 	default:
 		// 3번째 이후 입장자 → 관전자
@@ -229,6 +233,7 @@ func (g *Connect4Game) handlePlace(client *Client, col int) {
 		})
 		g.room.broadcastAll(data)
 		log.Printf("[CONNECT4] room:[%s] 승리: [%s](%s)", g.room.ID, winner.UserID, symbol)
+		g.stopTurnTimerLocked()
 		g.resetLocked()
 		return
 	}
@@ -246,12 +251,81 @@ func (g *Connect4Game) handlePlace(client *Client, col int) {
 		})
 		g.room.broadcastAll(data)
 		log.Printf("[CONNECT4] room:[%s] 무승부", g.room.ID)
+		g.stopTurnTimerLocked()
 		g.resetLocked()
 		return
 	}
 
 	g.currentTurn = 1 - g.currentTurn
 	g.broadcastStateLocked()
+	g.startTurnTimerLocked()
+}
+
+// ── 타이머 ────────────────────────────────────────────────────────────────────
+
+func (g *Connect4Game) startTurnTimerLocked() {
+	if g.stopTick != nil {
+		close(g.stopTick)
+		g.stopTick = nil
+	}
+	stopCh := make(chan struct{})
+	g.stopTick = stopCh
+	currentPlayer := g.players[g.currentTurn]
+	room := g.room
+
+	data, _ := json.Marshal(TimerTickMessage{
+		Type:      "timer_tick",
+		RoomID:    g.room.ID,
+		TurnUser:  currentPlayer.UserID,
+		Remaining: c4TurnTimeLimit,
+	})
+	g.room.broadcastAll(data)
+
+	go func() {
+		remaining := c4TurnTimeLimit
+		ticker := time.NewTicker(time.Second)
+		defer ticker.Stop()
+		for remaining > 0 {
+			select {
+			case <-stopCh:
+				return
+			case <-ticker.C:
+				remaining--
+				data, _ := json.Marshal(TimerTickMessage{
+					Type:      "timer_tick",
+					RoomID:    room.ID,
+					TurnUser:  currentPlayer.UserID,
+					Remaining: remaining,
+				})
+				room.broadcastAll(data)
+			}
+		}
+		g.handleTimeOver(currentPlayer)
+	}()
+}
+
+func (g *Connect4Game) stopTurnTimerLocked() {
+	if g.stopTick != nil {
+		close(g.stopTick)
+		g.stopTick = nil
+	}
+}
+
+func (g *Connect4Game) handleTimeOver(timedOutPlayer *Client) {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	if !g.gameStarted || g.players[g.currentTurn] != timedOutPlayer {
+		return
+	}
+	winner := g.players[1-g.currentTurn]
+	loser := timedOutPlayer
+	winner.RecordResult("connect4", "win")
+	loser.RecordResult("connect4", "lose")
+	msg := fmt.Sprintf("⏰ [%s]님 시간 초과! [%s]의 승리!", loser.UserID, winner.UserID)
+	data, _ := json.Marshal(GameResultResponse{Type: "game_result", Message: msg, RoomID: g.room.ID})
+	g.room.broadcastAll(data)
+	log.Printf("[CONNECT4] room:[%s] 시간초과: loser=[%s]", g.room.ID, loser.UserID)
+	g.resetLocked()
 }
 
 // ── 승부 판정 ─────────────────────────────────────────────────────────────────

@@ -5,9 +5,13 @@ import (
 	"fmt"
 	"log"
 	"sync"
+	"time"
 )
 
-const indianStartHearts = 10 // 게임 시작 시 각 플레이어의 하트 수
+const (
+	indianStartHearts = 10 // 게임 시작 시 각 플레이어의 하트 수
+	indianTurnTimeLimit = 30 // 턴당 제한 시간(초) — 초과 시 포기 처리
+)
 
 // ── 카드 비교 ─────────────────────────────────────────────────────────────────
 
@@ -31,6 +35,21 @@ type IndianStateResponse struct {
 	Type   string     `json:"type"`
 	RoomID string     `json:"roomId"`
 	Data   IndianData `json:"data"`
+}
+
+// IndianShowdownResultResponse는 승부(콜) 후 각 플레이어에게 개별 전송되는 결과 오버레이용 메시지입니다.
+type IndianShowdownResultResponse struct {
+	Type   string                   `json:"type"`
+	RoomID string                   `json:"roomId"`
+	Data   IndianShowdownResultData `json:"data"`
+}
+
+// IndianShowdownResultData는 승부 결과의 개인화된 데이터입니다.
+type IndianShowdownResultData struct {
+	MyCard       Card   `json:"myCard"`       // 본인 카드 (공개)
+	OpponentCard Card   `json:"opponentCard"` // 상대 카드 (공개)
+	Result       string `json:"result"`       // "win" | "lose"
+	HeartDelta   int    `json:"heartDelta"`   // +2 또는 -2
 }
 
 // IndianData는 indian_state 응답의 data 필드입니다.
@@ -62,12 +81,13 @@ type IndianGame struct {
 	room           *Room
 	players        [2]*Client // [0]=선공, [1]=후공 (라운드마다 교체)
 	hearts         [2]int     // 각 플레이어의 하트 수
-	cards          [2]Card    // 현재 라운드의 각 플레이어 카드
+	cards          [2]Card   // 현재 라운드의 각 플레이어 카드
 	deck           []Card
 	currentTurn    int    // 현재 행동 플레이어 인덱스 (0 또는 1)
 	phase          string // "waiting" | "first_action" | "second_action"
 	round          int
 	gameStarted    bool
+	stopTick       chan struct{}
 	mu             sync.Mutex
 }
 
@@ -209,6 +229,7 @@ func (g *IndianGame) handleShowdown(client *Client) {
 	switch g.phase {
 	case "first_action":
 		// 선공이 '승부' → 후공에게 차례 이전
+		g.stopTurnTimerLocked()
 		g.currentTurn = 1
 		g.phase = "second_action"
 		notice, _ := json.Marshal(ServerResponse{
@@ -221,6 +242,7 @@ func (g *IndianGame) handleShowdown(client *Client) {
 		})
 		g.room.broadcastAll(notice)
 		g.sendStateToBothLocked()
+		g.startTurnTimerLocked()
 
 	case "second_action":
 		// 후공이 '콜(승부)' → 카드 공개 및 승패 판정
@@ -259,6 +281,7 @@ func (g *IndianGame) handleGiveUp(client *Client) {
 	})
 	g.room.broadcastAll(notice)
 	log.Printf("[INDIAN] room:[%s] 포기: [%s] hearts=%d", g.room.ID, client.UserID, g.hearts[idx])
+	g.stopTurnTimerLocked()
 
 	if g.hearts[idx] <= 0 {
 		g.endGameLocked(1-idx, idx)
@@ -304,6 +327,10 @@ func (g *IndianGame) resolveShowdownLocked() {
 		g.players[winnerIdx].UserID, g.cards[winnerIdx].Value, g.cards[winnerIdx].Suit,
 		g.players[loserIdx].UserID, g.cards[loserIdx].Value, g.cards[loserIdx].Suit,
 	)
+
+	// 각 플레이어에게 개인화된 승부 결과 오버레이 전송 (모바일/PC 중앙 토스트용)
+	g.sendShowdownResultLocked(winnerIdx, loserIdx)
+	g.stopTurnTimerLocked()
 
 	if g.hearts[loserIdx] <= 0 {
 		g.endGameLocked(winnerIdx, loserIdx)
@@ -364,6 +391,7 @@ func (g *IndianGame) startRoundLocked() {
 	})
 	g.room.broadcastAll(notice)
 	g.sendStateToBothLocked()
+	g.startTurnTimerLocked()
 }
 
 // nextRoundLocked은 선후공을 교체하고 새 라운드를 시작합니다.
@@ -396,6 +424,42 @@ func (g *IndianGame) sendStateToBothLocked() {
 
 	for _, s := range spectators {
 		g.sendStateToSpectatorLocked(s)
+	}
+}
+
+// sendShowdownResultLocked은 승부 후 각 플레이어에게 개인화된 결과 오버레이를 전송합니다.
+// g.mu 보유 상태에서 호출합니다.
+func (g *IndianGame) sendShowdownResultLocked(winnerIdx, loserIdx int) {
+	for i := 0; i < 2; i++ {
+		if g.players[i] == nil {
+			continue
+		}
+		oppIdx := 1 - i
+		myCard := g.cards[i]
+		myCard.Hidden = false
+		oppCard := g.cards[oppIdx]
+		oppCard.Hidden = false
+
+		var result string
+		var heartDelta int
+		if i == winnerIdx {
+			result = "win"
+			heartDelta = 2
+		} else {
+			result = "lose"
+			heartDelta = -2
+		}
+
+		g.players[i].SendJSON(IndianShowdownResultResponse{
+			Type:   "indian_showdown_result",
+			RoomID: g.room.ID,
+			Data: IndianShowdownResultData{
+				MyCard:       myCard,
+				OpponentCard: oppCard,
+				Result:       result,
+				HeartDelta:   heartDelta,
+			},
+		})
 	}
 }
 
@@ -460,6 +524,86 @@ func (g *IndianGame) sendStateToSpectatorLocked(client *Client) {
 
 // ── 초기화 ────────────────────────────────────────────────────────────────────
 
+// ── 타이머 ────────────────────────────────────────────────────────────────────
+
+func (g *IndianGame) startTurnTimerLocked() {
+	if g.stopTick != nil {
+		close(g.stopTick)
+		g.stopTick = nil
+	}
+	stopCh := make(chan struct{})
+	g.stopTick = stopCh
+	currentPlayer := g.players[g.currentTurn]
+	room := g.room
+
+	data, _ := json.Marshal(TimerTickMessage{
+		Type:      "timer_tick",
+		RoomID:    g.room.ID,
+		TurnUser:  currentPlayer.UserID,
+		Remaining: indianTurnTimeLimit,
+	})
+	g.room.broadcastAll(data)
+
+	go func() {
+		remaining := indianTurnTimeLimit
+		ticker := time.NewTicker(time.Second)
+		defer ticker.Stop()
+		for remaining > 0 {
+			select {
+			case <-stopCh:
+				return
+			case <-ticker.C:
+				remaining--
+				data, _ := json.Marshal(TimerTickMessage{
+					Type:      "timer_tick",
+					RoomID:    room.ID,
+					TurnUser:  currentPlayer.UserID,
+					Remaining: remaining,
+				})
+				room.broadcastAll(data)
+			}
+		}
+		g.handleTimeOver(currentPlayer)
+	}()
+}
+
+func (g *IndianGame) stopTurnTimerLocked() {
+	if g.stopTick != nil {
+		close(g.stopTick)
+		g.stopTick = nil
+	}
+}
+
+// handleTimeOver는 시간 초과 시 포기(give_up)와 동일하게 처리합니다.
+func (g *IndianGame) handleTimeOver(timedOutPlayer *Client) {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	if !g.gameStarted || g.players[g.currentTurn] != timedOutPlayer {
+		return
+	}
+	// 포기와 동일한 로직 실행
+	idx := g.currentTurn
+	prev := g.hearts[idx]
+	g.hearts[idx]--
+
+	notice, _ := json.Marshal(ServerResponse{
+		Type: "game_notice",
+		Message: fmt.Sprintf(
+			"⏰ [%s] 시간 초과! 포기 처리. ❤️ %d → %d",
+			timedOutPlayer.UserID, prev, g.hearts[idx],
+		),
+		RoomID: g.room.ID,
+	})
+	g.room.broadcastAll(notice)
+	log.Printf("[INDIAN] room:[%s] 시간초과(포기): [%s] hearts=%d", g.room.ID, timedOutPlayer.UserID, g.hearts[idx])
+
+	if g.hearts[idx] <= 0 {
+		g.endGameLocked(1-idx, idx)
+		return
+	}
+	g.nextRoundLocked()
+}
+
 // resetLocked는 게임 상태를 완전히 초기화합니다.
 func (g *IndianGame) resetLocked() {
 	g.gameStarted = false
@@ -470,4 +614,5 @@ func (g *IndianGame) resetLocked() {
 	g.round       = 0
 	g.phase       = "waiting"
 	g.currentTurn = 0
+	g.stopTick    = nil
 }

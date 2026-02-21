@@ -351,6 +351,21 @@
       display: flex; justify-content: space-between; align-items: center;
       font-size: 13px; font-weight: 600; flex-shrink: 0;
     }
+    #btn-chat-toggle {
+      padding: 4px 8px; font-size: 12px; background: var(--bg-tertiary);
+      border: 1px solid var(--border); border-radius: var(--radius);
+      color: var(--text-secondary); cursor: pointer; transition: all 0.15s;
+    }
+    #btn-chat-toggle:hover { background: var(--border); color: var(--text-primary); }
+    #chat-panel.collapsed #chat-messages { display: none !important; }
+    #chat-panel.collapsed #chat-header { border-bottom: none; }
+    @media (min-width: 769px) {
+      #chat-panel.collapsed { flex: 0 0 auto; max-height: 52px; min-height: 52px; }
+      #chat-panel.collapsed #chat-input-area { display: none; }
+    }
+    @media (max-width: 768px) {
+      #chat-panel.collapsed #chat-input-area { display: flex !important; }
+    }
     #chat-room-badge {
       font-size: 11px; color: var(--text-secondary);
       padding: 2px 8px; border: 1px solid var(--border); border-radius: 10px;
@@ -423,6 +438,9 @@
     #status-seconds { font-family: var(--font-mono); font-size: 32px; font-weight: 900; color: var(--accent); line-height: 1; display: block; }
     .status-unit { font-size: 11px; color: var(--text-secondary); }
     #status-timer-block.urgent #status-seconds { color: var(--error-color); animation: timerPulse 0.5s ease infinite; }
+    #ttt-timer-block.urgent #ttt-seconds,
+    #c4-timer-block.urgent #c4-seconds,
+    #indian-timer-block.urgent #indian-seconds { color: var(--danger); animation: timerPulse 0.5s ease infinite; }
     @keyframes timerPulse { 0%,100%{opacity:1} 50%{opacity:0.35} }
 
     /* ── Gomoku Color info ── */
@@ -859,6 +877,31 @@
     @keyframes pulse  { 0%,100%{opacity:1} 50%{opacity:0.4} }
     @keyframes fadeIn { from { opacity:0; } to { opacity:1; } }
 
+    /* ══ Indian Poker 승부 결과 오버레이 (토스트) ═══════════════════════════════ */
+    #indian-showdown-overlay {
+      display: none; position: fixed; inset: 0; z-index: 9999;
+      align-items: center; justify-content: center; pointer-events: none;
+    }
+    #indian-showdown-overlay.show { display: flex; animation: indianOverlayIn 0.3s ease; }
+    #indian-showdown-box {
+      background: linear-gradient(135deg, #1a1f2e 0%, #0d1117 100%);
+      border: 2px solid var(--gold); border-radius: 16px;
+      padding: 28px 36px; text-align: center; max-width: 340px; width: 90%;
+      box-shadow: 0 0 50px rgba(255,215,0,0.25), 0 8px 32px rgba(0,0,0,0.6);
+    }
+    #indian-showdown-box.win  { border-color: var(--success); box-shadow: 0 0 40px rgba(63,185,80,0.2); }
+    #indian-showdown-box.lose { border-color: var(--danger);  box-shadow: 0 0 40px rgba(248,81,73,0.2); }
+    #indian-showdown-vs {
+      font-size: 22px; font-weight: 800; color: var(--text-primary);
+      margin-bottom: 8px; letter-spacing: 1px;
+    }
+    #indian-showdown-result {
+      font-size: 20px; font-weight: 800; margin-top: 12px;
+    }
+    #indian-showdown-result.win  { color: var(--success); }
+    #indian-showdown-result.lose { color: var(--danger); }
+    @keyframes indianOverlayIn { from { opacity:0; transform: scale(0.85); } to { opacity:1; transform: scale(1); } }
+
     /* ══════════════════════════════════════════════════════════════════════════
        모바일 반응형 (≤768px)
        ══════════════════════════════════════════════════════════════════════════ */
@@ -975,6 +1018,18 @@
           <span class="record-game-label">🃏 블랙잭</span>
           <span id="record-blackjack" class="record-val">0승 0패 0무</span>
         </div>
+        <div class="record-popup-row">
+          <span class="record-game-label">⭕❌ 틱택토</span>
+          <span id="record-tictactoe" class="record-val">0승 0패 0무</span>
+        </div>
+        <div class="record-popup-row">
+          <span class="record-game-label">🔴🟡 4목</span>
+          <span id="record-connect4" class="record-val">0승 0패 0무</span>
+        </div>
+        <div class="record-popup-row">
+          <span class="record-game-label">🃏 인디언 포커</span>
+          <span id="record-indian" class="record-val">0승 0패 0무</span>
+        </div>
       </div>
     </div>
     <button class="header-btn danger" id="btn-leave" style="display:none" onclick="leaveRoom()">🚪 나가기</button>
@@ -1031,7 +1086,7 @@
       <!-- 오목 -->
       <div class="game-card">
         <div class="card-icon">🀱</div>
-        <div class="card-title">오목 (렌주룰)</div>
+        <div class="card-title">오목</div>
         <div class="card-desc">15×15 보드에서 5목을 먼저 완성하면 승리. 흑에게는 쌍삼·쌍사·장목 금수 적용</div>
         <div class="card-badge pvp">PVP</div>
         <div class="card-actions-bottom">
@@ -1070,7 +1125,7 @@
 
       <!-- 틱택토 -->
       <div class="game-card">
-        <div class="card-icon">⭕</div>
+        <div class="card-icon">⭕❌</div>
         <div class="card-title">틱택토 (Tic-Tac-Toe)</div>
         <div class="card-desc">3×3 보드에서 가로·세로·대각선 3목을 먼저 완성하면 승리! 승무패(W/L/D) 전적이 기록됩니다.</div>
         <div class="card-badge pvp">PVP</div>
@@ -1090,7 +1145,7 @@
 
       <!-- 인디언 포커 -->
       <div class="game-card">
-        <div class="card-icon">🎴</div>
+        <div class="card-icon">🃏</div>
         <div class="card-title">인디언 포커</div>
         <div class="card-desc">상대 카드는 보이지만 내 카드는 안 보여요! 하트 10개로 시작, 서바이벌 승부!</div>
         <div class="card-badge pvp">PVP</div>
@@ -1212,7 +1267,13 @@
 
         <!-- Tictactoe container -->
         <div id="tictactoe-container">
-          <div id="ttt-status">상대방을 기다리는 중...</div>
+          <div id="ttt-status-bar" style="display:flex;align-items:center;gap:16px;padding:8px 16px;background:var(--bg-tertiary);border-radius:var(--radius);">
+            <div id="ttt-status">상대방을 기다리는 중...</div>
+            <div id="ttt-timer-block" style="font-size:12px;color:var(--text-secondary);">
+              <span class="status-label">남은 시간</span>
+              <span id="ttt-seconds">--</span>초
+            </div>
+          </div>
           <div id="ttt-color-info"></div>
           <div id="ttt-board"></div>
         </div>
@@ -1220,7 +1281,13 @@
         <!-- Indian Poker container -->
         <div id="indian-container">
           <div id="indian-round-bar">라운드 —</div>
-          <div id="indian-status">상대방을 기다리는 중...</div>
+          <div style="display:flex;align-items:center;justify-content:center;gap:12px;flex-wrap:wrap;">
+            <div id="indian-status">상대방을 기다리는 중...</div>
+            <div id="indian-timer-block" style="font-size:12px;color:var(--text-secondary);">
+              <span class="status-label">남은 시간</span>
+              <span id="indian-seconds">--</span>초
+            </div>
+          </div>
 
           <!-- 상대방 영역 -->
           <div class="indian-player-area opponent-area">
@@ -1251,7 +1318,13 @@
 
         <!-- Connect4 container -->
         <div id="connect4-container">
-          <div id="c4-status">상대방을 기다리는 중...</div>
+          <div style="display:flex;align-items:center;justify-content:center;gap:16px;flex-wrap:wrap;">
+            <div id="c4-status">상대방을 기다리는 중...</div>
+            <div id="c4-timer-block" style="font-size:12px;color:var(--text-secondary);">
+              <span class="status-label">남은 시간</span>
+              <span id="c4-seconds">--</span>초
+            </div>
+          </div>
           <div id="c4-color-info"></div>
           <div id="c4-col-btns"></div>
           <div id="c4-board-wrap">
@@ -1266,7 +1339,10 @@
     <div id="chat-panel">
       <div id="chat-header">
         <span>💬 채팅</span>
-        <span id="chat-room-badge"></span>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <span id="chat-room-badge"></span>
+          <button id="btn-chat-toggle" onclick="toggleChatCollapse()" title="채팅창 접기/펼치기">💬 ▼</button>
+        </div>
       </div>
       <div id="chat-messages"></div>
       <div id="chat-input-area">
@@ -1336,6 +1412,14 @@
 
 <!-- ══ Toast Container ════════════════════════════════════════════════════════ -->
 <div id="toast-container"></div>
+
+<!-- ══ Indian Poker 승부 결과 오버레이 (3~5초 자동 사라짐) ════════════════════ -->
+<div id="indian-showdown-overlay">
+  <div id="indian-showdown-box">
+    <div id="indian-showdown-vs">—</div>
+    <div id="indian-showdown-result">—</div>
+  </div>
+</div>
 
 <!-- ══ Game Result Modal ══════════════════════════════════════════════════════ -->
 <div id="result-modal">
@@ -1522,8 +1606,11 @@
 
       // Board title
       const titleEl = document.getElementById('game-area-title');
-      if      (roomId.startsWith('omok'))      titleEl.textContent = '🀱 오목 (렌주룰)';
+      if      (roomId.startsWith('omok'))      titleEl.textContent = '🀱 오목';
       else if (roomId.startsWith('blackjack')) titleEl.textContent = '🃏 블랙잭';
+      else if (roomId.startsWith('tictactoe')) titleEl.textContent = '⭕❌ 틱택토';
+      else if (roomId.startsWith('connect4'))  titleEl.textContent = '🔴🟡 4목';
+      else if (roomId.startsWith('indian'))    titleEl.textContent = '🃏 인디언 포커';
       else                                     titleEl.textContent = roomId;
 
       // Room code badge: extract last segment after last underscore
@@ -1534,7 +1621,7 @@
 
       // 인게임 룰 버튼: omok / blackjack 방에서만 표시
       const rulesBtn = document.getElementById('btn-ingame-rules');
-      rulesBtn.style.display = (roomId.startsWith('omok') || roomId.startsWith('blackjack')) ? '' : 'none';
+      rulesBtn.style.display = (roomId.startsWith('omok') || roomId.startsWith('blackjack') || roomId.startsWith('tictactoe') || roomId.startsWith('connect4') || roomId.startsWith('indian')) ? '' : 'none';
 
       // Sync debug inputs
       if (inputUserId) inputUserId.value = userId;
@@ -1578,9 +1665,21 @@
   function updateRecords(records) {
     if (!records) return;
     const fmt = r => r ? `${r.wins}승 ${r.losses}패 ${r.draws}무` : '0승 0패 0무';
-    if (records.total)     document.getElementById('record-total').textContent     = fmt(records.total);
-    if (records.omok)      document.getElementById('record-omok').textContent      = fmt(records.omok);
-    if (records.blackjack) document.getElementById('record-blackjack').textContent = fmt(records.blackjack);
+    if (records.total)      document.getElementById('record-total').textContent      = fmt(records.total);
+    if (records.omok)       document.getElementById('record-omok').textContent       = fmt(records.omok);
+    if (records.blackjack)  document.getElementById('record-blackjack').textContent  = fmt(records.blackjack);
+    if (records.tictactoe)  document.getElementById('record-tictactoe').textContent = fmt(records.tictactoe);
+    if (records.connect4)   document.getElementById('record-connect4').textContent   = fmt(records.connect4);
+    if (records.indian)     document.getElementById('record-indian').textContent     = fmt(records.indian);
+  }
+
+  /** 채팅창 접기/펼치기 토글 */
+  function toggleChatCollapse() {
+    const panel = document.getElementById('chat-panel');
+    const btn   = document.getElementById('btn-chat-toggle');
+    panel.classList.toggle('collapsed');
+    btn.textContent = panel.classList.contains('collapsed') ? '💬 ▲' : '💬 ▼';
+    btn.title = panel.classList.contains('collapsed') ? '채팅창 펼치기' : '채팅창 접기';
   }
 
   /** 전적 팝업 토글 (외부 클릭 시 닫힘) */
@@ -1672,6 +1771,9 @@
   function showCurrentRules() {
     const prefix = currentRoomId.startsWith('omok')      ? 'omok'
                  : currentRoomId.startsWith('blackjack') ? 'blackjack'
+                 : currentRoomId.startsWith('tictactoe') ? 'tictactoe'
+                 : currentRoomId.startsWith('connect4')  ? 'connect4'
+                 : currentRoomId.startsWith('indian')   ? 'indian'
                  : null;
     if (prefix) showRules(prefix);
   }
@@ -1679,7 +1781,7 @@
   // ── Rules Modal ────────────────────────────────────────────────────────────
   const RULES = {
     omok: {
-      title: '🀱 오목 (렌주룰) 룰',
+      title: '🀱 오목 룰',
       html: `
         <h3>게임 개요</h3>
         <ul>
@@ -1913,7 +2015,7 @@
               renderBoard(parsed.data);
               break;
             case 'timer_tick':
-              updateStatusBar(parsed.turnUser, parsed.remaining);
+              updateGameTimer(parsed.turnUser, parsed.remaining);
               break;
             case 'game_result':
               addLog('game-result', raw);
@@ -1967,6 +2069,10 @@
               addLog('indian-state', raw);
               showIndianUI();
               renderIndian(parsed.data);
+              break;
+            case 'indian_showdown_result':
+              addLog('indian-showdown', raw);
+              showIndianShowdownOverlay(parsed.data);
               break;
             case 'dealer_action':
               addLog('bj-dealer', raw);
@@ -2111,14 +2217,21 @@
     document.getElementById('btn-rematch').disabled = true;
   }
 
+  // ── 게임 뷰 전환 (DRY) ─────────────────────────────────────────────────────
+  const GAME_VIEW_IDS = ['board-placeholder', 'gomoku-container', 'blackjack-container', 'tictactoe-container', 'connect4-container', 'indian-container'];
+  const PREFIX_TO_CONTAINER = { omok: 'gomoku-container', blackjack: 'blackjack-container', tictactoe: 'tictactoe-container', connect4: 'connect4-container', indian: 'indian-container' };
+
+  function switchGameView(prefix) {
+    const showId = PREFIX_TO_CONTAINER[prefix] || 'board-placeholder';
+    GAME_VIEW_IDS.forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.style.display = id === showId ? 'flex' : 'none';
+    });
+  }
+
   // ── Gomoku Board UI ────────────────────────────────────────────────────────
   function showGomokuBoard() {
-    document.getElementById('board-placeholder').style.display    = 'none';
-    document.getElementById('blackjack-container').style.display  = 'none';
-    document.getElementById('tictactoe-container').style.display  = 'none';
-    document.getElementById('connect4-container').style.display   = 'none';
-    document.getElementById('indian-container').style.display     = 'none';
-    document.getElementById('gomoku-container').style.display     = 'flex';
+    switchGameView('omok');
     if (!gomokuBoardReady) { createGomokuBoard(); gomokuBoardReady = true; }
     scaleBoardToFit();
   }
@@ -2204,15 +2317,14 @@
         // 리매치 버튼은 game_result 이벤트가 별도로 처리
       }
     }
-    updateStatusBar(data.turn, null);
+    updateStatusBar(data.turn);
     updateColorInfo(data.colors);
   }
 
-  function updateStatusBar(turnUserId, remaining) {
-    const stoneEl    = document.getElementById('status-stone-icon');
-    const userEl     = document.getElementById('status-turn-user');
-    const timerBlock = document.getElementById('status-timer-block');
-    const secsEl     = document.getElementById('status-seconds');
+  function updateStatusBar(turnUserId) {
+    const stoneEl = document.getElementById('status-stone-icon');
+    const userEl  = document.getElementById('status-turn-user');
+    if (!stoneEl || !userEl) return;
     if (turnUserId) {
       const col = gomokuColorMap[turnUserId];
       stoneEl.textContent = col === 1 ? '⚫' : col === 2 ? '⚪' : '●';
@@ -2220,10 +2332,24 @@
       userEl.textContent = isMine ? `${turnUserId} (나)` : turnUserId;
       userEl.style.color = isMine ? '#3fb950' : 'var(--text-primary)';
     }
-    if (remaining !== null && remaining !== undefined) {
-      secsEl.textContent = remaining;
-      timerBlock.classList.toggle('urgent', remaining <= 5);
-    }
+  }
+
+  /** currentRoomId 접두사에 맞는 타이머 요소를 찾아 업데이트 (5초 이하 시 urgent 클래스) */
+  const PREFIX_TO_TIMER = { omok: ['status-seconds', 'status-timer-block'], tictactoe: ['ttt-seconds', 'ttt-timer-block'], connect4: ['c4-seconds', 'c4-timer-block'], indian: ['indian-seconds', 'indian-timer-block'] };
+
+  function updateGameTimer(turnUser, remaining) {
+    const prefix = currentRoomId.startsWith('omok') ? 'omok'
+                 : currentRoomId.startsWith('tictactoe') ? 'tictactoe'
+                 : currentRoomId.startsWith('connect4') ? 'connect4'
+                 : currentRoomId.startsWith('indian') ? 'indian'
+                 : null;
+    if (!prefix || !PREFIX_TO_TIMER[prefix]) return;
+    const [secsId, blockId] = PREFIX_TO_TIMER[prefix];
+    const secsEl  = document.getElementById(secsId);
+    const blockEl = document.getElementById(blockId);
+    if (!secsEl) return;
+    secsEl.textContent = remaining !== null && remaining !== undefined ? remaining : '--';
+    if (blockEl) blockEl.classList.toggle('urgent', remaining !== null && remaining <= 5);
   }
 
   function updateColorInfo(colors) {
@@ -2255,12 +2381,7 @@
 
   // ── Blackjack UI ───────────────────────────────────────────────────────────
   function showBlackjackUI() {
-    document.getElementById('board-placeholder').style.display    = 'none';
-    document.getElementById('gomoku-container').style.display     = 'none';
-    document.getElementById('tictactoe-container').style.display  = 'none';
-    document.getElementById('connect4-container').style.display   = 'none';
-    document.getElementById('indian-container').style.display     = 'none';
-    document.getElementById('blackjack-container').style.display  = 'flex';
+    switchGameView('blackjack');
   }
 
   function renderBlackjackState(data) {
@@ -2330,12 +2451,7 @@
   let tttTurnId  = '';   // 현재 차례인 유저 ID
 
   function showTicTacToeUI() {
-    document.getElementById('board-placeholder').style.display    = 'none';
-    document.getElementById('gomoku-container').style.display     = 'none';
-    document.getElementById('blackjack-container').style.display  = 'none';
-    document.getElementById('connect4-container').style.display   = 'none';
-    document.getElementById('indian-container').style.display     = 'none';
-    document.getElementById('tictactoe-container').style.display  = 'flex';
+    switchGameView('tictactoe');
   }
 
   function renderTicTacToe(data) {
@@ -2408,12 +2524,7 @@
   let c4TurnId  = ''; // 현재 차례인 유저 ID
 
   function showConnect4UI() {
-    document.getElementById('board-placeholder').style.display    = 'none';
-    document.getElementById('gomoku-container').style.display     = 'none';
-    document.getElementById('blackjack-container').style.display  = 'none';
-    document.getElementById('tictactoe-container').style.display  = 'none';
-    document.getElementById('indian-container').style.display     = 'none';
-    document.getElementById('connect4-container').style.display   = 'flex';
+    switchGameView('connect4');
   }
 
   function renderConnect4(data) {
@@ -2498,12 +2609,7 @@
   // ── Indian Poker UI ────────────────────────────────────────────────────────
 
   function showIndianUI() {
-    document.getElementById('board-placeholder').style.display    = 'none';
-    document.getElementById('gomoku-container').style.display     = 'none';
-    document.getElementById('blackjack-container').style.display  = 'none';
-    document.getElementById('tictactoe-container').style.display  = 'none';
-    document.getElementById('connect4-container').style.display   = 'none';
-    document.getElementById('indian-container').style.display     = 'flex';
+    switchGameView('indian');
   }
 
   /** 하트 바 HTML 생성 (최대 10칸, 초과분은 숫자로 표시) */
@@ -2585,6 +2691,36 @@
   function indianGiveUp() {
     if (!ws || ws.readyState !== WebSocket.OPEN) return;
     sendRaw(JSON.stringify({ action: 'game_action', payload: { cmd: 'give_up' } }));
+  }
+
+  /** 인디언 포커 승부 결과 오버레이 — 4초간 표시 후 자동 닫힘 */
+  let indianShowdownTimeout = null;
+  function showIndianShowdownOverlay(data) {
+    if (!data) return;
+    const box   = document.getElementById('indian-showdown-box');
+    const vsEl  = document.getElementById('indian-showdown-vs');
+    const resEl = document.getElementById('indian-showdown-result');
+    const overlay = document.getElementById('indian-showdown-overlay');
+
+    const myVal = data.myCard?.value || '?';
+    const oppVal = data.opponentCard?.value || '?';
+    const mySuit = data.myCard?.suit || '';
+    const oppSuit = data.opponentCard?.suit || '';
+    const isWin = data.result === 'win';
+    const delta = data.heartDelta || 0;
+    const deltaStr = delta >= 0 ? `+${delta}` : `${delta}`;
+
+    vsEl.textContent = `내 카드 ${myVal}${mySuit}  vs  상대 ${oppVal}${oppSuit}`;
+    resEl.textContent = isWin ? `승리! (${deltaStr} 하트)` : `패배 (${deltaStr} 하트)`;
+    resEl.className = 'indian-showdown-result ' + (isWin ? 'win' : 'lose');
+    box.className = 'indian-showdown-box ' + (isWin ? 'win' : 'lose');
+
+    if (indianShowdownTimeout) clearTimeout(indianShowdownTimeout);
+    overlay.classList.add('show');
+    indianShowdownTimeout = setTimeout(() => {
+      overlay.classList.remove('show');
+      indianShowdownTimeout = null;
+    }, 4000);
   }
 </script>
 </body>

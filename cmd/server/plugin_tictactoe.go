@@ -5,7 +5,10 @@ import (
 	"fmt"
 	"log"
 	"sync"
+	"time"
 )
+
+const tttTurnTimeLimit = 15 // 턴당 제한 시간(초)
 
 // ── 응답 타입 ─────────────────────────────────────────────────────────────────
 
@@ -35,6 +38,7 @@ type TicTacToeGame struct {
 	players     [2]*Client // [0]=O(선공), [1]=X(후공)
 	currentTurn int        // 0 또는 1
 	gameStarted bool
+	stopTick    chan struct{}
 	mu          sync.Mutex
 }
 
@@ -74,6 +78,7 @@ func (g *TicTacToeGame) OnJoin(client *Client) {
 		})
 		g.room.broadcastAll(notice)
 		g.broadcastStateLocked()
+		g.startTurnTimerLocked()
 
 	default:
 		// 3번째 이후 입장자 → 관전자
@@ -207,6 +212,7 @@ func (g *TicTacToeGame) handlePlace(client *Client, r, c int) {
 		})
 		g.room.broadcastAll(data)
 		log.Printf("[TICTACTOE] room:[%s] 승리: [%s](%s)", g.room.ID, winner.UserID, symbol)
+		g.stopTurnTimerLocked()
 		g.resetLocked()
 		return
 	}
@@ -224,12 +230,81 @@ func (g *TicTacToeGame) handlePlace(client *Client, r, c int) {
 		})
 		g.room.broadcastAll(data)
 		log.Printf("[TICTACTOE] room:[%s] 무승부", g.room.ID)
+		g.stopTurnTimerLocked()
 		g.resetLocked()
 		return
 	}
 
 	g.currentTurn = 1 - g.currentTurn
 	g.broadcastStateLocked()
+	g.startTurnTimerLocked()
+}
+
+// ── 타이머 ────────────────────────────────────────────────────────────────────
+
+func (g *TicTacToeGame) startTurnTimerLocked() {
+	if g.stopTick != nil {
+		close(g.stopTick)
+		g.stopTick = nil
+	}
+	stopCh := make(chan struct{})
+	g.stopTick = stopCh
+	currentPlayer := g.players[g.currentTurn]
+	room := g.room
+
+	data, _ := json.Marshal(TimerTickMessage{
+		Type:      "timer_tick",
+		RoomID:    g.room.ID,
+		TurnUser:  currentPlayer.UserID,
+		Remaining: tttTurnTimeLimit,
+	})
+	g.room.broadcastAll(data)
+
+	go func() {
+		remaining := tttTurnTimeLimit
+		ticker := time.NewTicker(time.Second)
+		defer ticker.Stop()
+		for remaining > 0 {
+			select {
+			case <-stopCh:
+				return
+			case <-ticker.C:
+				remaining--
+				data, _ := json.Marshal(TimerTickMessage{
+					Type:      "timer_tick",
+					RoomID:    room.ID,
+					TurnUser:  currentPlayer.UserID,
+					Remaining: remaining,
+				})
+				room.broadcastAll(data)
+			}
+		}
+		g.handleTimeOver(currentPlayer)
+	}()
+}
+
+func (g *TicTacToeGame) stopTurnTimerLocked() {
+	if g.stopTick != nil {
+		close(g.stopTick)
+		g.stopTick = nil
+	}
+}
+
+func (g *TicTacToeGame) handleTimeOver(timedOutPlayer *Client) {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	if !g.gameStarted || g.players[g.currentTurn] != timedOutPlayer {
+		return
+	}
+	winner := g.players[1-g.currentTurn]
+	loser := timedOutPlayer
+	winner.RecordResult("tictactoe", "win")
+	loser.RecordResult("tictactoe", "lose")
+	msg := fmt.Sprintf("⏰ [%s]님 시간 초과! [%s]의 승리!", loser.UserID, winner.UserID)
+	data, _ := json.Marshal(GameResultResponse{Type: "game_result", Message: msg, RoomID: g.room.ID})
+	g.room.broadcastAll(data)
+	log.Printf("[TICTACTOE] room:[%s] 시간초과: loser=[%s]", g.room.ID, loser.UserID)
+	g.resetLocked()
 }
 
 // ── 승부 판정 ─────────────────────────────────────────────────────────────────
