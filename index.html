@@ -843,10 +843,11 @@
       animation: popIn 0.2s ease;
     }
     #rules-title { font-size: 18px; font-weight: 700; margin-bottom: 14px; }
-    #rules-content { font-size: 13px; line-height: 1.8; color: var(--text-secondary); }
-    #rules-content h3 { color: var(--text-primary); margin: 14px 0 4px; font-size: 14px; }
-    #rules-content ul { padding-left: 18px; }
-    #rules-content li { margin-bottom: 3px; }
+    #rules-content { font-size: 13px; line-height: 1.6; color: var(--text-secondary); }
+    #rules-content h3 { color: var(--text-primary); margin: 16px 0 6px; font-size: 14px; }
+    #rules-content h3:first-child { margin-top: 0; }
+    #rules-content ul { padding-left: 18px; margin-bottom: 8px; }
+    #rules-content li { margin-bottom: 6px; }
     #rules-content strong { color: var(--text-primary); }
     #rules-close {
       margin-top: 20px; width: 100%; padding: 9px;
@@ -1992,9 +1993,9 @@
         <ul>
           <li>게임 종료 후 <strong>🔄 한 판 더</strong> 버튼으로 리매치 가능. 흑/백을 교대하여 새 게임 시작.</li>
         </ul>
-        <h3>점수</h3>
+        <h3>전적 기록</h3>
         <ul>
-          <li>승리: <strong>+100점</strong> / 패배: <strong>-50점</strong></li>
+          <li>게임 종료 시 승자에게 <strong>1승</strong>, 패자에게 <strong>1패</strong>가 전적에 기록됩니다.</li>
         </ul>`
     },
     blackjack: {
@@ -2016,11 +2017,11 @@
           <li>딜러는 패의 합이 <strong>16 이하</strong>이면 반드시 카드를 추가로 뽑습니다.</li>
           <li>딜러 카드는 1장이 뒷면으로 숨겨져 있으며, Stand 후 공개됩니다.</li>
         </ul>
-        <h3>정산 (전적 기록)</h3>
+        <h3>전적 기록</h3>
         <ul>
-          <li>승리 시: <strong>1승 기록</strong></li>
-          <li>무승부(Push): <strong>전적 변동 없음</strong></li>
-          <li>패배 / 버스트: <strong>1패 기록</strong></li>
+          <li>승리 시: <strong>1승</strong> 기록</li>
+          <li>무승부(Push): <strong>1무</strong> 기록</li>
+          <li>패배 / 버스트: <strong>1패</strong> 기록</li>
         </ul>`
     },
     tictactoe: {
@@ -2046,9 +2047,9 @@
         </ul>
         <h3>전적 기록</h3>
         <ul>
-          <li>승리 시: <strong>1승 기록</strong></li>
-          <li>무승부: <strong>1무 기록</strong></li>
-          <li>패배 시: <strong>1패 기록</strong></li>
+          <li>승리 시: <strong>1승</strong> 기록</li>
+          <li>무승부: <strong>1무</strong> 기록</li>
+          <li>패배 시: <strong>1패</strong> 기록</li>
         </ul>`
     },
     indian: {
@@ -2057,27 +2058,27 @@
         <h3>게임 개요</h3>
         <ul>
           <li>자신의 카드는 볼 수 없고, <strong>상대방의 카드만 볼 수 있습니다.</strong></li>
-          <li>각 플레이어는 ❤️×10 하트로 시작하며, 하트가 0 이하가 되면 탈락합니다.</li>
+          <li>각 플레이어는 <strong>❤️×10 하트(인게임 체력)</strong>로 시작합니다. 하트는 라운드 진행을 위한 생명력이며, 0이 되면 매치에서 탈락합니다.</li>
         </ul>
         <h3>라운드 진행</h3>
         <ul>
           <li>매 라운드 각 플레이어는 카드를 1장 받습니다. 상대 카드를 보고 판단하세요.</li>
           <li>선공이 먼저 선택합니다:</li>
-          <li>&nbsp;&nbsp;🏳️ <strong>포기</strong>: 선공 ❤️ -1. 라운드 종료.</li>
+          <li>&nbsp;&nbsp;🏳️ <strong>포기</strong>: 선공 하트 -1. 라운드 종료.</li>
           <li>&nbsp;&nbsp;⚔️ <strong>승부</strong>: 후공에게 차례가 넘어갑니다.</li>
           <li>후공이 선택합니다:</li>
-          <li>&nbsp;&nbsp;🏳️ <strong>포기</strong>: 후공 ❤️ -1. 라운드 종료.</li>
+          <li>&nbsp;&nbsp;🏳️ <strong>포기</strong>: 후공 하트 -1. 라운드 종료.</li>
           <li>&nbsp;&nbsp;⚔️ <strong>승부(콜)</strong>: 카드를 공개하여 승패를 판정합니다.</li>
+        </ul>
+        <h3>라운드 내 하트 증감 (인게임 체력)</h3>
+        <ul>
+          <li>포기 시: 해당 플레이어 하트 -1.</li>
+          <li>승부(콜) 후: 승자 하트 +2, 패자 하트 -2.</li>
+          <li>숫자(2 < 3 < … < K < A)가 높은 쪽 승리. 동점 시 문양(♣ < ♦ < ♥ < ♠)으로 결정.</li>
         </ul>
         <h3>턴 타이머</h3>
         <ul>
-          <li>한 턴당 <strong>30초</strong> 제한. 초과 시 <strong>포기</strong> 처리(❤️ -1).</li>
-        </ul>
-        <h3>승패 판정 (카드 공개 시)</h3>
-        <ul>
-          <li>숫자(2 < 3 < … < K < A)가 높은 쪽 승리.</li>
-          <li>숫자가 같으면 문양(♣ < ♦ < ♥ < ♠)으로 결정.</li>
-          <li>승자: ❤️ <strong>+2</strong> / 패자: ❤️ <strong>-2</strong></li>
+          <li>한 턴당 <strong>30초</strong> 제한. 초과 시 <strong>포기</strong> 처리(하트 -1).</li>
         </ul>
         <h3>라운드마다 선후공 교체</h3>
         <ul>
@@ -2086,6 +2087,10 @@
         <h3>리매치</h3>
         <ul>
           <li>게임 완전 종료(누군가 하트 0개) 후 <strong>🔄 한 판 더</strong> 버튼으로 리매치 가능. 양쪽 하트를 10개로 리셋하여 새 게임 시작.</li>
+        </ul>
+        <h3>최종 전적 기록</h3>
+        <ul>
+          <li>누군가의 하트가 0이 되어 매치가 완전히 종료되면, 최종 생존자에게 <strong>1승</strong>, 탈락자에게 <strong>1패</strong>가 서버 전적에 기록됩니다.</li>
         </ul>`
     },
     connect4: {
@@ -2112,9 +2117,9 @@
         </ul>
         <h3>전적 기록</h3>
         <ul>
-          <li>승리 시: <strong>1승 기록</strong></li>
-          <li>무승부: <strong>1무 기록</strong></li>
-          <li>패배 시: <strong>1패 기록</strong></li>
+          <li>승리 시: <strong>1승</strong> 기록</li>
+          <li>무승부: <strong>1무</strong> 기록</li>
+          <li>패배 시: <strong>1패</strong> 기록</li>
         </ul>`
     }
   };
