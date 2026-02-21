@@ -109,7 +109,7 @@ func (g *IndianGame) OnJoin(client *Client) {
 		g.hearts[0] = indianStartHearts
 		notice, _ := json.Marshal(ServerResponse{
 			Type:    "game_notice",
-			Message: fmt.Sprintf("🎴 [%s]님이 입장했습니다. 상대방을 기다리는 중...", client.UserID),
+			Message: fmt.Sprintf("🃏 [%s]님이 입장했습니다. 상대방을 기다리는 중...", client.UserID),
 			RoomID:  g.room.ID,
 		})
 		g.room.broadcastAll(notice)

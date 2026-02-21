@@ -359,6 +359,17 @@
     #btn-chat-toggle:hover { background: var(--border); color: var(--text-primary); }
     #chat-panel.collapsed #chat-messages { display: none !important; }
     #chat-panel.collapsed #chat-header { border-bottom: none; }
+    #chat-preview { display: none; }
+    #chat-panel.collapsed #chat-preview {
+      display: block;
+      flex: 1;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      font-size: 12px;
+      color: var(--text-secondary);
+      margin: 0 10px;
+    }
     @media (min-width: 769px) {
       #chat-panel.collapsed { flex: 0 0 auto; max-height: 52px; min-height: 52px; }
       #chat-panel.collapsed #chat-input-area { display: none; }
@@ -642,6 +653,7 @@
     }
     /* 각 셀 = 원형 구멍 */
     .c4-cell {
+      position: relative;
       width: 52px; height: 52px;
       border-radius: 50%;
       background: #0f172a; /* 빈 구멍 — 어두운 색으로 깊이감 */
@@ -658,9 +670,15 @@
       box-shadow: inset 0 -3px 8px rgba(0,0,0,0.3), 0 2px 6px rgba(245,158,11,0.5);
       animation: c4Drop 0.22s cubic-bezier(0.22,1,0.36,1);
     }
-    .c4-cell.c4-last {
-      outline: 3px solid rgba(255,255,255,0.7);
-      outline-offset: -3px;
+    .c4-cell.c4-last::after {
+      content: '';
+      position: absolute;
+      top: 50%; left: 50%;
+      transform: translate(-50%, -50%);
+      width: 14px; height: 14px;
+      background: white;
+      border-radius: 50%;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.5);
     }
     @keyframes c4Drop {
       from { transform: scaleY(0.4) translateY(-30%); opacity: 0.6; }
@@ -883,7 +901,10 @@
       display: none; position: fixed; inset: 0; z-index: 9999;
       align-items: center; justify-content: center; pointer-events: none;
     }
-    #indian-showdown-overlay.show { display: flex; animation: indianOverlayIn 0.3s ease; }
+    #indian-showdown-overlay.show {
+      display: flex; animation: indianOverlayIn 0.3s ease;
+      pointer-events: auto; cursor: pointer;
+    }
     #indian-showdown-box {
       background: linear-gradient(135deg, #1a1f2e 0%, #0d1117 100%);
       border: 2px solid var(--gold); border-radius: 16px;
@@ -1342,7 +1363,8 @@
     <div id="chat-panel">
       <div id="chat-header">
         <span>💬 채팅</span>
-        <div style="display:flex;align-items:center;gap:8px;">
+        <div style="display:flex;align-items:center;gap:8px;flex:1;min-width:0;">
+          <div id="chat-preview"></div>
           <span id="chat-room-badge"></span>
           <button id="btn-chat-toggle" onclick="toggleChatCollapse()" title="채팅창 접기/펼치기">💬 ▼</button>
         </div>
@@ -1417,7 +1439,7 @@
 <div id="toast-container"></div>
 
 <!-- ══ Indian Poker 승부 결과 오버레이 (3~5초 자동 사라짐) ════════════════════ -->
-<div id="indian-showdown-overlay">
+<div id="indian-showdown-overlay" onclick="closeIndianOverlay()">
   <div id="indian-showdown-box">
     <div id="indian-showdown-vs">—</div>
     <div id="indian-showdown-result">—</div>
@@ -1726,6 +1748,28 @@
 
     messages.appendChild(el);
     messages.scrollTop = messages.scrollHeight;
+
+    // 접힌 채팅창 1줄 미리보기 갱신
+    const previewEl = document.getElementById('chat-preview');
+    if (previewEl) {
+      let text = '';
+      if (type === 'chat') {
+        text = (parsed.message || '').replace(/^\[.+?\]:\s*/, '');
+      } else if (type === 'join') {
+        text = `${parsed.userId || ''}님이 입장했습니다`;
+      } else if (type === 'leave') {
+        text = `${parsed.userId || ''}님이 퇴장했습니다`;
+      } else if (type === 'game_result') {
+        text = parsed.message || '';
+      } else if (type === 'game_notice') {
+        text = parsed.message || '';
+      } else if (type === 'system') {
+        text = parsed.message || '';
+      }
+      if (text) {
+        previewEl.textContent = text.replace(/<[^>]+>/g, '').trim();
+      }
+    }
   }
 
   function sendChat() {
@@ -1802,6 +1846,10 @@
         <ul>
           <li>한 턴당 <strong>15초</strong> 제한. 초과 시 시간 초과 패배.</li>
         </ul>
+        <h3>리매치</h3>
+        <ul>
+          <li>게임 종료 후 <strong>🔄 한 판 더</strong> 버튼으로 리매치 가능. 흑/백을 교대하여 새 게임 시작.</li>
+        </ul>
         <h3>점수</h3>
         <ul>
           <li>승리: <strong>+100점</strong> / 패배: <strong>-50점</strong></li>
@@ -1846,6 +1894,14 @@
           <li>O와 X가 번갈아 가며 빈칸에 표시합니다.</li>
           <li>9칸이 모두 채워지고 승부가 나지 않으면 <strong>무승부</strong>입니다.</li>
         </ul>
+        <h3>턴 타이머</h3>
+        <ul>
+          <li>한 턴당 <strong>15초</strong> 제한. 초과 시 시간 초과 패배.</li>
+        </ul>
+        <h3>리매치</h3>
+        <ul>
+          <li>게임 종료 후 <strong>🔄 한 판 더</strong> 버튼으로 리매치 가능. 선후공(O/X) 교대하여 새 게임 시작.</li>
+        </ul>
         <h3>전적 기록</h3>
         <ul>
           <li>승리 시: <strong>1승 기록</strong></li>
@@ -1854,7 +1910,7 @@
         </ul>`
     },
     indian: {
-      title: '🎴 인디언 포커 룰',
+      title: '🃏 인디언 포커 룰',
       html: `
         <h3>게임 개요</h3>
         <ul>
@@ -1871,6 +1927,10 @@
           <li>&nbsp;&nbsp;🏳️ <strong>포기</strong>: 후공 ❤️ -1. 라운드 종료.</li>
           <li>&nbsp;&nbsp;⚔️ <strong>승부(콜)</strong>: 카드를 공개하여 승패를 판정합니다.</li>
         </ul>
+        <h3>턴 타이머</h3>
+        <ul>
+          <li>한 턴당 <strong>30초</strong> 제한. 초과 시 <strong>포기</strong> 처리(❤️ -1).</li>
+        </ul>
         <h3>승패 판정 (카드 공개 시)</h3>
         <ul>
           <li>숫자(2 < 3 < … < K < A)가 높은 쪽 승리.</li>
@@ -1880,6 +1940,10 @@
         <h3>라운드마다 선후공 교체</h3>
         <ul>
           <li>매 라운드 선공과 후공이 교대합니다.</li>
+        </ul>
+        <h3>리매치</h3>
+        <ul>
+          <li>게임 완전 종료(누군가 하트 0개) 후 <strong>🔄 한 판 더</strong> 버튼으로 리매치 가능. 양쪽 하트를 10개로 리셋하여 새 게임 시작.</li>
         </ul>`
     },
     connect4: {
@@ -1895,6 +1959,14 @@
           <li>턴마다 열(1~7)을 하나 선택하면, 돌이 <strong>중력에 의해 해당 열의 가장 아래 빈 칸</strong>으로 떨어집니다.</li>
           <li>열이 꽉 찼으면 해당 열을 선택할 수 없습니다.</li>
           <li>42칸이 모두 차고 승부가 나지 않으면 <strong>무승부</strong>입니다.</li>
+        </ul>
+        <h3>턴 타이머</h3>
+        <ul>
+          <li>한 턴당 <strong>15초</strong> 제한. 초과 시 시간 초과 패배.</li>
+        </ul>
+        <h3>리매치</h3>
+        <ul>
+          <li>게임 종료 후 <strong>🔄 한 판 더</strong> 버튼으로 리매치 가능. 선후공(빨강/노랑) 교대하여 새 게임 시작.</li>
         </ul>
         <h3>전적 기록</h3>
         <ul>
@@ -2639,7 +2711,7 @@
   function renderIndianCard(card) {
     if (!card || card.hidden) {
       // 뒷면
-      return `<div class="indian-card-back">🎴</div>`;
+      return `<div class="indian-card-back">🃏</div>`;
     }
     const isRed = card.suit === '♥' || card.suit === '♦';
     return `
@@ -2730,6 +2802,15 @@
       overlay.classList.remove('show');
       indianShowdownTimeout = null;
     }, 4000);
+  }
+
+  function closeIndianOverlay() {
+    const overlay = document.getElementById('indian-showdown-overlay');
+    if (overlay) overlay.classList.remove('show');
+    if (indianShowdownTimeout) {
+      clearTimeout(indianShowdownTimeout);
+      indianShowdownTimeout = null;
+    }
   }
 </script>
 </body>
