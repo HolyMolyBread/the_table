@@ -755,9 +755,31 @@
     /* ══ THIEF (도둑잡기) ═══════════════════════════════════════════════════════ */
     #thief-container {
       display: none; flex-direction: column; align-items: center; gap: 12px;
-      width: 100%; max-width: 420px;
+      width: 100%; max-width: 520px;
     }
     #thief-status { font-size: 15px; font-weight: 700; text-align: center; }
+    /* 원탁 테이블 레이아웃 */
+    .table-layout-wrap {
+      position: relative; width: 100%; min-height: 340px;
+      background: linear-gradient(145deg, rgba(34,60,34,0.4) 0%, rgba(20,40,20,0.5) 100%);
+      border-radius: 16px; border: 2px solid rgba(139,90,43,0.5);
+      box-shadow: inset 0 0 40px rgba(0,0,0,0.3);
+    }
+    .table-seat {
+      position: absolute; display: flex; flex-direction: column; align-items: center;
+      padding: 10px 14px; background: var(--bg-tertiary);
+      border-radius: 12px; border: 1px solid var(--border);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.25);
+    }
+    .table-seat.seat-top { top: 12px; left: 50%; transform: translateX(-50%); }
+    .table-seat.seat-left { left: 12px; top: 50%; transform: translateY(-50%); }
+    .table-seat.seat-right { right: 12px; top: 50%; transform: translateY(-50%); }
+    .table-seat.seat-bottom { bottom: 12px; left: 50%; transform: translateX(-50%); min-width: 200px; }
+    .table-seat.seat-bottom .table-seat-name { font-size: 16px; font-weight: 800; }
+    .table-seat.seat-bottom .thief-hand, .table-seat.seat-bottom .onecard-hand, .table-seat.seat-bottom .mahjong-hand { gap: 10px; }
+    .table-seat-name { font-size: 12px; font-weight: 700; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+    .table-seat-count { font-size: 14px; font-weight: 700; color: var(--gold); margin-top: 4px; }
+    .table-seat-target-cards { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; margin-top: 8px; }
     .thief-hand {
       display: flex; flex-wrap: wrap; gap: 8px; justify-content: center;
       min-height: 90px;
@@ -775,8 +797,6 @@
       border-radius: 6px; display: flex; align-items: center; justify-content: center;
       font-size: 24px; cursor: pointer; transition: transform 0.15s ease; user-select: none;
     }
-    #thief-target-area { display: none; }
-    #thief-target-area.visible { display: flex; }
     .thief-target-card:hover { border-color: var(--accent); }
     .thief-target-card.hovered { transform: translateY(-10px); border-color: var(--accent); }
     .thief-card.hover-finger { position: relative; }
@@ -788,8 +808,9 @@
     /* ══ ONECARD (원카드) ═══════════════════════════════════════════════════════ */
     #onecard-container {
       display: none; flex-direction: column; align-items: center; gap: 12px;
-      width: 100%; max-width: 420px;
+      width: 100%; max-width: 520px;
     }
+    .table-center-area { display: flex; align-items: center; justify-content: center; gap: 16px; }
     #onecard-status { font-size: 15px; font-weight: 700; text-align: center; }
     .onecard-card {
       width: 56px; height: 80px; background: #fff; border: 1px solid #ccc;
@@ -816,7 +837,7 @@
       border-radius: var(--radius); padding: 10px 12px;
       display: flex; flex-direction: column; gap: 6px; align-items: center;
     }
-    .onecard-player-box.my-turn {
+    .onecard-player-box.my-turn, .table-seat.my-turn {
       border-color: var(--accent); box-shadow: 0 0 0 2px rgba(88,166,255,0.3);
     }
     .onecard-card-count { font-size: 14px; font-weight: 700; color: var(--gold); }
@@ -850,6 +871,30 @@
       cursor: pointer; background: var(--bg-primary); transition: all 0.15s;
     }
     #onecard-suit-btns button:hover { border-color: var(--accent); transform: scale(1.08); }
+
+    /* ══ MAHJONG (마작) ═══════════════════════════════════════════════════════ */
+    #mahjong-container {
+      display: none; flex-direction: column; align-items: center; gap: 12px;
+      width: 100%; max-width: 520px;
+    }
+    #mahjong-status { font-size: 15px; font-weight: 700; text-align: center; }
+    .mahjong-tile {
+      width: 44px; height: 58px; background: #f5f0e6; border: 1px solid #8b7355;
+      border-radius: 6px; padding: 4px 6px; font-weight: 700; font-size: 14px;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      box-shadow: 2px 2px 6px rgba(0,0,0,0.25);
+    }
+    .mahjong-tile.hidden { background: #2d4a3e; color: #2d4a3e; }
+    .mahjong-tile.discardable { cursor: pointer; border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent); }
+    .mahjong-tile.discardable:hover { transform: translateY(-4px); }
+    .mahjong-hand { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; min-height: 70px; }
+    .mahjong-discards-row { display: flex; flex-wrap: wrap; gap: 4px; justify-content: center; min-height: 36px; margin-bottom: 8px; }
+    .mahjong-player-box {
+      background: var(--bg-tertiary); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 8px 10px;
+      display: flex; flex-direction: column; gap: 4px; align-items: center;
+    }
+    .mahjong-player-box.my-turn, .table-seat.my-turn { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(88,166,255,0.3); }
 
     /* VS 구분선 */
     .indian-vs-bar {
@@ -909,6 +954,20 @@
       background: repeating-linear-gradient(-45deg, #1e3a8a 0px, #1e3a8a 4px, #2563eb 4px, #2563eb 8px);
       border-color: #1e40af; color: transparent;
     }
+    .holdem-card.my-secret-card {
+      position: relative;
+      border: 2px dashed var(--danger);
+      box-shadow: inset 0 0 10px rgba(255,85,85,0.2);
+    }
+    .holdem-card.my-secret-card::after {
+      content: '🔒 히든';
+      position: absolute;
+      top: -10px; right: -10px;
+      background: var(--bg-primary); color: var(--danger);
+      font-size: 10px; font-weight: bold;
+      padding: 2px 6px; border-radius: 6px; border: 1px solid var(--danger);
+      z-index: 5;
+    }
     .holdem-players-grid {
       display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px;
       width: 100%;
@@ -957,6 +1016,7 @@
       display: flex; flex-direction: column;
       background: var(--bg-secondary); padding: 6px 8px; border-radius: 4px; border: 1px solid var(--border);
     }
+    .poker-hand-item.active { border-color: var(--accent); background: rgba(88,166,255,0.15); box-shadow: inset 0 0 8px rgba(88,166,255,0.3); }
     .poker-hand-name { font-size: 11px; font-weight: 700; color: var(--text-primary); margin-bottom: 2px; }
     .poker-hand-desc { font-size: 10px; color: var(--text-muted); line-height: 1.3; word-break: keep-all; }
 
@@ -1240,7 +1300,7 @@
       }
 
       /* ── 게임 컨테이너: 압착 방지 및 유연한 중앙 정렬 ── */
-      #gomoku-container, #blackjack-container, #tictactoe-container, #connect4-container, #indian-container, #holdem-container, #sevenpoker-container, #thief-container, #onecard-container {
+      #gomoku-container, #blackjack-container, #tictactoe-container, #connect4-container, #indian-container, #holdem-container, #sevenpoker-container, #thief-container, #onecard-container, #mahjong-container {
         flex-shrink: 0;
         margin: auto 0;
         width: 100%;
@@ -1352,6 +1412,10 @@
         <div class="record-popup-row">
           <span class="record-game-label">🃏 원카드</span>
           <span id="record-onecard" class="record-val">0승 0패 0무</span>
+        </div>
+        <div class="record-popup-row">
+          <span class="record-game-label">🀄 마작</span>
+          <span id="record-mahjong" class="record-val">0승 0패 0무</span>
         </div>
       </div>
     </div>
@@ -1591,6 +1655,25 @@
           </div>
         </div>
       </div>
+      <div class="game-card">
+        <div class="card-icon">🀄</div>
+        <div class="card-title">마작 (Mahjong)</div>
+        <div class="card-desc">4인 전용. 136장 패 분배 후 쯔모·타패. 14장이 되면 패를 버리세요. (Phase 1)</div>
+        <div class="card-badge pvp">4인</div>
+        <div class="card-actions-bottom">
+          <div class="card-top-actions">
+            <button class="card-btn-rule"   onclick="showRules('mahjong')">📖 룰</button>
+            <button class="card-btn-create" onclick="createRoom('mahjong')">➕ 방 만들기</button>
+          </div>
+          <div class="card-join-row">
+            <input type="text" class="card-code-input" id="code-input-mahjong"
+                   maxlength="6" placeholder="코드 6자리"
+                   autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false"
+                   onkeydown="if(event.key==='Enter') joinWithCode('mahjong','code-input-mahjong')" />
+            <button class="card-btn-join-code" onclick="joinWithCode('mahjong','code-input-mahjong')">입장</button>
+          </div>
+        </div>
+      </div>
         </div>
       </div>
     </div>
@@ -1729,6 +1812,12 @@
             <button id="btn-sevenpoker-check" class="holdem-btn" onclick="sevenpokerCheck()" disabled>✅ 체크 (⭐ -1)</button>
             <button id="btn-sevenpoker-fold"  class="holdem-btn" onclick="sevenpokerFold()"  disabled>🏳️ 폴드</button>
           </div>
+          <div id="sevenpoker-choice-box" style="display:none; margin-top:10px; padding:10px; background:var(--bg-secondary); border-radius:8px; text-align:center;">
+            <p style="font-size:12px; margin-bottom:8px; color:var(--gold);">1장을 버리고 1장을 공개하세요.</p>
+            버릴 카드: <select id="sp-discard"><option value="0">1번째</option><option value="1">2번째</option><option value="2">3번째</option><option value="3">4번째</option></select>
+            공개할 카드: <select id="sp-open"><option value="0">1번째</option><option value="1" selected>2번째</option><option value="2">3번째</option><option value="3">4번째</option></select>
+            <button onclick="sendSevenPokerChoice()" style="margin-left:8px;" class="indian-btn">결정</button>
+          </div>
           <div class="poker-hand-guide">
             <div class="poker-hand-guide-title">📋 포커 족보 가이드 (강한 순서)</div>
             <div class="poker-hand-guide-grid">
@@ -1794,12 +1883,13 @@
             </div>
           </div>
           <div id="thief-escaped" style="font-size:12px;color:var(--text-secondary);margin-bottom:8px;"></div>
-          <div id="thief-target-area" style="flex-direction:column; align-items:center; gap:8px; margin-bottom:12px;">
-            <div id="thief-target-label" style="font-size:13px; color:var(--text-secondary);"></div>
-            <div id="thief-target-cards" class="thief-hand"></div>
+          <div id="thief-table-wrap" class="table-layout-wrap">
+            <div id="thief-players"></div>
+            <div id="thief-me-slot" class="table-seat seat-bottom">
+              <span class="table-seat-name">나</span>
+              <div id="thief-hand" class="thief-hand"></div>
+            </div>
           </div>
-          <div id="thief-my-label" style="font-size:13px; color:var(--text-secondary); margin-bottom:4px;">내 패</div>
-          <div id="thief-hand" class="thief-hand"></div>
         </div>
 
         <!-- OneCard container -->
@@ -1812,16 +1902,44 @@
               <span id="onecard-seconds" class="timer-num">--</span>초
             </div>
           </div>
-          <div id="onecard-players" class="holdem-players-grid" style="margin-bottom: 12px; width: 100%;"></div>
-          <div id="onecard-direction" style="font-size:12px;color:var(--text-secondary);margin-bottom:8px;"></div>
-          <div id="onecard-center" style="display:flex;align-items:center;justify-content:center;gap:16px;margin:12px 0;">
-            <div id="onecard-top-card" class="onecard-card"></div>
-            <div id="onecard-deck" class="onecard-deck" onclick="onecardDraw()" title="클릭 시 드로우"></div>
+          <div id="onecard-direction" style="font-size:12px;color:var(--text-secondary);margin-bottom:4px;"></div>
+          <div id="onecard-table-wrap" class="table-layout-wrap">
+            <div id="onecard-players"></div>
+            <div id="onecard-center" class="table-center-area" style="position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);">
+              <div id="onecard-top-card" class="onecard-card"></div>
+              <div id="onecard-deck" class="onecard-deck" onclick="onecardDraw()" title="클릭 시 드로우"></div>
+            </div>
+            <div id="onecard-me-slot" class="table-seat seat-bottom">
+              <span class="table-seat-name">나</span>
+              <div id="onecard-hand" class="onecard-hand"></div>
+            </div>
           </div>
           <div id="onecard-actions-row">
             <button id="btn-onecard-call" onclick="onecardCallOneCard()" disabled>🚨 원카드!</button>
           </div>
-          <div id="onecard-hand" class="onecard-hand"></div>
+        </div>
+
+        <!-- Mahjong container -->
+        <div id="mahjong-container">
+          <div style="display:flex;align-items:center;justify-content:center;gap:12px;flex-wrap:wrap;">
+            <div id="mahjong-status">상대방을 기다리는 중...</div>
+            <div id="mahjong-timer-block" class="game-timer-block">
+              <span class="status-label">남은 시간</span>
+              <span id="mahjong-seconds" class="timer-num">--</span>초
+            </div>
+          </div>
+          <div id="mahjong-wall-info" style="font-size:14px;color:var(--text-secondary);margin-bottom:8px;">🀄 남은 패: --장</div>
+          <div id="mahjong-table-wrap" class="table-layout-wrap">
+            <div id="mahjong-players"></div>
+            <div id="mahjong-center" class="table-center-area" style="position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);">
+              <div id="mahjong-wall-display">🀄</div>
+            </div>
+            <div id="mahjong-me-slot" class="table-seat seat-bottom">
+              <span class="table-seat-name">나</span>
+              <div id="mahjong-discards-me" class="mahjong-discards-row"></div>
+              <div id="mahjong-hand" class="mahjong-hand"></div>
+            </div>
+          </div>
         </div>
 
         <!-- Connect4 container -->
@@ -2133,6 +2251,10 @@
   }
 
   function openProfileModal() {
+    if (currentRoomId) {
+      alert('게임 진행 중에는 프로필을 변경할 수 없습니다.');
+      return;
+    }
     document.getElementById('profile-email').textContent = currentUserEmail || currentUserId || '—';
     document.getElementById('profile-current-nickname').textContent = currentUserId || '—';
     document.getElementById('profile-new-nickname').value = currentUserId || '';
@@ -2333,6 +2455,7 @@
       else if (roomId.startsWith('indian'))    titleEl.textContent = '🃏 인디언 포커';
       else if (roomId.startsWith('thief'))     titleEl.textContent = '🃏 도둑잡기';
       else if (roomId.startsWith('onecard'))   titleEl.textContent = '🃏 원카드';
+      else if (roomId.startsWith('mahjong'))   titleEl.textContent = '🀄 마작';
       else                                     titleEl.textContent = roomId;
 
       // Room code badge: extract last segment after last underscore
@@ -2343,13 +2466,13 @@
 
       // 인게임 룰 버튼: omok / blackjack / tictactoe / connect4 / indian / holdem / sevenpoker / thief / onecard 방에서 표시
       const rulesBtn = document.getElementById('btn-ingame-rules');
-      rulesBtn.style.display = (roomId.startsWith('omok') || roomId.startsWith('blackjack') || roomId.startsWith('tictactoe') || roomId.startsWith('connect4') || roomId.startsWith('indian') || roomId.startsWith('holdem') || roomId.startsWith('sevenpoker') || roomId.startsWith('thief') || roomId.startsWith('onecard')) ? '' : 'none';
+      rulesBtn.style.display = (roomId.startsWith('omok') || roomId.startsWith('blackjack') || roomId.startsWith('tictactoe') || roomId.startsWith('connect4') || roomId.startsWith('indian') || roomId.startsWith('holdem') || roomId.startsWith('sevenpoker') || roomId.startsWith('thief') || roomId.startsWith('onecard') || roomId.startsWith('mahjong')) ? '' : 'none';
       // 족보 보기 버튼: holdem / sevenpoker 방에서만 표시
       const handRankingsBtn = document.getElementById('btn-hand-rankings');
       handRankingsBtn.style.display = (roomId.startsWith('holdem') || roomId.startsWith('sevenpoker')) ? '' : 'none';
       // 봇 추가 버튼: 오목, 4목, 틱택토, 인디언 포커, 홀덤, 세븐 포커, 도둑잡기, 원카드 방에서 표시 (blackjack 제외)
       const addBotBtn = document.getElementById('btn-add-bot');
-      addBotBtn.style.display = (roomId.startsWith('omok') || roomId.startsWith('connect4') || roomId.startsWith('tictactoe') || roomId.startsWith('indian') || roomId.startsWith('holdem') || roomId.startsWith('sevenpoker') || roomId.startsWith('thief') || roomId.startsWith('onecard')) ? '' : 'none';
+      addBotBtn.style.display = (roomId.startsWith('omok') || roomId.startsWith('connect4') || roomId.startsWith('tictactoe') || roomId.startsWith('indian') || roomId.startsWith('holdem') || roomId.startsWith('sevenpoker') || roomId.startsWith('thief') || roomId.startsWith('onecard') || roomId.startsWith('mahjong')) ? '' : 'none';
 
       // Sync debug inputs
       if (inputUserId) inputUserId.value = userId;
@@ -2396,6 +2519,7 @@
       document.getElementById('sevenpoker-container').style.display = 'none';
       document.getElementById('thief-container').style.display    = 'none';
       document.getElementById('onecard-container').style.display   = 'none';
+      document.getElementById('mahjong-container').style.display   = 'none';
       document.getElementById('board-placeholder').style.display   = 'flex';
       // Reset rematch UI
       document.getElementById('rematch-area').classList.remove('visible');
@@ -2425,6 +2549,7 @@
     if (records.sevenpoker) document.getElementById('record-sevenpoker').textContent = fmt(records.sevenpoker);
     if (records.thief)      document.getElementById('record-thief').textContent      = fmt(records.thief);
     if (records.onecard)   document.getElementById('record-onecard').textContent    = fmt(records.onecard);
+    if (records.mahjong)  document.getElementById('record-mahjong').textContent   = fmt(records.mahjong);
   }
 
   /** 채팅창 접기/펼치기 토글 */
@@ -2552,6 +2677,9 @@
                  : currentRoomId.startsWith('indian')   ? 'indian'
                  : currentRoomId.startsWith('holdem')   ? 'holdem'
                  : currentRoomId.startsWith('sevenpoker') ? 'sevenpoker'
+                 : currentRoomId.startsWith('thief')    ? 'thief'
+                 : currentRoomId.startsWith('onecard')  ? 'onecard'
+                 : currentRoomId.startsWith('mahjong')   ? 'mahjong'
                  : null;
     if (prefix) showRules(prefix);
   }
@@ -2835,6 +2963,29 @@
           <li>손패가 <strong>20장 초과</strong> 시 즉시 파산(패배).</li>
           <li>패가 0장이 되면 <strong>승리</strong>, 나머지 <strong>패배</strong>.</li>
         </ul>`
+    },
+    mahjong: {
+      title: '🀄 마작 (Mahjong) 룰 — Phase 1',
+      html: `
+        <h3>게임 개요</h3>
+        <ul>
+          <li><strong>4인 전용</strong>. 136장(수패 108장 + 자패 28장)을 사용합니다.</li>
+          <li>전원 Ready 후 게임이 시작됩니다.</li>
+        </ul>
+        <h3>패 분배</h3>
+        <ul>
+          <li>4명에게 각각 <strong>13장</strong>씩 분배합니다.</li>
+          <li>선(친)부터 턴이 시작되며, 턴 시작 시 <strong>쯔모</strong> 1장을 뽑아 14장이 됩니다.</li>
+        </ul>
+        <h3>타패 (Discard)</h3>
+        <ul>
+          <li>내 차례에 14장의 손패 중 1장을 선택해 버립니다.</li>
+          <li>버린 후 다음 플레이어로 턴이 넘어가고, 그 플레이어가 자동으로 1장 쯔모합니다.</li>
+        </ul>
+        <h3>Phase 1 범위</h3>
+        <ul>
+          <li>치/퐁/깡 및 역 계산은 아직 구현되지 않았습니다.</li>
+        </ul>`
     }
   };
 
@@ -3064,18 +3215,19 @@
               renderBlackjackState(parsed.data);
               break;
             case 'thief_hover':
-              if (parsed.targetId === currentUserId && typeof parsed.index === 'number') {
-                thiefHoverOnMeIndex = parsed.index;
+              if (parsed.targetId != null && typeof parsed.index === 'number') {
+                thiefHoveredTargetId = parsed.targetId;
+                thiefHoveredIndex = parsed.index;
                 if (lastThiefState) renderThief(lastThiefState);
               }
               break;
-            case 'tictactoe_state': case 'connect4_state': case 'indian_state': case 'holdem_state': case 'sevenpoker_state': case 'thief_state': case 'onecard_state': {
+            case 'tictactoe_state': case 'connect4_state': case 'indian_state': case 'holdem_state': case 'sevenpoker_state': case 'thief_state': case 'onecard_state': case 'mahjong_state': {
               document.getElementById('btn-takeover').style.display = 'none';
-              ['status-turn-user', 'ttt-status', 'c4-status', 'indian-status', 'thief-status', 'onecard-status'].forEach(id => {
+              ['status-turn-user', 'ttt-status', 'c4-status', 'indian-status', 'thief-status', 'onecard-status', 'mahjong-status'].forEach(id => {
                 const el = document.getElementById(id);
                 if (el) { el.style.color = ''; el.style.fontWeight = ''; }
               });
-              if (parsed.type === 'thief_state') thiefHoverOnMeIndex = -1;
+              if (parsed.type === 'thief_state') { thiefHoveredTargetId = ''; thiefHoveredIndex = -1; }
               const h = GAME_STATE_HANDLERS[parsed.type];
               if (h) { addLog(h.logKey, raw); h.show(); h.render(parsed.data); }
               if (parsed.data?.canTakeover) {
@@ -3257,8 +3409,8 @@
   }
 
   // ── 게임 뷰 전환 (DRY) ─────────────────────────────────────────────────────
-  const GAME_VIEW_IDS = ['board-placeholder', 'gomoku-container', 'blackjack-container', 'tictactoe-container', 'connect4-container', 'indian-container', 'holdem-container', 'sevenpoker-container', 'thief-container', 'onecard-container'];
-  const PREFIX_TO_CONTAINER = { omok: 'gomoku-container', blackjack: 'blackjack-container', tictactoe: 'tictactoe-container', connect4: 'connect4-container', indian: 'indian-container', holdem: 'holdem-container', sevenpoker: 'sevenpoker-container', thief: 'thief-container', onecard: 'onecard-container' };
+  const GAME_VIEW_IDS = ['board-placeholder', 'gomoku-container', 'blackjack-container', 'tictactoe-container', 'connect4-container', 'indian-container', 'holdem-container', 'sevenpoker-container', 'thief-container', 'onecard-container', 'mahjong-container'];
+  const PREFIX_TO_CONTAINER = { omok: 'gomoku-container', blackjack: 'blackjack-container', tictactoe: 'tictactoe-container', connect4: 'connect4-container', indian: 'indian-container', holdem: 'holdem-container', sevenpoker: 'sevenpoker-container', thief: 'thief-container', onecard: 'onecard-container', mahjong: 'mahjong-container' };
 
   const GAME_STATE_HANDLERS = {
     tictactoe_state:  { logKey: 'ttt-state',       show: showTicTacToeUI,  render: renderTicTacToe },
@@ -3268,6 +3420,7 @@
     sevenpoker_state: { logKey: 'sevenpoker-state', show: showSevenPokerUI, render: renderSevenPoker },
     thief_state:      { logKey: 'thief-state',    show: showThiefUI,      render: renderThief },
     onecard_state:    { logKey: 'onecard-state',  show: showOneCardUI,     render: renderOneCard },
+    mahjong_state:    { logKey: 'mahjong-state',  show: showMahjongUI,     render: renderMahjong },
   };
 
   function switchGameView(prefix) {
@@ -3387,7 +3540,7 @@
   }
 
   /** currentRoomId 접두사에 맞는 타이머 요소를 찾아 업데이트 (5초 이하 시 urgent 클래스) */
-  const PREFIX_TO_TIMER = { omok: ['status-seconds', 'status-timer-block'], tictactoe: ['ttt-seconds', 'ttt-timer-block'], connect4: ['c4-seconds', 'c4-timer-block'], indian: ['indian-seconds', 'indian-timer-block'], holdem: ['holdem-seconds', 'holdem-timer-block'], sevenpoker: ['sevenpoker-seconds', 'sevenpoker-timer-block'], thief: ['thief-seconds', 'thief-timer-block'], onecard: ['onecard-seconds', 'onecard-timer-block'] };
+  const PREFIX_TO_TIMER = { omok: ['status-seconds', 'status-timer-block'], tictactoe: ['ttt-seconds', 'ttt-timer-block'], connect4: ['c4-seconds', 'c4-timer-block'], indian: ['indian-seconds', 'indian-timer-block'], holdem: ['holdem-seconds', 'holdem-timer-block'], sevenpoker: ['sevenpoker-seconds', 'sevenpoker-timer-block'], thief: ['thief-seconds', 'thief-timer-block'], onecard: ['onecard-seconds', 'onecard-timer-block'], mahjong: ['mahjong-seconds', 'mahjong-timer-block'] };
 
   function updateGameTimer(turnUser, remaining) {
     const prefix = currentRoomId.startsWith('omok') ? 'omok'
@@ -3398,6 +3551,7 @@
                  : currentRoomId.startsWith('sevenpoker') ? 'sevenpoker'
                  : currentRoomId.startsWith('thief') ? 'thief'
                  : currentRoomId.startsWith('onecard') ? 'onecard'
+                 : currentRoomId.startsWith('mahjong') ? 'mahjong'
                  : null;
     if (!prefix || !PREFIX_TO_TIMER[prefix]) return;
     const [secsId, blockId] = PREFIX_TO_TIMER[prefix];
@@ -3763,14 +3917,12 @@
 
   let thiefHoveredIndex = -1;
   let thiefHoveredTargetId = '';
-  let thiefHoverOnMeIndex = -1;
   let lastThiefState = null;
 
   function showThiefUI() {
     switchGameView('thief');
     thiefHoveredIndex = -1;
     thiefHoveredTargetId = '';
-    thiefHoverOnMeIndex = -1;
   }
 
   function renderThiefCard(card, hoverFinger) {
@@ -3781,6 +3933,8 @@
     const fingerClass = hoverFinger ? ' hover-finger' : '';
     return `<div class="thief-card ${isRed ? 'red-suit' : 'black-suit'}${fingerClass}"><span>${val}</span><span>${suit}</span></div>`;
   }
+
+  const TABLE_SEAT_ORDER = ['seat-top', 'seat-left', 'seat-right'];
 
   function renderThief(data) {
     if (!data) return;
@@ -3793,33 +3947,41 @@
       ? `탈출: ${data.escaped.join(', ')}`
       : '';
 
-    const targetArea = document.getElementById('thief-target-area');
-    const targetCards = document.getElementById('thief-target-cards');
-    const targetLabel = document.getElementById('thief-target-label');
-    if (isMyTurn && data.targetUserId) {
-      const targetPlayer = (data.players || []).find(p => p.userId === data.targetUserId);
-      const cardCount = targetPlayer ? targetPlayer.cardCount : 0;
-      targetArea.classList.add('visible');
-      targetLabel.textContent = `${escapeHTML(data.targetUserId)}의 패 (클릭: 호버 → 한 번 더: 뽑기)`;
-      targetCards.innerHTML = '';
-      for (let i = 0; i < cardCount; i++) {
-        const div = document.createElement('div');
-        div.className = 'thief-target-card' + (thiefHoveredTargetId === data.targetUserId && thiefHoveredIndex === i ? ' hovered' : '');
-        div.textContent = '🃏';
-        div.dataset.targetId = data.targetUserId;
-        div.dataset.index = String(i);
-        div.onclick = () => thiefOnTargetCardClick(data.targetUserId, i, div);
-        targetCards.appendChild(div);
-      }
-    } else {
-      targetArea.classList.remove('visible');
-      thiefHoveredIndex = -1;
-      thiefHoveredTargetId = '';
+    const players = data.players || [];
+    const opponents = players.filter(p => p.userId !== currentUserId);
+    const playersEl = document.getElementById('thief-players');
+    if (playersEl) {
+      playersEl.innerHTML = opponents.map((p, idx) => {
+        const seatClass = TABLE_SEAT_ORDER[idx] || 'seat-top';
+        const isTarget = data.targetUserId === p.userId;
+        const cardCount = p.cardCount || 0;
+        let targetCardsHtml = '';
+        if (isTarget && cardCount > 0) {
+          targetCardsHtml = '<div class="table-seat-target-cards">' + Array.from({ length: cardCount }, (_, i) => {
+            const hovered = thiefHoveredTargetId === p.userId && thiefHoveredIndex === i;
+            return `<div class="thief-target-card${hovered ? ' hovered' : ''}" data-target-id="${escapeHTML(p.userId)}" data-index="${i}">🃏</div>`;
+          }).join('') + '</div>';
+        }
+        const isTheirTurn = data.turn === p.userId;
+        return `<div class="table-seat ${seatClass} ${isTheirTurn ? 'my-turn' : ''}" data-user-id="${escapeHTML(p.userId)}">
+          <span class="table-seat-name">${escapeHTML(p.userId)}</span>
+          <span class="table-seat-count">🃏 ${cardCount}장</span>
+          ${targetCardsHtml}
+        </div>`;
+      }).join('');
+      playersEl.querySelectorAll('.thief-target-card').forEach(el => {
+        el.onclick = () => {
+          const targetId = el.dataset.targetId;
+          const index = parseInt(el.dataset.index, 10);
+          thiefOnTargetCardClick(targetId, index, el);
+        };
+      });
     }
 
     const handEl = document.getElementById('thief-hand');
     if (handEl && data.hand) {
-      handEl.innerHTML = data.hand.map((c, i) => renderThiefCard(c, thiefHoverOnMeIndex === i)).join('');
+      const hoverOnMyCard = thiefHoveredTargetId === currentUserId;
+      handEl.innerHTML = data.hand.map((c, i) => renderThiefCard(c, hoverOnMyCard && thiefHoveredIndex === i)).join('');
     }
   }
 
@@ -3833,8 +3995,8 @@
       sendRaw(JSON.stringify({ action: 'game_action', payload: { cmd: 'hover', targetId: targetId, index: index } }));
       thiefHoveredIndex = index;
       thiefHoveredTargetId = targetId;
-      document.querySelectorAll('.thief-target-card').forEach(c => c.classList.remove('hovered'));
-      el.classList.add('hovered');
+      document.querySelectorAll('#thief-players .thief-target-card').forEach(c => c.classList.remove('hovered'));
+      if (el) el.classList.add('hovered');
     }
   }
 
@@ -3906,13 +4068,13 @@
 
     const playersEl = document.getElementById('onecard-players');
     if (playersEl && data.players) {
-      playersEl.innerHTML = data.players.map(p => {
-        const isMe = p.userId === currentUserId;
-        return `
-          <div class="onecard-player-box ${p.isTurn ? 'my-turn' : ''}">
-            <div class="holdem-player-name">${escapeHTML(p.userId)}${isMe ? ' (나)' : ''}</div>
-            <div class="onecard-card-count">🃏 ${p.cardCount}장</div>
-          </div>`;
+      const opponents = (data.players || []).filter(p => p.userId !== currentUserId);
+      playersEl.innerHTML = opponents.map((p, idx) => {
+        const seatClass = TABLE_SEAT_ORDER[idx] || 'seat-top';
+        return `<div class="table-seat onecard-player-box ${seatClass} ${p.isTurn ? 'my-turn' : ''}" data-user-id="${escapeHTML(p.userId)}">
+          <span class="table-seat-name">${escapeHTML(p.userId)}</span>
+          <span class="table-seat-count">🃏 ${p.cardCount || 0}장</span>
+        </div>`;
       }).join('');
     }
 
@@ -3977,6 +4139,83 @@
     sendRaw(JSON.stringify({ action: 'game_action', payload: { cmd: 'call_onecard' } }));
   }
 
+  // ── Mahjong (마작) UI ───────────────────────────────────────────────────────
+
+  function showMahjongUI() {
+    switchGameView('mahjong');
+  }
+
+  function mahjongTileChar(tile) {
+    if (!tile || !tile.type) return '🀫';
+    const man = ['', '🀇','🀈','🀉','🀊','🀋','🀌','🀍','🀎','🀏'];
+    const pin = ['', '🀙','🀚','🀛','🀜','🀝','🀞','🀟','🀠','🀡'];
+    const sou = ['', '🀐','🀑','🀒','🀓','🀔','🀕','🀖','🀗','🀘'];
+    const honor = ['', '🀀','🀁','🀂','🀃','🀄','🀅','🀆'];
+    const v = tile.value || 0;
+    if (tile.type === 'man' && v >= 1 && v <= 9) return man[v];
+    if (tile.type === 'pin' && v >= 1 && v <= 9) return pin[v];
+    if (tile.type === 'sou' && v >= 1 && v <= 9) return sou[v];
+    if (tile.type === 'honor' && v >= 1 && v <= 7) return honor[v];
+    return '🀫';
+  }
+
+  function renderMahjong(data) {
+    if (!data) return;
+    const isMyTurn = data.currentTurn === currentUserId;
+    const myHand = data.myHand || [];
+    const canDiscard = isMyTurn && myHand.length === 14;
+
+    document.getElementById('mahjong-status').textContent = isMyTurn
+      ? '🎯 내 차례 — 패를 클릭해 버리세요!'
+      : `⏳ ${escapeHTML(data.currentTurn || '—')}의 차례`;
+    document.getElementById('mahjong-wall-info').textContent = `🀄 남은 패: ${data.wallCount ?? 0}장`;
+
+    const playersEl = document.getElementById('mahjong-players');
+    if (playersEl && data.players) {
+      const myIdx = data.players.findIndex(p => p && p.userId === currentUserId);
+      const opponentIndices = myIdx >= 0 ? [(myIdx + 2) % 4, (myIdx + 3) % 4, (myIdx + 1) % 4] : [0, 1, 2];
+      const opponents = opponentIndices.map(i => data.players[i]).filter(p => p && p.userId);
+      playersEl.innerHTML = opponents.map((p, idx) => {
+        const seatClass = TABLE_SEAT_ORDER[idx] || 'seat-top';
+        const discardsHtml = (p.discards || []).map(t => `<span class="mahjong-tile">${mahjongTileChar(t)}</span>`).join('');
+        const handHtml = Array(p.handCount || 0).fill(0).map(() => '<span class="mahjong-tile hidden">🀫</span>').join('');
+        return `<div class="table-seat mahjong-player-box ${seatClass} ${p.isTurn ? 'my-turn' : ''}" data-user-id="${escapeHTML(p.userId)}">
+          <span class="table-seat-name">${escapeHTML(p.userId)}</span>
+          <div class="mahjong-discards-row">${discardsHtml}</div>
+          <div class="mahjong-hand">${handHtml}</div>
+        </div>`;
+      }).join('');
+    }
+
+    const discardsMeEl = document.getElementById('mahjong-discards-me');
+    const mePlayer = data.players?.find(p => p.userId === currentUserId);
+    if (discardsMeEl && mePlayer) {
+      discardsMeEl.innerHTML = (mePlayer.discards || []).map(t => `<span class="mahjong-tile">${mahjongTileChar(t)}</span>`).join('');
+    }
+
+    const handEl = document.getElementById('mahjong-hand');
+    if (handEl && myHand) {
+      handEl.innerHTML = myHand.map((t, i) => {
+        const discardable = canDiscard ? ' discardable' : '';
+        return `<span class="mahjong-tile${discardable}" data-index="${i}">${mahjongTileChar(t)}</span>`;
+      }).join('');
+      if (canDiscard) {
+        handEl.querySelectorAll('.mahjong-tile.discardable').forEach(el => {
+          el.style.cursor = 'pointer';
+          el.onclick = () => {
+            const idx = parseInt(el.dataset.index, 10);
+            if (!isNaN(idx)) mahjongDiscard(idx);
+          };
+        });
+      }
+    }
+  }
+
+  function mahjongDiscard(index) {
+    if (!ws || ws.readyState !== WebSocket.OPEN) return;
+    sendRaw(JSON.stringify({ action: 'game_action', payload: { cmd: 'discard', index } }));
+  }
+
   // ── Texas Holdem UI ───────────────────────────────────────────────────────
 
   function showHoldemUI() {
@@ -4029,6 +4268,18 @@
     const canAct = isMyTurn && isPlayer && data.phase !== 'waiting' && data.phase !== 'showdown';
     document.getElementById('btn-holdem-check').disabled = !canAct;
     document.getElementById('btn-holdem-fold').disabled = !canAct;
+
+    const holdemGuide = document.querySelector('#holdem-container .poker-hand-guide-grid');
+    if (holdemGuide) {
+      holdemGuide.querySelectorAll('.poker-hand-item').forEach(el => el.classList.remove('active'));
+      const myHand = (data.myHandName || '').trim();
+      if (myHand) {
+        holdemGuide.querySelectorAll('.poker-hand-item').forEach(el => {
+          const nameEl = el.querySelector('.poker-hand-name');
+          if (nameEl && nameEl.textContent.trim() === myHand) el.classList.add('active');
+        });
+      }
+    }
   }
 
   function holdemCheck() {
@@ -4063,8 +4314,12 @@
         const isTurn = p.userId === data.currentTurn;
         const folded = p.status === 'fold';
         const cardsHtml = (p.cards || []).map(c => {
-          const displayCard = isMe ? { ...c, hidden: false } : c;
-          return renderHoldemCard(displayCard);
+          if (isMe && c.hidden) {
+            let html = renderHoldemCard({ ...c, hidden: false });
+            return html.replace('class="holdem-card', 'class="holdem-card my-secret-card');
+          } else {
+            return renderHoldemCard(c);
+          }
         }).join('');
         return `
           <div class="sevenpoker-player-box ${isTurn ? 'my-turn' : ''} ${folded ? 'folded' : ''}">
@@ -4076,9 +4331,27 @@
       }).join('');
     }
 
-    const canAct = isMyTurn && isPlayer && data.phase !== 'waiting' && data.phase !== 'showdown';
+    const canAct = isMyTurn && isPlayer && data.phase !== 'waiting' && data.phase !== 'showdown' && data.phase !== 'choice';
     document.getElementById('btn-sevenpoker-check').disabled = !canAct;
     document.getElementById('btn-sevenpoker-fold').disabled = !canAct;
+
+    const choiceBox = document.getElementById('sevenpoker-choice-box');
+    if (choiceBox) {
+      const showChoice = data.phase === 'choice' && isPlayer && !data.myChoiceDone && data.currentTurn === currentUserId;
+      choiceBox.style.display = showChoice ? 'block' : 'none';
+    }
+
+    const sevenGuide = document.querySelector('#sevenpoker-container .poker-hand-guide-grid');
+    if (sevenGuide) {
+      sevenGuide.querySelectorAll('.poker-hand-item').forEach(el => el.classList.remove('active'));
+      const myHand = (data.myHandName || '').trim();
+      if (myHand) {
+        sevenGuide.querySelectorAll('.poker-hand-item').forEach(el => {
+          const nameEl = el.querySelector('.poker-hand-name');
+          if (nameEl && nameEl.textContent.trim() === myHand) el.classList.add('active');
+        });
+      }
+    }
   }
 
   function sevenpokerCheck() {
@@ -4089,6 +4362,20 @@
   function sevenpokerFold() {
     if (!ws || ws.readyState !== WebSocket.OPEN) return;
     sendRaw(JSON.stringify({ action: 'game_action', payload: { cmd: 'fold' } }));
+  }
+
+  function sendSevenPokerChoice() {
+    if (!ws || ws.readyState !== WebSocket.OPEN) return;
+    const discardSel = document.getElementById('sp-discard');
+    const openSel = document.getElementById('sp-open');
+    if (!discardSel || !openSel) return;
+    const discardIdx = parseInt(discardSel.value, 10);
+    const openIdx = parseInt(openSel.value, 10);
+    if (discardIdx === openIdx) {
+      alert('버릴 카드와 공개할 카드는 서로 달라야 합니다.');
+      return;
+    }
+    sendRaw(JSON.stringify({ action: 'game_action', payload: { cmd: 'choice', discardIdx, openIdx } }));
   }
 
   /** 인디언 포커 승부 결과 오버레이 — 4초간 표시 후 자동 닫힘 */

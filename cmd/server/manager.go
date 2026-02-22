@@ -82,6 +82,8 @@ func newRoom(id string) *Room {
 		room.Plugin = NewThiefGame(room)
 	case strings.HasPrefix(id, "onecard"):
 		room.Plugin = NewOneCardGame(room)
+	case strings.HasPrefix(id, "mahjong"):
+		room.Plugin = NewMahjongGame(room)
 	default:
 		// nil — 게임 플러그인 없는 순수 채팅방
 	}
@@ -500,6 +502,8 @@ func (m *RoomManager) HandleMessage(client *Client, rawMsg []byte) {
 			prefix = "thief"
 		} else if strings.HasPrefix(client.RoomID, "onecard") {
 			prefix = "onecard"
+		} else if strings.HasPrefix(client.RoomID, "mahjong") {
+			prefix = "mahjong"
 		}
 		if prefix == "" {
 			client.SendJSON(ServerResponse{

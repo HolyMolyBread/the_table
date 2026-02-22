@@ -10,11 +10,12 @@ import (
 )
 
 const (
-	sevenPokerMaxPlayers    = 4
-	sevenPokerStartStars    = 10
-	sevenPokerCheckCost     = 1
-	sevenPokerCards         = 7
-	sevenPokerTurnTimeLimit = 20
+	sevenPokerMaxPlayers     = 4
+	sevenPokerStartStars     = 10
+	sevenPokerCheckCost      = 1
+	sevenPokerCards          = 7
+	sevenPokerTurnTimeLimit  = 20
+	sevenPokerChoiceTimeLimit = 15
 )
 
 // ── 응답 타입 ─────────────────────────────────────────────────────────────────
@@ -30,13 +31,15 @@ type SevenPokerPlayerInfo struct {
 
 // SevenPokerData는 sevenpoker_state 응답의 data 필드입니다.
 type SevenPokerData struct {
-	Phase       string                 `json:"phase"`
-	Round       int                    `json:"round"`
-	Pot         int                    `json:"pot"`
-	Players     []SevenPokerPlayerInfo `json:"players"`
-	CurrentTurn string                 `json:"currentTurn"`
-	Message     string                 `json:"message,omitempty"`
-	CanTakeover bool                   `json:"canTakeover,omitempty"`
+	Phase        string                 `json:"phase"`
+	Round        int                    `json:"round"`
+	Pot          int                    `json:"pot"`
+	Players      []SevenPokerPlayerInfo `json:"players"`
+	CurrentTurn  string                 `json:"currentTurn"`
+	Message      string                 `json:"message,omitempty"`
+	CanTakeover  bool                   `json:"canTakeover,omitempty"`
+	MyHandName   string                 `json:"myHandName,omitempty"`
+	MyChoiceDone bool                   `json:"myChoiceDone,omitempty"` // choice 페이즈에서 본인이 이미 결정했는지
 }
 
 // SevenPokerStateResponse는 세븐 포커 게임 상태 응답입니다.
@@ -62,6 +65,7 @@ type SevenPokerGame struct {
 	round            int
 	foldedThisRound  [sevenPokerMaxPlayers]bool
 	actedThisPhase   [sevenPokerMaxPlayers]bool
+	choiceDone       [sevenPokerMaxPlayers]bool
 	currentPlayerIdx int
 	gameStarted      bool
 	playerCount      int
@@ -250,6 +254,8 @@ func (g *SevenPokerGame) HandleAction(client *Client, action string, payload jso
 		g.handleCheck(client)
 	case "fold":
 		g.handleFold(client)
+	case "choice":
+		g.handleChoice(client, payload)
 	case "ready":
 		g.handleReady(client)
 	case "rematch":
@@ -270,6 +276,10 @@ func (g *SevenPokerGame) handleCheck(client *Client) {
 
 	if !g.gameStarted {
 		client.SendJSON(ServerResponse{Type: "error", Message: "게임이 아직 시작되지 않았습니다."})
+		return
+	}
+	if g.phase == "choice" {
+		client.SendJSON(ServerResponse{Type: "error", Message: "초이스 단계에서는 체크할 수 없습니다."})
 		return
 	}
 
@@ -305,12 +315,107 @@ func (g *SevenPokerGame) handleCheck(client *Client) {
 	g.advanceTurnLocked()
 }
 
+func (g *SevenPokerGame) handleChoice(client *Client, payload json.RawMessage) {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+
+	if !g.gameStarted || g.phase != "choice" {
+		client.SendJSON(ServerResponse{Type: "error", Message: "초이스 단계가 아닙니다."})
+		return
+	}
+	idx := g.playerIndex(client)
+	if idx < 0 {
+		client.SendJSON(ServerResponse{Type: "error", Message: "플레이어가 아닙니다."})
+		return
+	}
+	if g.foldedThisRound[idx] {
+		client.SendJSON(ServerResponse{Type: "error", Message: "폴드한 상태에서는 초이스를 할 수 없습니다."})
+		return
+	}
+	if g.choiceDone[idx] {
+		client.SendJSON(ServerResponse{Type: "error", Message: "이미 초이스를 완료했습니다."})
+		return
+	}
+	if g.players[g.currentPlayerIdx] != client {
+		client.SendJSON(ServerResponse{Type: "error", Message: "아직 내 차례가 아닙니다."})
+		return
+	}
+
+	var p struct {
+		DiscardIdx int `json:"discardIdx"`
+		OpenIdx    int `json:"openIdx"`
+	}
+	if err := json.Unmarshal(payload, &p); err != nil {
+		client.SendJSON(ServerResponse{Type: "error", Message: "초이스 페이로드 파싱 오류"})
+		return
+	}
+	if p.DiscardIdx < 0 || p.DiscardIdx > 3 || p.OpenIdx < 0 || p.OpenIdx > 3 || p.DiscardIdx == p.OpenIdx {
+		client.SendJSON(ServerResponse{Type: "error", Message: "discardIdx와 openIdx는 0~3 범위이며 서로 달라야 합니다."})
+		return
+	}
+
+	// 4장 중 discardIdx 제외한 3장을 인덱스 0,1,2에 배치
+	kept := make([]Card, 0, 3)
+	for j := 0; j < 4; j++ {
+		if j != p.DiscardIdx {
+			kept = append(kept, g.cards[idx][j])
+		}
+	}
+	// openIdx: 원본 4장 중 공개할 카드 인덱스 → kept 내 상대적 위치 0~2
+	relOpenIdx := 0
+	for j := 0; j < 4; j++ {
+		if j == p.DiscardIdx {
+			continue
+		}
+		if j == p.OpenIdx {
+			break
+		}
+		relOpenIdx++
+	}
+
+	for j := 0; j < 3; j++ {
+		g.cards[idx][j] = kept[j]
+		g.cards[idx][j].Hidden = (j != relOpenIdx)
+	}
+	for j := 3; j < sevenPokerCards; j++ {
+		g.cards[idx][j] = Card{}
+	}
+
+	g.choiceDone[idx] = true
+	g.stopTurnTimerLocked()
+
+	notice, _ := json.Marshal(ServerResponse{
+		Type:    "game_notice",
+		Message: fmt.Sprintf("[%s] 초이스 완료 (1장 버림, 1장 공개)", client.UserID),
+		RoomID:  g.room.ID,
+	})
+	g.room.broadcastAll(notice)
+
+	allDone := true
+	for i := 0; i < sevenPokerMaxPlayers; i++ {
+		if g.players[i] != nil && !g.foldedThisRound[i] && !g.choiceDone[i] {
+			allDone = false
+			break
+		}
+	}
+	if allDone {
+		g.phase = "bet3"
+		g.resetActedAndAdvanceLocked("── 3구 베팅 ──")
+	} else {
+		g.advanceTurnLocked()
+	}
+}
+
 func (g *SevenPokerGame) handleFold(client *Client) {
 	g.mu.Lock()
 	defer g.mu.Unlock()
 
 	if !g.gameStarted {
 		client.SendJSON(ServerResponse{Type: "error", Message: "게임이 아직 시작되지 않았습니다."})
+		return
+	}
+	if g.phase == "choice" {
+		client.SendJSON(ServerResponse{Type: "error", Message: "초이스 단계에서는 폴드할 수 없습니다."})
 		return
 	}
 
@@ -351,6 +456,26 @@ func (g *SevenPokerGame) playerIndex(c *Client) int {
 }
 
 func (g *SevenPokerGame) advanceTurnLocked() {
+	if g.phase == "choice" {
+		nextIdx := -1
+		for i := 1; i <= sevenPokerMaxPlayers; i++ {
+			idx := (g.currentPlayerIdx + i) % sevenPokerMaxPlayers
+			if g.players[idx] == nil || g.foldedThisRound[idx] {
+				continue
+			}
+			if !g.choiceDone[idx] {
+				nextIdx = idx
+				break
+			}
+		}
+		if nextIdx >= 0 {
+			g.currentPlayerIdx = nextIdx
+			g.startTurnTimerLocked()
+			g.sendStateToAllLocked()
+		}
+		return
+	}
+
 	// 단독 생존자 체크 (나머지 모두 폴드)
 	activeCount := 0
 	for i := 0; i < sevenPokerMaxPlayers; i++ {
@@ -387,8 +512,8 @@ func (g *SevenPokerGame) advanceTurnLocked() {
 
 func (g *SevenPokerGame) nextPhaseLocked() {
 	switch g.phase {
-	case "deal3":
-		g.dealOneLocked(3, false) // deal4: 4번째 카드, visible
+	case "bet3":
+		g.dealOneLocked(3, false) // 4번째 카드
 		g.phase = "deal4"
 		g.resetActedAndAdvanceLocked("── 4구 (4번째 카드) ──")
 
@@ -499,10 +624,14 @@ func (g *SevenPokerGame) resolveShowdownLocked() {
 	cards7 := make([][]Card, len(survivors))
 	scores := make([]int64, len(survivors))
 	for i, idx := range survivors {
-		cards7[i] = make([]Card, sevenPokerCards)
+		cards7[i] = make([]Card, 0, sevenPokerCards)
 		for j := 0; j < sevenPokerCards; j++ {
-			cards7[i][j] = g.cards[idx][j]
-			cards7[i][j].Hidden = false // 쇼다운 시 모두 공개
+			c := g.cards[idx][j]
+			if c.Value == "" && c.Suit == "" {
+				continue
+			}
+			c.Hidden = false
+			cards7[i] = append(cards7[i], c)
 		}
 		scores[i] = EvaluateHand(cards7[i])
 	}
@@ -645,6 +774,7 @@ func (g *SevenPokerGame) endMatchLocked() {
 		g.cards[i] = [sevenPokerCards]Card{}
 		g.foldedThisRound[i] = false
 		g.actedThisPhase[i] = false
+		g.choiceDone[i] = false
 	}
 	g.deck = nil
 }
@@ -662,24 +792,25 @@ func (g *SevenPokerGame) startRoundLocked() {
 	}
 
 	g.round++
-	g.phase = "deal3"
+	g.phase = "choice"
 	g.pot += g.potCarryOver
 	g.potCarryOver = 0
 
 	for i := 0; i < sevenPokerMaxPlayers; i++ {
 		g.foldedThisRound[i] = g.players[i] == nil || g.stars[i] <= 0
 		g.actedThisPhase[i] = false
+		g.choiceDone[i] = false
 	}
 
 	g.deck = NewShuffledDeck()
 	cardIdx := 0
 
-	// deal3: 3장 분배 (0,1 Hidden, 2 visible)
+	// choice: 4장 분배 (모두 Hidden)
 	for i := 0; i < sevenPokerMaxPlayers; i++ {
 		if g.players[i] != nil && g.stars[i] > 0 {
-			for j := 0; j < 3; j++ {
+			for j := 0; j < 4; j++ {
 				g.cards[i][j] = g.deck[cardIdx]
-				g.cards[i][j].Hidden = (j < 2) // 0,1 히든, 2 공개
+				g.cards[i][j].Hidden = true
 				cardIdx++
 			}
 		}
@@ -691,7 +822,7 @@ func (g *SevenPokerGame) startRoundLocked() {
 
 	notice, _ := json.Marshal(ServerResponse{
 		Type:    "game_notice",
-		Message: fmt.Sprintf("── 라운드 %d 시작! 3구 (3장 분배, 2장 히든) ──", g.round),
+		Message: fmt.Sprintf("── 라운드 %d 시작! 4장 초이스 (1장 버리고 1장 공개) ──", g.round),
 		RoomID:  g.room.ID,
 	})
 	g.room.broadcastAll(notice)
@@ -706,16 +837,23 @@ func (g *SevenPokerGame) startTurnTimerLocked() {
 	stopCh := make(chan struct{})
 	g.stopTick = stopCh
 	currentPlayer := g.players[g.currentPlayerIdx]
+	if currentPlayer == nil {
+		return
+	}
 	room := g.room
+	limit := sevenPokerTurnTimeLimit
+	if g.phase == "choice" {
+		limit = sevenPokerChoiceTimeLimit
+	}
 	data, _ := json.Marshal(TimerTickMessage{
 		Type:      "timer_tick",
 		RoomID:    g.room.ID,
 		TurnUser:  currentPlayer.UserID,
-		Remaining: sevenPokerTurnTimeLimit,
+		Remaining: limit,
 	})
 	g.room.broadcastAll(data)
 	go func() {
-		remaining := sevenPokerTurnTimeLimit
+		remaining := limit
 		ticker := time.NewTicker(time.Second)
 		defer ticker.Stop()
 		for remaining > 0 {
@@ -754,9 +892,60 @@ func (g *SevenPokerGame) handleTimeOver(timedOutPlayer *Client) {
 	if idx < 0 || g.foldedThisRound[idx] {
 		return
 	}
+	g.stopTurnTimerLocked()
+
+	if g.phase == "choice" && !g.choiceDone[idx] {
+		// choice phase: only current player can choose
+		// 강제: 3번 인덱스 버리기 + 2번 인덱스 오픈
+		discardIdx, openIdx := 3, 2
+		kept := make([]Card, 0, 3)
+		for j := 0; j < 4; j++ {
+			if j != discardIdx {
+				kept = append(kept, g.cards[idx][j])
+			}
+		}
+		relOpenIdx := 0
+		for j := 0; j < 4; j++ {
+			if j == discardIdx {
+				continue
+			}
+			if j == openIdx {
+				break
+			}
+			relOpenIdx++
+		}
+		for j := 0; j < 3; j++ {
+			g.cards[idx][j] = kept[j]
+			g.cards[idx][j].Hidden = (j != relOpenIdx)
+		}
+		for j := 3; j < sevenPokerCards; j++ {
+			g.cards[idx][j] = Card{}
+		}
+		g.choiceDone[idx] = true
+		notice, _ := json.Marshal(ServerResponse{
+			Type:    "game_notice",
+			Message: fmt.Sprintf("⏰ [%s] 시간 초과! 자동 초이스 (3번 버림, 2번 공개)", timedOutPlayer.UserID),
+			RoomID:  g.room.ID,
+		})
+		g.room.broadcastAll(notice)
+		allDone := true
+		for i := 0; i < sevenPokerMaxPlayers; i++ {
+			if g.players[i] != nil && !g.foldedThisRound[i] && !g.choiceDone[i] {
+				allDone = false
+				break
+			}
+		}
+		if allDone {
+			g.phase = "bet3"
+			g.resetActedAndAdvanceLocked("── 3구 베팅 ──")
+		} else {
+			g.advanceTurnLocked()
+		}
+		return
+	}
+
 	g.foldedThisRound[idx] = true
 	g.actedThisPhase[idx] = true
-	g.stopTurnTimerLocked()
 	notice, _ := json.Marshal(ServerResponse{
 		Type:    "game_notice",
 		Message: fmt.Sprintf("⏰ [%s] 시간 초과! 폴드 처리.", timedOutPlayer.UserID),
@@ -804,6 +993,7 @@ func (g *SevenPokerGame) handleRematch(client *Client) {
 			g.cards[i] = [sevenPokerCards]Card{}
 			g.foldedThisRound[i] = false
 			g.actedThisPhase[i] = false
+			g.choiceDone[i] = false
 		}
 		g.gameStarted = true
 		g.startRoundLocked()
@@ -860,6 +1050,7 @@ func (g *SevenPokerGame) resetForLeaveLocked() {
 		g.cards[i] = [sevenPokerCards]Card{}
 		g.foldedThisRound[i] = false
 		g.actedThisPhase[i] = false
+		g.choiceDone[i] = false
 	}
 }
 
@@ -902,27 +1093,21 @@ func (g *SevenPokerGame) buildSevenPokerDataForPlayer(viewerIdx int) SevenPokerD
 			status = "check"
 		}
 
-		// 카드 수는 현재 페이즈에 따라 다름
-		cardCount := 0
-		switch g.phase {
-		case "deal3":
-			cardCount = 3
-		case "deal4":
-			cardCount = 4
-		case "deal5":
-			cardCount = 5
-		case "deal6":
-			cardCount = 6
-		case "deal7", "showdown":
-			cardCount = 7
-		}
-
-		cards := make([]Card, cardCount)
-		for j := 0; j < cardCount; j++ {
-			cards[j] = g.cards[i][j]
-			if i != viewerIdx {
-				cards[j].Hidden = true // 타인 카드는 뒷면
+		// 실제 존재하는 카드만 append (폴드한 유저는 카드 증식 방지)
+		cards := make([]Card, 0, sevenPokerCards)
+		for j := 0; j < sevenPokerCards; j++ {
+			c := g.cards[i][j]
+			if c.Value == "" && c.Suit == "" {
+				continue
 			}
+			if i != viewerIdx {
+				if c.Hidden {
+					c.Suit = ""
+					c.Value = "" // 타인 뒷면 카드는 클라이언트 조작 방지를 위해 빈 값 전송
+				}
+			}
+			// 본인(i == viewerIdx)일 경우 Hidden 원본 값 그대로 전송 (프론트에서 히든/공개 구분)
+			cards = append(cards, c)
 		}
 
 		players = append(players, SevenPokerPlayerInfo{
@@ -949,13 +1134,35 @@ func (g *SevenPokerGame) buildSevenPokerDataForPlayer(viewerIdx int) SevenPokerD
 		}
 	}
 
+	myHandName := ""
+	if viewerIdx >= 0 && !g.foldedThisRound[viewerIdx] {
+		cards7 := make([]Card, 0, sevenPokerCards)
+		for j := 0; j < sevenPokerCards; j++ {
+			c := g.cards[viewerIdx][j]
+			if c.Suit != "" || c.Value != "" {
+				cards7 = append(cards7, c)
+			}
+		}
+		if len(cards7) >= 5 {
+			score := EvaluateHand(cards7)
+			myHandName = PokerHandDisplayName(HandRankName(score))
+		}
+	}
+
+	myChoiceDone := false
+	if viewerIdx >= 0 {
+		myChoiceDone = g.choiceDone[viewerIdx]
+	}
+
 	return SevenPokerData{
-		Phase:       phase,
-		Round:       g.round,
-		Pot:         g.pot + g.potCarryOver,
-		Players:     players,
-		CurrentTurn: currentTurn,
-		CanTakeover: canTakeover,
+		Phase:        phase,
+		Round:        g.round,
+		Pot:          g.pot + g.potCarryOver,
+		Players:      players,
+		CurrentTurn:  currentTurn,
+		CanTakeover:  canTakeover,
+		MyHandName:   myHandName,
+		MyChoiceDone: myChoiceDone,
 	}
 }
 

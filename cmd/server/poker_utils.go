@@ -223,6 +223,19 @@ func HandRankName(score int64) string {
 	return "하이카드"
 }
 
+// PokerHandDisplayName은 HandRankName 결과를 UI 표시용 이름으로 변환합니다.
+func PokerHandDisplayName(rankName string) string {
+	m := map[string]string{
+		"로티플": "로얄 스트레이트 플러시",
+		"스트레이트플러시": "스트레이트 플러시",
+		"하이카드": "하이카드 (탑)",
+	}
+	if d, ok := m[rankName]; ok {
+		return d
+	}
+	return rankName
+}
+
 func straightValue(sorted []int) int {
 	unique := make([]int, 0)
 	seen := make(map[int]bool)

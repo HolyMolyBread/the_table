@@ -16,7 +16,7 @@ const botThinkDelay = 1500 * time.Millisecond
 func SpawnBot(m *RoomManager, room *Room, gamePrefix string) error {
 	prefix := strings.ToLower(strings.TrimSpace(gamePrefix))
 	switch prefix {
-	case "omok", "connect4", "tictactoe", "indian", "holdem", "sevenpoker", "thief", "onecard":
+	case "omok", "connect4", "tictactoe", "indian", "holdem", "sevenpoker", "thief", "onecard", "mahjong":
 		// 지원하는 게임
 	default:
 		log.Printf("[BOT] 지원하지 않는 게임 접두사: %s", gamePrefix)
@@ -25,7 +25,7 @@ func SpawnBot(m *RoomManager, room *Room, gamePrefix string) error {
 
 	// 인원 제한: 1:1 게임은 2명, 다인(holdem, sevenpoker, thief, onecard)은 4명
 	maxPlayers := 2
-	if prefix == "holdem" || prefix == "sevenpoker" || prefix == "thief" || prefix == "onecard" {
+	if prefix == "holdem" || prefix == "sevenpoker" || prefix == "thief" || prefix == "onecard" || prefix == "mahjong" {
 		maxPlayers = 4
 	}
 	if room.count() >= maxPlayers {
@@ -51,6 +51,7 @@ func SpawnBot(m *RoomManager, room *Room, gamePrefix string) error {
 			"sevenpoker": {},
 			"thief":      {},
 			"onecard":    {},
+			"mahjong":    {},
 		},
 	}
 
@@ -219,6 +220,17 @@ func makeBotProcess(bot *Client, room *Room, gamePrefix string) func(msg []byte)
 			if d.CurrentTurn != bot.UserID {
 				return
 			}
+			if d.Phase == "choice" {
+				time.Sleep(botThinkDelay)
+				discardIdx := rand.Intn(4)
+				openIdx := rand.Intn(4)
+				for openIdx == discardIdx {
+					openIdx = rand.Intn(4)
+				}
+				payload, _ := json.Marshal(map[string]any{"cmd": "choice", "discardIdx": discardIdx, "openIdx": openIdx})
+				room.Plugin.HandleAction(bot, "game_action", payload)
+				return
+			}
 			time.Sleep(botThinkDelay)
 			// Level 1: 85% check, 15% fold
 			cmd := "check"
@@ -239,9 +251,55 @@ func makeBotProcess(bot *Client, room *Room, gamePrefix string) func(msg []byte)
 			if d.Turn != bot.UserID {
 				return
 			}
-			time.Sleep(botThinkDelay)
-			payload, _ := json.Marshal(map[string]any{"cmd": "draw"})
-			room.Plugin.HandleAction(bot, "game_action", payload)
+			targetID := d.TargetUserID
+			cardCount := 0
+			for _, p := range d.Players {
+				if p.UserID == targetID {
+					cardCount = p.CardCount
+					break
+				}
+			}
+			if targetID == "" || cardCount == 0 {
+				return
+			}
+			go func() {
+				idx1 := rand.Intn(cardCount)
+				payload1, _ := json.Marshal(map[string]any{"cmd": "hover", "targetId": targetID, "index": idx1})
+				room.Plugin.HandleAction(bot, "game_action", payload1)
+				time.Sleep(800 * time.Millisecond)
+				idx2 := idx1
+				if cardCount > 1 {
+					idx2 = rand.Intn(cardCount)
+				}
+				payload2, _ := json.Marshal(map[string]any{"cmd": "hover", "targetId": targetID, "index": idx2})
+				room.Plugin.HandleAction(bot, "game_action", payload2)
+				time.Sleep(800 * time.Millisecond)
+				payload3, _ := json.Marshal(map[string]any{"cmd": "draw", "targetId": targetID, "index": idx2})
+				room.Plugin.HandleAction(bot, "game_action", payload3)
+			}()
+
+		case "mahjong_state":
+			if gamePrefix != "mahjong" {
+				return
+			}
+			var d MahjongData
+			if json.Unmarshal(base.Data, &d) != nil {
+				return
+			}
+			if d.CurrentTurn != bot.UserID {
+				return
+			}
+			// 14장일 때 타패 가능
+			myHand := d.MyHand
+			if len(myHand) != 14 {
+				return
+			}
+			go func() {
+				time.Sleep(botThinkDelay)
+				idx := rand.Intn(14)
+				payload, _ := json.Marshal(map[string]any{"cmd": "discard", "index": idx})
+				room.Plugin.HandleAction(bot, "game_action", payload)
+			}()
 
 		case "onecard_state":
 			if gamePrefix != "onecard" {
@@ -265,7 +323,13 @@ func makeBotProcess(bot *Client, room *Room, gamePrefix string) func(msg []byte)
 				}
 			}
 			if playIdx >= 0 {
-				payload, _ := json.Marshal(map[string]any{"cmd": "play", "index": playIdx})
+				card := d.Hand[playIdx]
+				payloadMap := map[string]any{"cmd": "play", "index": playIdx}
+				if card.Value == "7" {
+					suits := []string{"♠", "♥", "♦", "♣"}
+					payloadMap["targetSuit"] = suits[rand.Intn(len(suits))]
+				}
+				payload, _ := json.Marshal(payloadMap)
 				room.Plugin.HandleAction(bot, "game_action", payload)
 			} else {
 				payload, _ := json.Marshal(map[string]any{"cmd": "draw"})

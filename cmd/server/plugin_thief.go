@@ -92,6 +92,7 @@ func (g *ThiefGame) OnJoin(client *Client) {
 			RoomID:  g.room.ID,
 		})
 		g.room.broadcastAll(notice)
+		g.sendStateToSpectatorLocked(client)
 		return
 	}
 
@@ -333,61 +334,82 @@ func (g *ThiefGame) handleDraw(client *Client, targetID string, drawIndex int) {
 	})
 	g.room.broadcastAll(notice)
 
-	// 페어 제거 (같은 숫자 2장)
-	g.removePairsLocked(idx)
-
-	// 탈출 체크 (패 0장)
-	if len(g.hands[idx]) == 0 {
-		g.escaped[idx] = true
-		client.RecordResult("thief", "win")
-		notice2, _ := json.Marshal(ServerResponse{
-			Type:    "game_notice",
-			Message: fmt.Sprintf("🏆 [%s] 탈출 성공!", client.UserID),
-			RoomID:  g.room.ID,
-		})
-		g.room.broadcastAll(notice2)
-	}
-
-	// 게임 종료 체크: 조커만 남은 1명
-	remaining := 0
-	loserIdx := -1
-	for i := 0; i < thiefMaxPlayers; i++ {
-		if g.players[i] != nil && !g.escaped[i] {
-			remaining++
-			if len(g.hands[i]) == 1 && g.hands[i][0].Value == "JOKER" {
-				loserIdx = i
-			}
-		}
-	}
-	if remaining == 1 && loserIdx >= 0 {
-		g.players[loserIdx].RecordResult("thief", "lose")
-		for i := 0; i < thiefMaxPlayers; i++ {
-			if g.players[i] != nil && i != loserIdx && g.escaped[i] {
-				g.players[i].RecordResult("thief", "win")
-			}
-		}
-		msg := fmt.Sprintf("🃏 [%s]가 조커를 들고 남아 패배! 탈출한 플레이어 승리!", g.players[loserIdx].UserID)
-		g.room.mu.RLock()
-		totalCount := len(g.room.clients)
-		g.room.mu.RUnlock()
-		data, _ := json.Marshal(GameResultResponse{
-			Type:           "game_result",
-			Message:        msg,
-			RoomID:         g.room.ID,
-			Data:           map[string]any{"totalCount": totalCount},
-			RematchEnabled: true,
-		})
-		g.room.broadcastAll(data)
-		log.Printf("[THIEF] room:[%s] 게임 종료: loser=[%s]", g.room.ID, g.players[loserIdx].UserID)
-		g.gameStarted = false
-		g.stopTurnTimerLocked()
-		return
-	}
-
-	// 다음 턴으로
-	g.advanceTurnLocked()
-	g.startTurnTimerLocked()
+	// 카드 추가된 상태로 먼저 전송 (페어 제거 전)
 	g.sendStateToAllLocked()
+
+	// 1.5초 후 페어 제거 및 턴 진행
+	room := g.room
+	time.AfterFunc(1500*time.Millisecond, func() {
+		g.mu.Lock()
+		defer g.mu.Unlock()
+		if !g.gameStarted {
+			return
+		}
+		lenBefore := len(g.hands[idx])
+		g.removePairsLocked(idx)
+		lenAfter := len(g.hands[idx])
+		if lenBefore != lenAfter {
+			notice2, _ := json.Marshal(ServerResponse{
+				Type:    "game_notice",
+				Message: fmt.Sprintf("✨ [%s] 짝을 맞춰 버렸습니다!", client.UserID),
+				RoomID:  g.room.ID,
+			})
+			g.room.broadcastAll(notice2)
+			g.sendStateToAllLocked()
+		}
+
+		// 탈출 체크 (패 0장)
+		if len(g.hands[idx]) == 0 {
+			g.escaped[idx] = true
+			client.RecordResult("thief", "win")
+			notice3, _ := json.Marshal(ServerResponse{
+				Type:    "game_notice",
+				Message: fmt.Sprintf("🏆 [%s] 탈출 성공!", client.UserID),
+				RoomID:  g.room.ID,
+			})
+			g.room.broadcastAll(notice3)
+		}
+
+		// 게임 종료 체크: 조커만 남은 1명
+		remaining := 0
+		loserIdx := -1
+		for i := 0; i < thiefMaxPlayers; i++ {
+			if g.players[i] != nil && !g.escaped[i] {
+				remaining++
+				if len(g.hands[i]) == 1 && g.hands[i][0].Value == "JOKER" {
+					loserIdx = i
+				}
+			}
+		}
+		if remaining == 1 && loserIdx >= 0 {
+			g.players[loserIdx].RecordResult("thief", "lose")
+			for i := 0; i < thiefMaxPlayers; i++ {
+				if g.players[i] != nil && i != loserIdx && g.escaped[i] {
+					g.players[i].RecordResult("thief", "win")
+				}
+			}
+			msg := fmt.Sprintf("🃏 [%s]가 조커를 들고 남아 패배! 탈출한 플레이어 승리!", g.players[loserIdx].UserID)
+			room.mu.RLock()
+			totalCount := len(room.clients)
+			room.mu.RUnlock()
+			data, _ := json.Marshal(GameResultResponse{
+				Type:           "game_result",
+				Message:        msg,
+				RoomID:         room.ID,
+				Data:           map[string]any{"totalCount": totalCount},
+				RematchEnabled: true,
+			})
+			room.broadcastAll(data)
+			log.Printf("[THIEF] room:[%s] 게임 종료: loser=[%s]", g.room.ID, g.players[loserIdx].UserID)
+			g.gameStarted = false
+			g.stopTurnTimerLocked()
+			return
+		}
+
+		g.advanceTurnLocked()
+		g.startTurnTimerLocked()
+		g.sendStateToAllLocked()
+	})
 }
 
 func (g *ThiefGame) removePairsLocked(playerIdx int) {
@@ -446,64 +468,83 @@ func (g *ThiefGame) startGameLocked() {
 		pi := playerIndices[i%len(playerIndices)]
 		g.hands[pi] = append(g.hands[pi], c)
 	}
-	for _, pi := range playerIndices {
-		g.removePairsLocked(pi)
-		if len(g.hands[pi]) == 0 {
-			g.escaped[pi] = true
-			g.players[pi].RecordResult("thief", "win")
-		}
-	}
 
-	g.currentTurn = 0
-	for i := 0; i < thiefMaxPlayers; i++ {
-		if g.players[i] != nil && !g.escaped[i] && len(g.hands[i]) > 0 {
-			g.currentTurn = i
-			break
-		}
-	}
-
-	// 게임 즉시 종료: 조커만 남은 1명
-	remaining := 0
-	loserIdx := -1
-	for i := 0; i < thiefMaxPlayers; i++ {
-		if g.players[i] != nil && !g.escaped[i] {
-			remaining++
-			if len(g.hands[i]) == 1 && g.hands[i][0].Value == "JOKER" {
-				loserIdx = i
-			}
-		}
-	}
-	if remaining == 1 && loserIdx >= 0 {
-		g.players[loserIdx].RecordResult("thief", "lose")
-		for i := 0; i < thiefMaxPlayers; i++ {
-			if g.players[i] != nil && i != loserIdx && g.escaped[i] {
-				g.players[i].RecordResult("thief", "win")
-			}
-		}
-		msg := fmt.Sprintf("🃏 [%s]가 조커를 들고 남아 패배!", g.players[loserIdx].UserID)
-		g.room.mu.RLock()
-		totalCount := len(g.room.clients)
-		g.room.mu.RUnlock()
-		data, _ := json.Marshal(GameResultResponse{
-			Type:           "game_result",
-			Message:        msg,
-			RoomID:         g.room.ID,
-			Data:           map[string]any{"totalCount": totalCount},
-			RematchEnabled: true,
-		})
-		g.room.broadcastAll(data)
-		g.gameStarted = false
-		return
-	}
-
+	// 페어 제거 전: 온전한 상태로 먼저 전송하고 안내 메시지
+	g.sendStateToAllLocked()
 	notice, _ := json.Marshal(ServerResponse{
 		Type:    "game_notice",
-		Message: "도둑잡기 시작! 페어를 제거하고, 다음 플레이어 패에서 카드를 뽑으세요. 패가 0장이면 탈출!",
+		Message: "카드를 확인하고 페어를 정리하는 중입니다...",
 		RoomID:  g.room.ID,
 	})
 	g.room.broadcastAll(notice)
-	g.startTurnTimerLocked()
-	g.sendStateToAllLocked()
+
+	// 2초 후 페어 제거 및 게임 진행
+	room := g.room
+	time.AfterFunc(2*time.Second, func() {
+		g.mu.Lock()
+		defer g.mu.Unlock()
+		if !g.gameStarted {
+			return
+		}
+		for _, pi := range playerIndices {
+			g.removePairsLocked(pi)
+			if len(g.hands[pi]) == 0 {
+				g.escaped[pi] = true
+				g.players[pi].RecordResult("thief", "win")
+			}
+		}
+
+		g.currentTurn = 0
+		for i := 0; i < thiefMaxPlayers; i++ {
+			if g.players[i] != nil && !g.escaped[i] && len(g.hands[i]) > 0 {
+				g.currentTurn = i
+				break
+			}
+		}
+
+		// 게임 즉시 종료: 조커만 남은 1명
+		remaining := 0
+		loserIdx := -1
+		for i := 0; i < thiefMaxPlayers; i++ {
+			if g.players[i] != nil && !g.escaped[i] {
+				remaining++
+				if len(g.hands[i]) == 1 && g.hands[i][0].Value == "JOKER" {
+					loserIdx = i
+				}
+			}
+		}
+		if remaining == 1 && loserIdx >= 0 {
+			g.players[loserIdx].RecordResult("thief", "lose")
+			for i := 0; i < thiefMaxPlayers; i++ {
+				if g.players[i] != nil && i != loserIdx && g.escaped[i] {
+					g.players[i].RecordResult("thief", "win")
+				}
+			}
+			msg := fmt.Sprintf("🃏 [%s]가 조커를 들고 남아 패배!", g.players[loserIdx].UserID)
+			room.mu.RLock()
+			totalCount := len(room.clients)
+			room.mu.RUnlock()
+			data, _ := json.Marshal(GameResultResponse{
+				Type:           "game_result",
+				Message:        msg,
+				RoomID:         room.ID,
+				Data:           map[string]any{"totalCount": totalCount},
+				RematchEnabled: true,
+			})
+			room.broadcastAll(data)
+			g.gameStarted = false
+			return
+		}
+
+		notice2, _ := json.Marshal(ServerResponse{
+			Type:    "game_notice",
+			Message: "도둑잡기 시작! 페어를 제거하고, 다음 플레이어 패에서 카드를 뽑으세요. 패가 0장이면 탈출!",
+			RoomID:  g.room.ID,
+		})
+		g.room.broadcastAll(notice2)
+		g.startTurnTimerLocked()
+		g.sendStateToAllLocked()
+	})
 }
 
 func (g *ThiefGame) startTurnTimerLocked() {
@@ -733,13 +774,11 @@ func (g *ThiefGame) sendStateToClientLocked(client *Client) {
 	}
 
 	targetUserID := ""
-	if g.players[g.currentTurn] == client {
-		for i := 1; i <= thiefMaxPlayers; i++ {
-			next := (g.currentTurn + i) % thiefMaxPlayers
-			if g.players[next] != nil && !g.escaped[next] && len(g.hands[next]) > 0 {
-				targetUserID = g.players[next].UserID
-				break
-			}
+	for i := 1; i <= thiefMaxPlayers; i++ {
+		next := (g.currentTurn + i) % thiefMaxPlayers
+		if g.players[next] != nil && !g.escaped[next] && len(g.hands[next]) > 0 {
+			targetUserID = g.players[next].UserID
+			break
 		}
 	}
 
@@ -775,7 +814,20 @@ func (g *ThiefGame) sendStateToSpectatorLocked(client *Client) {
 		})
 	}
 	canTakeover := false
-	if !g.gameStarted {
+	turnUser := ""
+	targetUserID := ""
+	if g.gameStarted {
+		if g.players[g.currentTurn] != nil {
+			turnUser = g.players[g.currentTurn].UserID
+		}
+		for i := 1; i <= thiefMaxPlayers; i++ {
+			next := (g.currentTurn + i) % thiefMaxPlayers
+			if g.players[next] != nil && !g.escaped[next] && len(g.hands[next]) > 0 {
+				targetUserID = g.players[next].UserID
+				break
+			}
+		}
+	} else {
 		for i := 0; i < thiefMaxPlayers; i++ {
 			if g.players[i] == nil {
 				canTakeover = true
@@ -783,12 +835,19 @@ func (g *ThiefGame) sendStateToSpectatorLocked(client *Client) {
 			}
 		}
 	}
+	escaped := make([]string, 0)
+	for i := 0; i < thiefMaxPlayers; i++ {
+		if g.players[i] != nil && g.escaped[i] {
+			escaped = append(escaped, g.players[i].UserID)
+		}
+	}
 	data := ThiefData{
-		Hand:        []Card{},
-		Turn:        "",
-		Players:     players,
-		Escaped:     []string{},
-		CanTakeover: canTakeover,
+		Hand:         []Card{},
+		Turn:         turnUser,
+		TargetUserID: targetUserID,
+		Players:      players,
+		Escaped:      escaped,
+		CanTakeover:  canTakeover,
 	}
 	client.SendJSON(ThiefStateResponse{
 		Type:   "thief_state",

@@ -78,7 +78,7 @@ func (g *TicTacToeGame) OnJoin(client *Client) {
 		g.room.broadcastAll(upd)
 
 	default:
-		// 3번째 이후 입장자 → 관전자
+		// 3번째 이후 입장자 → 관전자 (튕기지 않고 상태 전송)
 		notice, _ := json.Marshal(ServerResponse{
 			Type:    "game_notice",
 			Message: fmt.Sprintf("[%s]님이 관전자로 입장했습니다.", client.UserID),
@@ -86,14 +86,12 @@ func (g *TicTacToeGame) OnJoin(client *Client) {
 		})
 		g.room.broadcastAll(notice)
 
-		if g.gameStarted {
-			snap, _ := json.Marshal(TicTacToeStateResponse{
-				Type:   "tictactoe_state",
-				RoomID: g.room.ID,
-				Data:   g.makeDataLocked(),
-			})
-			client.SafeSend(snap)
-		}
+		snap, _ := json.Marshal(TicTacToeStateResponse{
+			Type:   "tictactoe_state",
+			RoomID: g.room.ID,
+			Data:   g.makeDataLocked(),
+		})
+		client.SafeSend(snap)
 	}
 }
 

@@ -37,6 +37,7 @@ type HoldemData struct {
 	CurrentTurn    string             `json:"currentTurn"`
 	Message        string             `json:"message,omitempty"`
 	CanTakeover    bool               `json:"canTakeover,omitempty"`
+	MyHandName     string             `json:"myHandName,omitempty"`
 }
 
 // HoldemStateResponse는 홀덤 게임 상태 응답입니다.
@@ -960,6 +961,26 @@ func (g *HoldemGame) buildHoldemDataForPlayer(viewerIdx int) HoldemData {
 		}
 	}
 
+	myHandName := ""
+	if viewerIdx >= 0 && !g.foldedThisRound[viewerIdx] {
+		cards7 := make([]Card, 0, 7)
+		for _, c := range []Card{g.holeCards[viewerIdx][0], g.holeCards[viewerIdx][1]} {
+			if c.Suit != "" || c.Value != "" {
+				cards7 = append(cards7, c)
+			}
+		}
+		for j := 0; j < communityVisible; j++ {
+			c := g.communityCards[j]
+			if c.Suit != "" || c.Value != "" {
+				cards7 = append(cards7, c)
+			}
+		}
+		if len(cards7) >= 5 {
+			score := EvaluateHand(cards7)
+			myHandName = PokerHandDisplayName(HandRankName(score))
+		}
+	}
+
 	return HoldemData{
 		Phase:          phase,
 		Round:          g.round,
@@ -968,6 +989,7 @@ func (g *HoldemGame) buildHoldemDataForPlayer(viewerIdx int) HoldemData {
 		Players:        players,
 		CurrentTurn:    currentTurn,
 		CanTakeover:    canTakeover,
+		MyHandName:     myHandName,
 	}
 }
 

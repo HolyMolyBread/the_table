@@ -97,7 +97,7 @@ func (g *GomokuGame) OnJoin(client *Client) {
 		g.room.broadcastAll(upd)
 
 	default:
-		// 3번째 이후 입장자 → 관전자
+		// 3번째 이후 입장자 → 관전자 (튕기지 않고 상태 전송)
 		notice, _ := json.Marshal(ServerResponse{
 			Type:    "game_notice",
 			Message: fmt.Sprintf("[%s]님이 관전자로 입장했습니다.", client.UserID),
@@ -105,20 +105,21 @@ func (g *GomokuGame) OnJoin(client *Client) {
 		})
 		g.room.broadcastAll(notice)
 
-		// 관전자에게 현재 보드 상태 개별 전송 (게임 진행 중인 경우만)
-		if g.gameStarted {
-			snap, _ := json.Marshal(BoardUpdateResponse{
-				Type:   "board_update",
-				RoomID: g.room.ID,
-				Data: BoardData{
-					Board:    g.board,
-					Turn:     g.players[g.currentTurn].UserID,
-					Colors:   g.makeColorMap(),
-					LastMove: g.lastMove,
-				},
-			})
-			client.SafeSend(snap)
+		turnUserID := ""
+		if g.gameStarted && g.players[g.currentTurn] != nil {
+			turnUserID = g.players[g.currentTurn].UserID
 		}
+		snap, _ := json.Marshal(BoardUpdateResponse{
+			Type:   "board_update",
+			RoomID: g.room.ID,
+			Data: BoardData{
+				Board:    g.board,
+				Turn:     turnUserID,
+				Colors:   g.makeColorMap(),
+				LastMove: g.lastMove,
+			},
+		})
+		client.SafeSend(snap)
 	}
 }
 

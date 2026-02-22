@@ -109,6 +109,7 @@ func (g *OneCardGame) OnJoin(client *Client) {
 			RoomID:  g.room.ID,
 		})
 		g.room.broadcastAll(notice)
+		g.sendStateToSpectatorLocked(client)
 		return
 	}
 
