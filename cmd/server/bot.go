@@ -15,7 +15,7 @@ const botThinkDelay = 1500 * time.Millisecond
 func SpawnBot(m *RoomManager, room *Room, gamePrefix string) error {
 	prefix := strings.ToLower(strings.TrimSpace(gamePrefix))
 	switch prefix {
-	case "omok", "connect4", "tictactoe":
+	case "omok", "connect4", "tictactoe", "indian", "holdem", "sevenpoker":
 		// 지원하는 게임
 	default:
 		log.Printf("[BOT] 지원하지 않는 게임 접두사: %s", gamePrefix)
@@ -33,8 +33,12 @@ func SpawnBot(m *RoomManager, room *Room, gamePrefix string) error {
 	}
 	room.mu.RUnlock()
 
-	// 1:1 게임은 2명이면 꽉 참
-	if room.count() >= 2 {
+	// 인원 제한: 1:1 게임은 2명, 다인(holdem, sevenpoker)은 4명
+	maxPlayers := 2
+	if prefix == "holdem" || prefix == "sevenpoker" {
+		maxPlayers = 4
+	}
+	if room.count() >= maxPlayers {
 		log.Printf("[BOT] room:[%s] 인원이 가득 찼습니다", room.ID)
 		return nil
 	}
@@ -48,10 +52,13 @@ func SpawnBot(m *RoomManager, room *Room, gamePrefix string) error {
 		IsBot:     true,
 		BotProcess: nil, // 아래에서 설정
 		Records: map[string]*GameRecord{
-			"total":     {},
-			"omok":      {},
-			"tictactoe": {},
-			"connect4":  {},
+			"total":      {},
+			"omok":       {},
+			"tictactoe":  {},
+			"connect4":   {},
+			"indian":     {},
+			"holdem":     {},
+			"sevenpoker": {},
 		},
 	}
 
@@ -149,6 +156,66 @@ func makeBotProcess(bot *Client, room *Room, gamePrefix string) func(msg []byte)
 				return
 			}
 			payload, _ := json.Marshal(map[string]any{"cmd": "place", "col": col})
+			room.Plugin.HandleAction(bot, "game_action", payload)
+
+		case "indian_state":
+			if gamePrefix != "indian" {
+				return
+			}
+			var d IndianData
+			if json.Unmarshal(base.Data, &d) != nil {
+				return
+			}
+			if d.Turn != bot.UserID {
+				return
+			}
+			time.Sleep(botThinkDelay)
+			// Level 1: 70% showdown, 30% give_up
+			cmd := "showdown"
+			if rand.Intn(100) < 30 {
+				cmd = "give_up"
+			}
+			payload, _ := json.Marshal(map[string]any{"cmd": cmd})
+			room.Plugin.HandleAction(bot, "game_action", payload)
+
+		case "holdem_state":
+			if gamePrefix != "holdem" {
+				return
+			}
+			var d HoldemData
+			if json.Unmarshal(base.Data, &d) != nil {
+				return
+			}
+			if d.CurrentTurn != bot.UserID {
+				return
+			}
+			time.Sleep(botThinkDelay)
+			// Level 1: 85% check, 15% fold
+			cmd := "check"
+			if rand.Intn(100) < 15 {
+				cmd = "fold"
+			}
+			payload, _ := json.Marshal(map[string]any{"cmd": cmd})
+			room.Plugin.HandleAction(bot, "game_action", payload)
+
+		case "sevenpoker_state":
+			if gamePrefix != "sevenpoker" {
+				return
+			}
+			var d SevenPokerData
+			if json.Unmarshal(base.Data, &d) != nil {
+				return
+			}
+			if d.CurrentTurn != bot.UserID {
+				return
+			}
+			time.Sleep(botThinkDelay)
+			// Level 1: 85% check, 15% fold
+			cmd := "check"
+			if rand.Intn(100) < 15 {
+				cmd = "fold"
+			}
+			payload, _ := json.Marshal(map[string]any{"cmd": cmd})
 			room.Plugin.HandleAction(bot, "game_action", payload)
 		}
 	}

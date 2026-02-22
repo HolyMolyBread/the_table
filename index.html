@@ -2069,9 +2069,9 @@
       // 족보 보기 버튼: holdem / sevenpoker 방에서만 표시
       const handRankingsBtn = document.getElementById('btn-hand-rankings');
       handRankingsBtn.style.display = (roomId.startsWith('holdem') || roomId.startsWith('sevenpoker')) ? '' : 'none';
-      // 봇 추가 버튼: 오목, 4목, 틱택토 방에서만 표시
+      // 봇 추가 버튼: 오목, 4목, 틱택토, 인디언 포커, 홀덤, 세븐 포커 방에서 표시 (blackjack 제외)
       const addBotBtn = document.getElementById('btn-add-bot');
-      addBotBtn.style.display = (roomId.startsWith('omok') || roomId.startsWith('connect4') || roomId.startsWith('tictactoe')) ? '' : 'none';
+      addBotBtn.style.display = (roomId.startsWith('omok') || roomId.startsWith('connect4') || roomId.startsWith('tictactoe') || roomId.startsWith('indian') || roomId.startsWith('holdem') || roomId.startsWith('sevenpoker')) ? '' : 'none';
 
       // Sync debug inputs
       if (inputUserId) inputUserId.value = userId;

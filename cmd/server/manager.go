@@ -478,7 +478,7 @@ func (m *RoomManager) HandleMessage(client *Client, rawMsg []byte) {
 			})
 			return
 		}
-		// 오목, 4목, 틱택토만 AI 봇 지원
+		// 오목, 4목, 틱택토, 인디언 포커, 홀덤, 세븐 포커만 AI 봇 지원 (blackjack 제외)
 		prefix := ""
 		if strings.HasPrefix(client.RoomID, "omok") {
 			prefix = "omok"
@@ -486,11 +486,17 @@ func (m *RoomManager) HandleMessage(client *Client, rawMsg []byte) {
 			prefix = "connect4"
 		} else if strings.HasPrefix(client.RoomID, "tictactoe") {
 			prefix = "tictactoe"
+		} else if strings.HasPrefix(client.RoomID, "indian") {
+			prefix = "indian"
+		} else if strings.HasPrefix(client.RoomID, "holdem") {
+			prefix = "holdem"
+		} else if strings.HasPrefix(client.RoomID, "sevenpoker") {
+			prefix = "sevenpoker"
 		}
 		if prefix == "" {
 			client.SendJSON(ServerResponse{
 				Type:    "error",
-				Message: "이 게임은 AI 봇을 지원하지 않습니다 (오목/4목/틱택토만 가능)",
+				Message: "이 게임은 AI 봇을 지원하지 않습니다 (오목/4목/틱택토/인디언포커/홀덤/세븐포커만 가능)",
 			})
 			return
 		}
