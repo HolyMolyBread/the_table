@@ -38,5 +38,6 @@ type GameResultResponse struct {
 type RematchUpdateMessage struct {
 	Type       string `json:"type"`       // "rematch_update"
 	RoomID     string `json:"roomId"`
-	ReadyCount int    `json:"readyCount"` // 현재 레디한 플레이어 수 (0~2)
+	ReadyCount int    `json:"readyCount"` // 현재 레디한 플레이어 수
+	TotalCount int    `json:"totalCount"` // 방 전체 인원 수 (다인용)
 }

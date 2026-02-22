@@ -6,13 +6,15 @@ import (
 	"log"
 	"math"
 	"sync"
+	"time"
 )
 
 const (
-	sevenPokerMaxPlayers = 4
-	sevenPokerStartStars = 10
-	sevenPokerCheckCost  = 1
-	sevenPokerCards      = 7
+	sevenPokerMaxPlayers    = 4
+	sevenPokerStartStars    = 10
+	sevenPokerCheckCost     = 1
+	sevenPokerCards         = 7
+	sevenPokerTurnTimeLimit = 15
 )
 
 // ── 응답 타입 ─────────────────────────────────────────────────────────────────
@@ -62,12 +64,14 @@ type SevenPokerGame struct {
 	currentPlayerIdx int
 	gameStarted      bool
 	playerCount      int
+	rematchReady     map[*Client]bool
+	stopTick         chan struct{}
 	mu               sync.Mutex
 }
 
 // NewSevenPokerGame creates a new Seven Poker game plugin.
 func NewSevenPokerGame(room *Room) *SevenPokerGame {
-	return &SevenPokerGame{room: room, phase: "waiting"}
+	return &SevenPokerGame{room: room, phase: "waiting", rematchReady: make(map[*Client]bool)}
 }
 
 func (g *SevenPokerGame) Name() string { return "sevenpoker" }
@@ -136,6 +140,7 @@ func (g *SevenPokerGame) OnLeave(client *Client) {
 	if idx < 0 {
 		return
 	}
+	delete(g.rematchReady, client)
 
 	if g.gameStarted {
 		for i := 0; i < sevenPokerMaxPlayers; i++ {
@@ -172,6 +177,8 @@ func (g *SevenPokerGame) HandleAction(client *Client, action string, payload jso
 		g.handleCheck(client)
 	case "fold":
 		g.handleFold(client)
+	case "rematch":
+		g.handleRematch(client)
 	default:
 		client.SendJSON(ServerResponse{
 			Type:    "error",
@@ -211,6 +218,7 @@ func (g *SevenPokerGame) handleCheck(client *Client) {
 	}
 
 	g.actedThisPhase[idx] = true
+	g.stopTurnTimerLocked()
 	notice, _ := json.Marshal(ServerResponse{
 		Type:    "game_notice",
 		Message: fmt.Sprintf("[%s] ✅ 체크 (⭐ %d → 팟)", client.UserID, cost),
@@ -245,6 +253,7 @@ func (g *SevenPokerGame) handleFold(client *Client) {
 
 	g.foldedThisRound[idx] = true
 	g.actedThisPhase[idx] = true
+	g.stopTurnTimerLocked()
 
 	notice, _ := json.Marshal(ServerResponse{
 		Type:    "game_notice",
@@ -279,6 +288,7 @@ func (g *SevenPokerGame) advanceTurnLocked() {
 
 	if nextIdx >= 0 {
 		g.currentPlayerIdx = nextIdx
+		g.startTurnTimerLocked()
 		g.sendStateToAllLocked()
 		return
 	}
@@ -335,6 +345,7 @@ func (g *SevenPokerGame) resetActedAndAdvanceLocked(msg string) {
 		g.actedThisPhase[i] = false
 	}
 	g.setFirstActivePlayerLocked()
+	g.startTurnTimerLocked()
 	notice, _ := json.Marshal(ServerResponse{
 		Type:    "game_notice",
 		Message: msg,
@@ -372,6 +383,17 @@ func (g *SevenPokerGame) resolveShowdownLocked() {
 	if len(survivors) == 1 {
 		idx := survivors[0]
 		g.stars[idx] += totalPot
+		g.stopTurnTimerLocked()
+		showdownData, _ := json.Marshal(map[string]any{
+			"type": "poker_showdown_result",
+			"roomId": g.room.ID,
+			"data": map[string]any{
+				"winnerId":    g.players[idx].UserID,
+				"winningHand": "단독생존",
+				"participants": []PokerShowdownParticipant{{UserID: g.players[idx].UserID, HandName: "단독생존"}},
+			},
+		})
+		g.room.broadcastAll(showdownData)
 		notice, _ := json.Marshal(ServerResponse{
 			Type:    "game_notice",
 			Message: fmt.Sprintf("🏆 [%s] 단독 생존! 팟 ⭐×%d 획득!", g.players[idx].UserID, totalPot),
@@ -381,6 +403,8 @@ func (g *SevenPokerGame) resolveShowdownLocked() {
 		g.afterRoundLocked()
 		return
 	}
+
+	g.stopTurnTimerLocked()
 
 	// evaluateHand 사용 (plugin_holdem.go와 동일)
 	cards7 := make([][]Card, len(survivors))
@@ -413,6 +437,25 @@ func (g *SevenPokerGame) resolveShowdownLocked() {
 		g.stars[idx] += share
 	}
 	g.potCarryOver = remainder
+
+	winningHandName := handRankName(bestScore)
+	participants := make([]PokerShowdownParticipant, len(survivors))
+	for i, idx := range survivors {
+		participants[i] = PokerShowdownParticipant{
+			UserID:   g.players[idx].UserID,
+			HandName: handRankName(scores[i]),
+		}
+	}
+	showdownData, _ := json.Marshal(map[string]any{
+		"type":   "poker_showdown_result",
+		"roomId": g.room.ID,
+		"data": map[string]any{
+			"winnerId":     g.players[winners[0]].UserID,
+			"winningHand":  winningHandName,
+			"participants": participants,
+		},
+	})
+	g.room.broadcastAll(showdownData)
 
 	winnerNames := ""
 	for i, idx := range winners {
@@ -477,11 +520,15 @@ func (g *SevenPokerGame) endMatchLocked() {
 		}
 	}
 	msg := fmt.Sprintf("🏆 매치 종료! 생존자 [%s] 승리!", survivors)
+	g.room.mu.RLock()
+	totalCount := len(g.room.clients)
+	g.room.mu.RUnlock()
 	data, _ := json.Marshal(GameResultResponse{
 		Type:           "game_result",
 		Message:        msg,
 		RoomID:         g.room.ID,
-		RematchEnabled: false,
+		Data:           map[string]any{"totalCount": totalCount},
+		RematchEnabled: true,
 	})
 	g.room.broadcastAll(data)
 	log.Printf("[SEVENPOKER] room:[%s] 매치 종료", g.room.ID)
@@ -538,6 +585,7 @@ func (g *SevenPokerGame) startRoundLocked() {
 	g.deck = g.deck[cardIdx:]
 
 	g.setFirstActivePlayerLocked()
+	g.startTurnTimerLocked()
 
 	notice, _ := json.Marshal(ServerResponse{
 		Type:    "game_notice",
@@ -546,6 +594,118 @@ func (g *SevenPokerGame) startRoundLocked() {
 	})
 	g.room.broadcastAll(notice)
 	g.sendStateToAllLocked()
+}
+
+func (g *SevenPokerGame) startTurnTimerLocked() {
+	if g.stopTick != nil {
+		close(g.stopTick)
+		g.stopTick = nil
+	}
+	stopCh := make(chan struct{})
+	g.stopTick = stopCh
+	currentPlayer := g.players[g.currentPlayerIdx]
+	room := g.room
+	data, _ := json.Marshal(TimerTickMessage{
+		Type:      "timer_tick",
+		RoomID:    g.room.ID,
+		TurnUser:  currentPlayer.UserID,
+		Remaining: sevenPokerTurnTimeLimit,
+	})
+	g.room.broadcastAll(data)
+	go func() {
+		remaining := sevenPokerTurnTimeLimit
+		ticker := time.NewTicker(time.Second)
+		defer ticker.Stop()
+		for remaining > 0 {
+			select {
+			case <-stopCh:
+				return
+			case <-ticker.C:
+				remaining--
+				data, _ := json.Marshal(TimerTickMessage{
+					Type:      "timer_tick",
+					RoomID:    room.ID,
+					TurnUser:  currentPlayer.UserID,
+					Remaining: remaining,
+				})
+				room.broadcastAll(data)
+			}
+		}
+		g.handleTimeOver(currentPlayer)
+	}()
+}
+
+func (g *SevenPokerGame) stopTurnTimerLocked() {
+	if g.stopTick != nil {
+		close(g.stopTick)
+		g.stopTick = nil
+	}
+}
+
+func (g *SevenPokerGame) handleTimeOver(timedOutPlayer *Client) {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	if !g.gameStarted || g.players[g.currentPlayerIdx] != timedOutPlayer {
+		return
+	}
+	idx := g.playerIndex(timedOutPlayer)
+	if idx < 0 || g.foldedThisRound[idx] {
+		return
+	}
+	g.foldedThisRound[idx] = true
+	g.actedThisPhase[idx] = true
+	g.stopTurnTimerLocked()
+	notice, _ := json.Marshal(ServerResponse{
+		Type:    "game_notice",
+		Message: fmt.Sprintf("⏰ [%s] 시간 초과! 폴드 처리.", timedOutPlayer.UserID),
+		RoomID:  g.room.ID,
+	})
+	g.room.broadcastAll(notice)
+	g.advanceTurnLocked()
+}
+
+func (g *SevenPokerGame) handleRematch(client *Client) {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	if g.gameStarted {
+		client.SendJSON(ServerResponse{Type: "error", Message: "게임 진행 중에는 리매치를 요청할 수 없습니다."})
+		return
+	}
+	g.rematchReady[client] = true
+	total := 0
+	ready := 0
+	for i := 0; i < sevenPokerMaxPlayers; i++ {
+		if g.players[i] != nil {
+			total++
+			if g.rematchReady[g.players[i]] {
+				ready++
+			}
+		}
+	}
+	upd, _ := json.Marshal(RematchUpdateMessage{
+		Type:       "rematch_update",
+		RoomID:     g.room.ID,
+		ReadyCount: ready,
+		TotalCount: total,
+	})
+	g.room.broadcastAll(upd)
+	if ready == total && total > 1 {
+		for i := 0; i < sevenPokerMaxPlayers; i++ {
+			if g.players[i] != nil {
+				g.stars[i] = sevenPokerStartStars
+				g.rematchReady[g.players[i]] = false
+			}
+		}
+		g.pot = 0
+		g.potCarryOver = 0
+		for i := 0; i < sevenPokerMaxPlayers; i++ {
+			g.cards[i] = [sevenPokerCards]Card{}
+			g.foldedThisRound[i] = false
+			g.actedThisPhase[i] = false
+		}
+		g.gameStarted = true
+		g.startRoundLocked()
+	}
 }
 
 func (g *SevenPokerGame) resetForLeaveLocked(leaveIdx int) {

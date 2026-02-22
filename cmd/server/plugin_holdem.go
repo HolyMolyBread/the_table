@@ -7,12 +7,14 @@ import (
 	"math"
 	"sort"
 	"sync"
+	"time"
 )
 
 const (
-	holdemMaxPlayers   = 4
-	holdemStartStars   = 10
-	holdemCheckCost    = 1
+	holdemMaxPlayers     = 4
+	holdemStartStars     = 10
+	holdemCheckCost      = 1
+	holdemTurnTimeLimit  = 15
 )
 
 // ── 족보 판정 ─────────────────────────────────────────────────────────────────
@@ -204,6 +206,20 @@ func evalFive(cards []Card) int64 {
 	return score
 }
 
+// handRankName은 족보 점수에서 한글 족보명을 반환합니다.
+func handRankName(score int64) string {
+	rank := int(score >> 20)
+	names := map[int]string{
+		10: "로티플", 9: "스트레이트플러시", 8: "포카드", 7: "풀하우스",
+		6: "플러시", 5: "스트레이트", 4: "트리플", 3: "투페어",
+		2: "원페어", 1: "하이카드",
+	}
+	if n, ok := names[rank]; ok {
+		return n
+	}
+	return "하이카드"
+}
+
 // straightValue는 정렬된 랭크에서 스트레이트 최고값. 없으면 0.
 func straightValue(sorted []int) int {
 	unique := make([]int, 0)
@@ -256,6 +272,19 @@ type HoldemStateResponse struct {
 	Data   HoldemData `json:"data"`
 }
 
+// PokerShowdownParticipant는 쇼다운 참가자 정보입니다.
+type PokerShowdownParticipant struct {
+	UserID   string `json:"userId"`
+	HandName string `json:"handName"`
+}
+
+// PokerShowdownResultData는 poker_showdown_result 메시지의 data 필드입니다.
+type PokerShowdownResultData struct {
+	WinnerID     string                    `json:"winnerId"`
+	WinningHand  string                    `json:"winningHand"`
+	Participants []PokerShowdownParticipant `json:"participants"`
+}
+
 // ── HoldemGame 플러그인 ───────────────────────────────────────────────────────
 
 // HoldemGame은 별(⭐) 서바이벌 룰의 텍사스 홀덤 플러그인입니다.
@@ -275,12 +304,14 @@ type HoldemGame struct {
 	currentPlayerIdx int
 	gameStarted      bool
 	playerCount      int
+	rematchReady     map[*Client]bool
+	stopTick         chan struct{}
 	mu               sync.Mutex
 }
 
 // NewHoldemGame creates a new Holdem game plugin.
 func NewHoldemGame(room *Room) *HoldemGame {
-	return &HoldemGame{room: room, phase: "waiting"}
+	return &HoldemGame{room: room, phase: "waiting", rematchReady: make(map[*Client]bool)}
 }
 
 func (g *HoldemGame) Name() string { return "holdem" }
@@ -352,6 +383,7 @@ func (g *HoldemGame) OnLeave(client *Client) {
 	if idx < 0 {
 		return
 	}
+	delete(g.rematchReady, client)
 
 	if g.gameStarted {
 		// 생존자에게 승리, 퇴장자에게 패배 기록
@@ -390,6 +422,8 @@ func (g *HoldemGame) HandleAction(client *Client, action string, payload json.Ra
 		g.handleCheck(client)
 	case "fold":
 		g.handleFold(client)
+	case "rematch":
+		g.handleRematch(client)
 	default:
 		client.SendJSON(ServerResponse{
 			Type:    "error",
@@ -430,6 +464,7 @@ func (g *HoldemGame) handleCheck(client *Client) {
 	}
 
 	g.actedThisPhase[idx] = true
+	g.stopTurnTimerLocked()
 	notice, _ := json.Marshal(ServerResponse{
 		Type:    "game_notice",
 		Message: fmt.Sprintf("[%s] ✅ 체크 (⭐ %d → 팟)", client.UserID, cost),
@@ -464,6 +499,7 @@ func (g *HoldemGame) handleFold(client *Client) {
 
 	g.foldedThisRound[idx] = true
 	g.actedThisPhase[idx] = true
+	g.stopTurnTimerLocked()
 
 	notice, _ := json.Marshal(ServerResponse{
 		Type:    "game_notice",
@@ -500,6 +536,7 @@ func (g *HoldemGame) advanceTurnLocked() {
 
 	if nextIdx >= 0 {
 		g.currentPlayerIdx = nextIdx
+		g.startTurnTimerLocked()
 		g.sendStateToAllLocked()
 		return
 	}
@@ -519,6 +556,7 @@ func (g *HoldemGame) nextPhaseLocked() {
 		g.phase = "flop"
 		g.resetActedLocked()
 		g.setFirstActivePlayerLocked()
+		g.startTurnTimerLocked()
 		notice, _ := json.Marshal(ServerResponse{
 			Type:    "game_notice",
 			Message: "── 플랍 (커뮤니티 카드 3장) ──",
@@ -532,6 +570,7 @@ func (g *HoldemGame) nextPhaseLocked() {
 		g.phase = "turn"
 		g.resetActedLocked()
 		g.setFirstActivePlayerLocked()
+		g.startTurnTimerLocked()
 		notice, _ := json.Marshal(ServerResponse{
 			Type:    "game_notice",
 			Message: "── 턴 (커뮤니티 카드 +1장) ──",
@@ -545,6 +584,7 @@ func (g *HoldemGame) nextPhaseLocked() {
 		g.phase = "river"
 		g.resetActedLocked()
 		g.setFirstActivePlayerLocked()
+		g.startTurnTimerLocked()
 		notice, _ := json.Marshal(ServerResponse{
 			Type:    "game_notice",
 			Message: "── 리버 (커뮤니티 카드 +1장) ──",
@@ -601,6 +641,17 @@ func (g *HoldemGame) resolveShowdownLocked() {
 		// 단독 생존자 승리
 		idx := survivors[0]
 		g.stars[idx] += totalPot
+		g.stopTurnTimerLocked()
+		showdownData, _ := json.Marshal(map[string]any{
+			"type": "poker_showdown_result",
+			"roomId": g.room.ID,
+			"data": map[string]any{
+				"winnerId":    g.players[idx].UserID,
+				"winningHand": "단독생존",
+				"participants": []PokerShowdownParticipant{{UserID: g.players[idx].UserID, HandName: "단독생존"}},
+			},
+		})
+		g.room.broadcastAll(showdownData)
 		notice, _ := json.Marshal(ServerResponse{
 			Type:    "game_notice",
 			Message: fmt.Sprintf("🏆 [%s] 단독 생존! 팟 ⭐×%d 획득!", g.players[idx].UserID, totalPot),
@@ -610,6 +661,8 @@ func (g *HoldemGame) resolveShowdownLocked() {
 		g.afterRoundLocked()
 		return
 	}
+
+	g.stopTurnTimerLocked()
 
 	// 족보 비교
 	cards7 := make([][]Card, len(survivors))
@@ -643,6 +696,25 @@ func (g *HoldemGame) resolveShowdownLocked() {
 		g.stars[idx] += share
 	}
 	g.potCarryOver = remainder
+
+	winningHandName := handRankName(bestScore)
+	participants := make([]PokerShowdownParticipant, len(survivors))
+	for i, idx := range survivors {
+		participants[i] = PokerShowdownParticipant{
+			UserID:   g.players[idx].UserID,
+			HandName: handRankName(scores[i]),
+		}
+	}
+	showdownData, _ := json.Marshal(map[string]any{
+		"type":   "poker_showdown_result",
+		"roomId": g.room.ID,
+		"data": map[string]any{
+			"winnerId":     g.players[winners[0]].UserID,
+			"winningHand":  winningHandName,
+			"participants": participants,
+		},
+	})
+	g.room.broadcastAll(showdownData)
 
 	winnerNames := ""
 	for i, idx := range winners {
@@ -709,11 +781,15 @@ func (g *HoldemGame) endMatchLocked() {
 		}
 	}
 	msg := fmt.Sprintf("🏆 매치 종료! 생존자 [%s] 승리!", survivors)
+	g.room.mu.RLock()
+	totalCount := len(g.room.clients)
+	g.room.mu.RUnlock()
 	data, _ := json.Marshal(GameResultResponse{
 		Type:           "game_result",
 		Message:        msg,
 		RoomID:         g.room.ID,
-		RematchEnabled: false,
+		Data:           map[string]any{"totalCount": totalCount},
+		RematchEnabled: true,
 	})
 	g.room.broadcastAll(data)
 	log.Printf("[HOLDEM] room:[%s] 매치 종료", g.room.ID)
@@ -770,6 +846,7 @@ func (g *HoldemGame) startRoundLocked() {
 	g.communityCards = [5]Card{}
 
 	g.setFirstActivePlayerLocked()
+	g.startTurnTimerLocked()
 
 	notice, _ := json.Marshal(ServerResponse{
 		Type:    "game_notice",
@@ -778,6 +855,119 @@ func (g *HoldemGame) startRoundLocked() {
 	})
 	g.room.broadcastAll(notice)
 	g.sendStateToAllLocked()
+}
+
+func (g *HoldemGame) startTurnTimerLocked() {
+	if g.stopTick != nil {
+		close(g.stopTick)
+		g.stopTick = nil
+	}
+	stopCh := make(chan struct{})
+	g.stopTick = stopCh
+	currentPlayer := g.players[g.currentPlayerIdx]
+	room := g.room
+	data, _ := json.Marshal(TimerTickMessage{
+		Type:      "timer_tick",
+		RoomID:    g.room.ID,
+		TurnUser:  currentPlayer.UserID,
+		Remaining: holdemTurnTimeLimit,
+	})
+	g.room.broadcastAll(data)
+	go func() {
+		remaining := holdemTurnTimeLimit
+		ticker := time.NewTicker(time.Second)
+		defer ticker.Stop()
+		for remaining > 0 {
+			select {
+			case <-stopCh:
+				return
+			case <-ticker.C:
+				remaining--
+				data, _ := json.Marshal(TimerTickMessage{
+					Type:      "timer_tick",
+					RoomID:    room.ID,
+					TurnUser:  currentPlayer.UserID,
+					Remaining: remaining,
+				})
+				room.broadcastAll(data)
+			}
+		}
+		g.handleTimeOver(currentPlayer)
+	}()
+}
+
+func (g *HoldemGame) stopTurnTimerLocked() {
+	if g.stopTick != nil {
+		close(g.stopTick)
+		g.stopTick = nil
+	}
+}
+
+func (g *HoldemGame) handleTimeOver(timedOutPlayer *Client) {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	if !g.gameStarted || g.players[g.currentPlayerIdx] != timedOutPlayer {
+		return
+	}
+	idx := g.playerIndex(timedOutPlayer)
+	if idx < 0 || g.foldedThisRound[idx] {
+		return
+	}
+	g.foldedThisRound[idx] = true
+	g.actedThisPhase[idx] = true
+	g.stopTurnTimerLocked()
+	notice, _ := json.Marshal(ServerResponse{
+		Type:    "game_notice",
+		Message: fmt.Sprintf("⏰ [%s] 시간 초과! 폴드 처리.", timedOutPlayer.UserID),
+		RoomID:  g.room.ID,
+	})
+	g.room.broadcastAll(notice)
+	g.advanceTurnLocked()
+}
+
+func (g *HoldemGame) handleRematch(client *Client) {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	if g.gameStarted {
+		client.SendJSON(ServerResponse{Type: "error", Message: "게임 진행 중에는 리매치를 요청할 수 없습니다."})
+		return
+	}
+	g.rematchReady[client] = true
+	total := 0
+	ready := 0
+	for i := 0; i < holdemMaxPlayers; i++ {
+		if g.players[i] != nil {
+			total++
+			if g.rematchReady[g.players[i]] {
+				ready++
+			}
+		}
+	}
+	upd, _ := json.Marshal(RematchUpdateMessage{
+		Type:       "rematch_update",
+		RoomID:     g.room.ID,
+		ReadyCount: ready,
+		TotalCount: total,
+	})
+	g.room.broadcastAll(upd)
+	if ready == total && total > 1 {
+		for i := 0; i < holdemMaxPlayers; i++ {
+			if g.players[i] != nil {
+				g.stars[i] = holdemStartStars
+				g.rematchReady[g.players[i]] = false
+			}
+		}
+		g.pot = 0
+		g.potCarryOver = 0
+		g.communityCards = [5]Card{}
+		for i := 0; i < holdemMaxPlayers; i++ {
+			g.holeCards[i] = [2]Card{}
+			g.foldedThisRound[i] = false
+			g.actedThisPhase[i] = false
+		}
+		g.gameStarted = true
+		g.startRoundLocked()
+	}
 }
 
 func (g *HoldemGame) resetForLeaveLocked(leaveIdx int) {

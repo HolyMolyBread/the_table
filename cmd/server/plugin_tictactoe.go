@@ -430,6 +430,7 @@ func (g *TicTacToeGame) handleRematch(client *Client) {
 		Type:       "rematch_update",
 		RoomID:     g.room.ID,
 		ReadyCount: readyCount,
+		TotalCount: 2,
 	})
 	g.room.broadcastAll(upd)
 

@@ -165,12 +165,7 @@
       border-radius: 24px; padding: 7px 7px 7px 16px;
     }
     #auth-logged-in.visible { display: inline-flex; }
-    #auth-user-email { font-size: 13px; font-weight: 600; color: var(--accent); }
-    #btn-auth-logout {
-      padding: 5px 12px; background: var(--bg-tertiary); border: 1px solid var(--border);
-      border-radius: 14px; color: var(--text-secondary); font-size: 12px; cursor: pointer;
-    }
-    #btn-auth-logout:hover { border-color: var(--danger); color: var(--danger); }
+    #auth-welcome-text { font-size: 14px; font-weight: 600; color: var(--text-primary); }
 
     /* 경고 배너 */
     .auth-warning {
@@ -452,7 +447,9 @@
     #status-timer-block.urgent #status-seconds { color: var(--error-color); animation: timerPulse 0.5s ease infinite; }
     #ttt-timer-block.urgent #ttt-seconds,
     #c4-timer-block.urgent #c4-seconds,
-    #indian-timer-block.urgent #indian-seconds { color: var(--danger); animation: timerPulse 0.5s ease infinite; }
+    #indian-timer-block.urgent #indian-seconds,
+    #holdem-timer-block.urgent #holdem-seconds,
+    #sevenpoker-timer-block.urgent #sevenpoker-seconds { color: var(--danger); animation: timerPulse 0.5s ease infinite; }
     @keyframes timerPulse { 0%,100%{opacity:1} 50%{opacity:0.35} }
 
     /* ── Gomoku Color info ── */
@@ -967,6 +964,18 @@
       padding: 24px; max-width: 360px; width: 92%; animation: popIn 0.2s ease;
     }
     #profile-box h3, #opponent-record-box h3 { font-size: 16px; margin-bottom: 12px; }
+    .profile-info-block { background: var(--bg-tertiary); border-radius: var(--radius); padding: 12px 14px; margin-bottom: 16px; }
+    .profile-info-row { display: flex; justify-content: space-between; padding: 6px 0; font-size: 13px; }
+    .profile-info-row:first-child { padding-top: 0; }
+    .profile-info-row:last-child { padding-bottom: 0; }
+    .profile-label { color: var(--text-muted); }
+    .profile-section { margin-bottom: 16px; }
+    .profile-section-title { font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-muted); margin-bottom: 8px; }
+    .profile-status-text { font-size: 12px; color: var(--text-muted); margin-top: 6px; margin-bottom: 10px; }
+    .profile-apply-btn { background: var(--accent); color: #000; border: none; width: 100%; padding: 10px; }
+    .profile-apply-btn:hover:not(:disabled) { background: var(--accent-hover); }
+    .profile-apply-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .profile-logout-btn { width: 100%; margin-top: 8px; padding: 10px; }
     #opponent-record-content { font-size: 13px; line-height: 1.8; }
     .opponent-record-row { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid var(--border); }
     .opponent-record-row:last-child { border-bottom: none; }
@@ -1043,6 +1052,26 @@
     #indian-showdown-result.win  { color: var(--success); }
     #indian-showdown-result.lose { color: var(--danger); }
     @keyframes indianOverlayIn { from { opacity:0; transform: scale(0.85); } to { opacity:1; transform: scale(1); } }
+
+    /* ══ Poker (홀덤/세븐포커) 쇼다운 결과 오버레이 ═══════════════════════════════ */
+    #poker-showdown-overlay {
+      display: none; position: fixed; inset: 0; z-index: 9999;
+      align-items: center; justify-content: center; pointer-events: none;
+    }
+    #poker-showdown-overlay.show {
+      display: flex; animation: indianOverlayIn 0.3s ease;
+      pointer-events: auto; cursor: pointer;
+    }
+    #poker-showdown-box {
+      background: linear-gradient(135deg, #1a1f2e 0%, #0d1117 100%);
+      border: 2px solid var(--gold); border-radius: 16px;
+      padding: 28px 36px; text-align: center; max-width: 420px; width: 90%;
+      box-shadow: 0 0 50px rgba(255,215,0,0.25), 0 8px 32px rgba(0,0,0,0.6);
+    }
+    #poker-showdown-winner { font-size: 22px; font-weight: 800; color: var(--gold); margin-bottom: 16px; }
+    #poker-showdown-participants { font-size: 14px; color: var(--text-secondary); text-align: left; margin-top: 12px; }
+    .poker-showdown-row { padding: 6px 0; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; gap: 12px; }
+    .poker-showdown-row:last-child { border-bottom: none; }
 
     /* ══════════════════════════════════════════════════════════════════════════
        모바일 반응형 (≤768px)
@@ -1219,7 +1248,7 @@
         </div>
         <div id="auth-nickname-group" style="display:none;">
           <div style="display:flex;gap:8px;align-items:center;">
-            <input class="auth-input" type="text" id="auth-nickname" placeholder="닉네임" autocomplete="username" style="flex:1;" maxlength="20" onkeydown="onAuthKeyDown(event)" />
+            <input class="auth-input" type="text" id="auth-nickname" placeholder="닉네임" autocomplete="username" style="flex:1;" maxlength="20" onkeydown="onAuthKeyDown(event)" oninput="resetNicknameCheck('signup')" />
             <button type="button" class="header-btn" id="btn-check-nickname" onclick="checkNickname()">중복확인</button>
           </div>
           <div id="auth-nickname-status" style="font-size:11px;color:var(--text-muted);margin-top:4px;"></div>
@@ -1242,16 +1271,14 @@
         </div>
         <div id="auth-status"></div>
       </div>
-      <!-- 로그인 후: 계정 배지 -->
+      <!-- 로그인 후: 환영 문구 -->
       <div id="auth-logged-in">
-        <span id="auth-user-email"></span>
-        <button id="btn-auth-logout" onclick="authLogout()">로그아웃</button>
+        <span id="auth-welcome-text"></span>
       </div>
     </div>
 
     <div id="game-cards">
-      <!-- 게임 순서 변경 시 이 블록을 이동하세요 -->
-      <!-- 오목 -->
+      <!-- [보드게임] 오목 → 4목 → 틱택토 -->
       <div class="game-card">
         <div class="card-icon">🀱</div>
         <div class="card-title">오목</div>
@@ -1270,108 +1297,6 @@
           </div>
         </div>
       </div>
-      <!-- 게임 순서 변경 시 이 블록을 이동하세요 -->
-      <!-- 블랙잭 -->
-      <div class="game-card">
-        <div class="card-icon">🃏</div>
-        <div class="card-title">블랙잭</div>
-        <div class="card-desc">딜러 AI를 상대로 21에 가장 가깝게! 승무패(W/L/D) 전적이 기록됩니다.</div>
-        <div class="card-badge pve">PVE</div>
-        <div class="card-actions-bottom">
-          <div class="card-top-actions">
-            <button class="card-btn-rule"   onclick="showRules('blackjack')">📖 룰</button>
-            <button class="card-btn-create" onclick="createRoom('blackjack')">➕ 방 만들기</button>
-          </div>
-          <div class="card-join-row">
-            <input type="text" class="card-code-input" id="code-input-blackjack"
-                   maxlength="6" placeholder="코드 6자리"
-                   autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false" />
-            <button class="card-btn-join-code" onclick="joinWithCode('blackjack','code-input-blackjack')">입장</button>
-          </div>
-        </div>
-      </div>
-      <!-- 게임 순서 변경 시 이 블록을 이동하세요 -->
-      <!-- 틱택토 -->
-      <div class="game-card">
-        <div class="card-icon">⭕❌</div>
-        <div class="card-title">틱택토 (Tic-Tac-Toe)</div>
-        <div class="card-desc">3×3 보드에서 가로·세로·대각선 3목을 먼저 완성하면 승리! 승무패(W/L/D) 전적이 기록됩니다.</div>
-        <div class="card-badge pvp">PVP</div>
-        <div class="card-actions-bottom">
-          <div class="card-top-actions">
-            <button class="card-btn-rule"   onclick="showRules('tictactoe')">📖 룰</button>
-            <button class="card-btn-create" onclick="createRoom('tictactoe')">➕ 방 만들기</button>
-          </div>
-          <div class="card-join-row">
-            <input type="text" class="card-code-input" id="code-input-tictactoe"
-                   maxlength="6" placeholder="코드 6자리"
-                   autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false" />
-            <button class="card-btn-join-code" onclick="joinWithCode('tictactoe','code-input-tictactoe')">입장</button>
-          </div>
-        </div>
-      </div>
-      <!-- 게임 순서 변경 시 이 블록을 이동하세요 -->
-      <!-- 텍사스 홀덤 -->
-      <div class="game-card">
-        <div class="card-icon">♠️</div>
-        <div class="card-title">텍사스 홀덤</div>
-        <div class="card-desc">별 10개로 시작! 체크(⭐ -1) 또는 폴드. 커뮤니티 카드 5장으로 족보 대결, 절반 파산 시 생존자 승리!</div>
-        <div class="card-badge pvp">PVP</div>
-        <div class="card-actions-bottom">
-          <div class="card-top-actions">
-            <button class="card-btn-rule"   onclick="showRules('holdem')">📖 룰</button>
-            <button class="card-btn-create" onclick="createRoom('holdem')">➕ 방 만들기</button>
-          </div>
-          <div class="card-join-row">
-            <input type="text" class="card-code-input" id="code-input-holdem"
-                   maxlength="6" placeholder="코드 6자리"
-                   autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false" />
-            <button class="card-btn-join-code" onclick="joinWithCode('holdem','code-input-holdem')">입장</button>
-          </div>
-        </div>
-      </div>
-      <!-- 게임 순서 변경 시 이 블록을 이동하세요 -->
-      <!-- 인디언 포커 -->
-      <div class="game-card">
-        <div class="card-icon">🃏</div>
-        <div class="card-title">인디언 포커</div>
-        <div class="card-desc">상대 카드는 보이지만 내 카드는 안 보여요! 하트 10개로 시작, 서바이벌 승부!</div>
-        <div class="card-badge pvp">PVP</div>
-        <div class="card-actions-bottom">
-          <div class="card-top-actions">
-            <button class="card-btn-rule"   onclick="showRules('indian')">📖 룰</button>
-            <button class="card-btn-create" onclick="createRoom('indian')">➕ 방 만들기</button>
-          </div>
-          <div class="card-join-row">
-            <input type="text" class="card-code-input" id="code-input-indian"
-                   maxlength="6" placeholder="코드 6자리"
-                   autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false" />
-            <button class="card-btn-join-code" onclick="joinWithCode('indian','code-input-indian')">입장</button>
-          </div>
-        </div>
-      </div>
-      <!-- 게임 순서 변경 시 이 블록을 이동하세요 -->
-      <!-- 세븐 포커 -->
-      <div class="game-card">
-        <div class="card-icon">🃏</div>
-        <div class="card-title">세븐 포커</div>
-        <div class="card-desc">3~7구 분배! 각자 7장, 히든 카드가 있는 별 서바이벌. 체크(⭐ -1) 또는 폴드로 승부!</div>
-        <div class="card-badge pvp">PVP</div>
-        <div class="card-actions-bottom">
-          <div class="card-top-actions">
-            <button class="card-btn-rule"   onclick="showRules('sevenpoker')">📖 룰</button>
-            <button class="card-btn-create" onclick="createRoom('sevenpoker')">➕ 방 만들기</button>
-          </div>
-          <div class="card-join-row">
-            <input type="text" class="card-code-input" id="code-input-sevenpoker"
-                   maxlength="6" placeholder="코드 6자리"
-                   autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false" />
-            <button class="card-btn-join-code" onclick="joinWithCode('sevenpoker','code-input-sevenpoker')">입장</button>
-          </div>
-        </div>
-      </div>
-      <!-- 게임 순서 변경 시 이 블록을 이동하세요 -->
-      <!-- 4목 (Connect 4) -->
       <div class="game-card">
         <div class="card-icon">🔴🟡</div>
         <div class="card-title">4목 (Connect 4)</div>
@@ -1390,6 +1315,97 @@
           </div>
         </div>
       </div>
+      <div class="game-card">
+        <div class="card-icon">⭕❌</div>
+        <div class="card-title">틱택토 (Tic-Tac-Toe)</div>
+        <div class="card-desc">3×3 보드에서 가로·세로·대각선 3목을 먼저 완성하면 승리! 승무패(W/L/D) 전적이 기록됩니다.</div>
+        <div class="card-badge pvp">PVP</div>
+        <div class="card-actions-bottom">
+          <div class="card-top-actions">
+            <button class="card-btn-rule"   onclick="showRules('tictactoe')">📖 룰</button>
+            <button class="card-btn-create" onclick="createRoom('tictactoe')">➕ 방 만들기</button>
+          </div>
+          <div class="card-join-row">
+            <input type="text" class="card-code-input" id="code-input-tictactoe"
+                   maxlength="6" placeholder="코드 6자리"
+                   autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false" />
+            <button class="card-btn-join-code" onclick="joinWithCode('tictactoe','code-input-tictactoe')">입장</button>
+          </div>
+        </div>
+      </div>
+      <!-- [카드게임] 블랙잭 → 홀덤 → 세븐포커 → 인디언포커 -->
+      <div class="game-card">
+        <div class="card-icon">🃏</div>
+        <div class="card-title">블랙잭</div>
+        <div class="card-desc">딜러 AI를 상대로 21에 가장 가깝게! 승무패(W/L/D) 전적이 기록됩니다.</div>
+        <div class="card-badge pve">PVE</div>
+        <div class="card-actions-bottom">
+          <div class="card-top-actions">
+            <button class="card-btn-rule"   onclick="showRules('blackjack')">📖 룰</button>
+            <button class="card-btn-create" onclick="createRoom('blackjack')">➕ 방 만들기</button>
+          </div>
+          <div class="card-join-row">
+            <input type="text" class="card-code-input" id="code-input-blackjack"
+                   maxlength="6" placeholder="코드 6자리"
+                   autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false" />
+            <button class="card-btn-join-code" onclick="joinWithCode('blackjack','code-input-blackjack')">입장</button>
+          </div>
+        </div>
+      </div>
+      <div class="game-card">
+        <div class="card-icon">♠️</div>
+        <div class="card-title">텍사스 홀덤</div>
+        <div class="card-desc">별 10개로 시작! 체크(⭐ -1) 또는 폴드. 커뮤니티 카드 5장으로 족보 대결, 절반 파산 시 생존자 승리!</div>
+        <div class="card-badge pvp">PVP</div>
+        <div class="card-actions-bottom">
+          <div class="card-top-actions">
+            <button class="card-btn-rule"   onclick="showRules('holdem')">📖 룰</button>
+            <button class="card-btn-create" onclick="createRoom('holdem')">➕ 방 만들기</button>
+          </div>
+          <div class="card-join-row">
+            <input type="text" class="card-code-input" id="code-input-holdem"
+                   maxlength="6" placeholder="코드 6자리"
+                   autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false" />
+            <button class="card-btn-join-code" onclick="joinWithCode('holdem','code-input-holdem')">입장</button>
+          </div>
+        </div>
+      </div>
+      <div class="game-card">
+        <div class="card-icon">♣️</div>
+        <div class="card-title">세븐 포커</div>
+        <div class="card-desc">3~7구 분배! 각자 7장, 히든 카드가 있는 별 서바이벌. 체크(⭐ -1) 또는 폴드로 승부!</div>
+        <div class="card-badge pvp">PVP</div>
+        <div class="card-actions-bottom">
+          <div class="card-top-actions">
+            <button class="card-btn-rule"   onclick="showRules('sevenpoker')">📖 룰</button>
+            <button class="card-btn-create" onclick="createRoom('sevenpoker')">➕ 방 만들기</button>
+          </div>
+          <div class="card-join-row">
+            <input type="text" class="card-code-input" id="code-input-sevenpoker"
+                   maxlength="6" placeholder="코드 6자리"
+                   autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false" />
+            <button class="card-btn-join-code" onclick="joinWithCode('sevenpoker','code-input-sevenpoker')">입장</button>
+          </div>
+        </div>
+      </div>
+      <div class="game-card">
+        <div class="card-icon">🤠</div>
+        <div class="card-title">인디언 포커</div>
+        <div class="card-desc">상대 카드는 보이지만 내 카드는 안 보여요! 하트 10개로 시작, 서바이벌 승부!</div>
+        <div class="card-badge pvp">PVP</div>
+        <div class="card-actions-bottom">
+          <div class="card-top-actions">
+            <button class="card-btn-rule"   onclick="showRules('indian')">📖 룰</button>
+            <button class="card-btn-create" onclick="createRoom('indian')">➕ 방 만들기</button>
+          </div>
+          <div class="card-join-row">
+            <input type="text" class="card-code-input" id="code-input-indian"
+                   maxlength="6" placeholder="코드 6자리"
+                   autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false" />
+            <button class="card-btn-join-code" onclick="joinWithCode('indian','code-input-indian')">입장</button>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -1402,6 +1418,7 @@
         <span id="game-area-title">게임</span>
         <div style="display:flex;gap:8px;align-items:center;">
           <button class="header-btn" id="btn-ingame-rules" onclick="showCurrentRules()" title="현재 게임 룰 보기" style="display:none;">📖 룰</button>
+          <button class="header-btn" id="btn-hand-rankings" onclick="showHandRankingsModal()" title="포커 족보 순서 보기" style="display:none;">📋 족보 보기</button>
           <button id="room-code-badge" onclick="copyRoomCode()" title="클릭하여 방 코드를 클립보드에 복사">
             방 코드&nbsp;<span id="room-code-text">------</span>&nbsp;📋
           </button>
@@ -1482,6 +1499,7 @@
         <!-- Texas Holdem container -->
         <div id="holdem-container">
           <div id="holdem-round-bar">라운드 —</div>
+          <div id="holdem-timer-block" style="font-size:12px;color:var(--text-secondary);"><span class="status-label">남은 시간</span> <span id="holdem-seconds">--</span>초</div>
           <div id="holdem-pot-bar">팟 ⭐×0</div>
           <div id="holdem-community-wrap">
             <div id="holdem-community-cards" class="holdem-cards-row"></div>
@@ -1498,6 +1516,7 @@
         <!-- Seven Poker container -->
         <div id="sevenpoker-container">
           <div id="sevenpoker-round-bar">라운드 —</div>
+          <div id="sevenpoker-timer-block" style="font-size:12px;color:var(--text-secondary);"><span class="status-label">남은 시간</span> <span id="sevenpoker-seconds">--</span>초</div>
           <div id="sevenpoker-pot-bar">팟 ⭐×0</div>
           <div id="sevenpoker-players-wrap">
             <div id="sevenpoker-players" class="sevenpoker-players-grid"></div>
@@ -1565,7 +1584,7 @@
         <!-- 리매치 영역 (공통 PVP) -->
         <div id="rematch-area">
           <button id="btn-rematch" onclick="sendRematch()">
-            🔄 한 판 더 (<span id="rematch-count">0</span>/2)
+            🔄 한 판 더 (<span id="rematch-count">0/0</span>)
           </button>
           <div id="rematch-hint">상대방도 버튼을 누르면 새 게임이 시작됩니다</div>
         </div>
@@ -1660,20 +1679,33 @@
   </div>
 </div>
 
-<!-- ══ Profile Modal (닉네임 수정) ═══════════════════════════════════════════ -->
+<!-- ══ Poker 쇼다운 결과 오버레이 (5초 자동 사라짐) ════════════════════════════ -->
+<div id="poker-showdown-overlay" onclick="closePokerShowdownOverlay()">
+  <div id="poker-showdown-box">
+    <div id="poker-showdown-winner">—</div>
+    <div id="poker-showdown-participants"></div>
+  </div>
+</div>
+
+<!-- ══ Profile Modal (마이페이지) ═══════════════════════════════════════════ -->
 <div id="profile-modal">
   <div id="profile-backdrop" onclick="closeProfileModal()"></div>
   <div id="profile-box">
-    <h3>👤 프로필 수정</h3>
-    <div style="display:flex;gap:8px;align-items:center;margin:12px 0;">
-      <input class="auth-input" type="text" id="profile-nickname" placeholder="닉네임" maxlength="20" style="flex:1;" />
-      <button type="button" class="header-btn" onclick="checkNicknameProfile()">중복확인</button>
+    <h3>👤 내 프로필</h3>
+    <div id="profile-current-info" class="profile-info-block">
+      <div class="profile-info-row"><span class="profile-label">계정 이메일</span><span id="profile-email"></span></div>
+      <div class="profile-info-row"><span class="profile-label">현재 닉네임</span><span id="profile-current-nickname"></span></div>
     </div>
-    <div id="profile-nickname-status" style="font-size:12px;color:var(--text-muted);margin-bottom:12px;"></div>
-    <div style="display:flex;gap:8px;justify-content:flex-end;">
-      <button class="header-btn" onclick="closeProfileModal()">취소</button>
-      <button class="header-btn" style="background:var(--accent);color:#000;border:none;" onclick="saveProfileNickname()">저장</button>
+    <div class="profile-section">
+      <div class="profile-section-title">닉네임 변경</div>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <input class="auth-input" type="text" id="profile-new-nickname" placeholder="새 닉네임" maxlength="20" style="flex:1;" oninput="resetNicknameCheck('profile')" />
+        <button type="button" class="header-btn" onclick="checkNicknameProfile()">중복확인</button>
+      </div>
+      <div id="profile-nickname-status" class="profile-status-text"></div>
+      <button type="button" id="btn-profile-apply" class="header-btn profile-apply-btn" onclick="saveProfileNickname()" disabled>변경 적용</button>
     </div>
+    <button type="button" id="btn-profile-logout" class="header-btn danger profile-logout-btn" onclick="authLogout(); closeProfileModal();">🚪 로그아웃</button>
   </div>
 </div>
 
@@ -1708,11 +1740,13 @@
   // ── State ──────────────────────────────────────────────────────────────────
   let ws            = null;
   let currentRoomId = '';
-  let currentUserId = '';  // 인증된 이메일 주소 (auth 이후 설정)
+  let currentUserId = '';  // 인증 후 표시명 (닉네임 또는 이메일)
+  let currentUserEmail = '';  // 인증된 이메일 주소 (프로필 모달 표시용)
   let currentToken  = '';  // Supabase JWT access_token (auth 이후 설정)
   let pendingJoin   = null; // { roomId } — auth+connect 후 자동 입장
   let pendingNickname = null; // 회원가입 직후 설정할 닉네임
-  let _lastNicknameCheckAvailable = false;
+  let _signupNicknameChecked = false;   // 회원가입 시 중복확인 통과 여부
+  let _profileNicknameChecked = false;  // 마이페이지 시 중복확인 통과 여부
   let _onNicknameCheckDone = null;
 
   // Gomoku
@@ -1739,8 +1773,9 @@
     // 이미 로그인된 세션이 있으면 자동 복구
     supabaseClient.auth.getSession().then(({ data: { session } }) => {
       if (session) {
-        currentToken  = session.access_token;
-        currentUserId = session.user.email;
+        currentToken     = session.access_token;
+        currentUserEmail = session.user.email;
+        currentUserId    = session.user.email;  // auth_ok에서 닉네임으로 갱신됨
         showLoggedIn(session.user.email);
         connect();
       }
@@ -1765,7 +1800,26 @@
     document.getElementById('auth-signup-switch').style.display   = isSignup ? '' : 'none';
     document.getElementById('auth-password').placeholder          = isSignup ? '비밀번호 (6자 이상)' : '비밀번호';
     document.getElementById('auth-password-confirm').value        = '';
+    _signupNicknameChecked = false;
+    document.getElementById('btn-auth-signup').disabled = true;
     setAuthStatus('');
+  }
+
+  /** 닉네임 입력 시 중복확인 강제 리셋 — 회원가입/마이페이지 공통 */
+  function resetNicknameCheck(type) {
+    if (type === 'signup') {
+      _signupNicknameChecked = false;
+      document.getElementById('btn-auth-signup').disabled = true;
+      const statusEl = document.getElementById('auth-nickname-status');
+      statusEl.textContent = '⚠️ 중복확인을 해주세요';
+      statusEl.style.color = 'var(--warning)';
+    } else if (type === 'profile') {
+      _profileNicknameChecked = false;
+      document.getElementById('btn-profile-apply').disabled = true;
+      const statusEl = document.getElementById('profile-nickname-status');
+      statusEl.textContent = '⚠️ 중복확인을 해주세요';
+      statusEl.style.color = 'var(--warning)';
+    }
   }
 
   function onAuthKeyDown(e) {
@@ -1774,19 +1828,24 @@
     else authLogin();
   }
 
-  function checkNickname() {
+  /** 회원가입 시 닉네임 중복확인 — Supabase 직접 조회 (WS 미연결 상태) */
+  async function checkNickname() {
     const nickname = document.getElementById('auth-nickname').value.trim();
     const statusEl = document.getElementById('auth-nickname-status');
     if (!nickname) { statusEl.textContent = '닉네임을 입력하세요.'; statusEl.style.color = 'var(--danger)'; return; }
     if (nickname.length < 2 || nickname.length > 20) { statusEl.textContent = '닉네임은 2~20자로 입력하세요.'; statusEl.style.color = 'var(--danger)'; return; }
-    if (!ws || ws.readyState !== WebSocket.OPEN) { statusEl.textContent = '먼저 연결해 주세요.'; statusEl.style.color = 'var(--danger)'; return; }
     statusEl.textContent = '확인 중...'; statusEl.style.color = 'var(--text-secondary)';
-    _onNicknameCheckDone = (available) => {
-      _onNicknameCheckDone = null;
+    try {
+      const { data, error } = await supabaseClient.from('profiles').select('id').eq('username', nickname).limit(1);
+      if (error) throw error;
+      const available = !data || data.length === 0;
+      _signupNicknameChecked = available;
+      document.getElementById('btn-auth-signup').disabled = !available;
       if (available) { statusEl.textContent = '✓ 사용 가능한 닉네임입니다.'; statusEl.style.color = 'var(--success)'; }
       else { statusEl.textContent = '✗ 이미 사용 중인 닉네임입니다.'; statusEl.style.color = 'var(--danger)'; }
-    };
-    sendRaw(JSON.stringify({ action: 'check_nickname', payload: { nickname } }));
+    } catch (e) {
+      statusEl.textContent = '확인 중 오류가 발생했습니다.'; statusEl.style.color = 'var(--danger)';
+    }
   }
 
   function sendSetNickname(nickname) {
@@ -1795,34 +1854,53 @@
   }
 
   function openProfileModal() {
-    document.getElementById('profile-nickname').value = currentUserId;
-    document.getElementById('profile-nickname-status').textContent = '';
+    document.getElementById('profile-email').textContent = currentUserEmail || currentUserId || '—';
+    document.getElementById('profile-current-nickname').textContent = currentUserId || '—';
+    document.getElementById('profile-new-nickname').value = currentUserId || '';
+    _profileNicknameChecked = false;
+    document.getElementById('btn-profile-apply').disabled = true;
+    document.getElementById('profile-nickname-status').textContent = '⚠️ 중복확인을 해주세요';
+    document.getElementById('profile-nickname-status').style.color = 'var(--warning)';
     document.getElementById('profile-modal').classList.add('show');
   }
   function closeProfileModal() {
     document.getElementById('profile-modal').classList.remove('show');
   }
-  function checkNicknameProfile() {
-    const nickname = document.getElementById('profile-nickname').value.trim();
+  /** 마이페이지 닉네임 중복확인 — Supabase 직접 조회 */
+  async function checkNicknameProfile() {
+    const nickname = document.getElementById('profile-new-nickname').value.trim();
     const statusEl = document.getElementById('profile-nickname-status');
     if (!nickname) { statusEl.textContent = '닉네임을 입력하세요.'; statusEl.style.color = 'var(--danger)'; return; }
     if (nickname.length < 2 || nickname.length > 20) { statusEl.textContent = '닉네임은 2~20자로 입력하세요.'; statusEl.style.color = 'var(--danger)'; return; }
-    if (!ws || ws.readyState !== WebSocket.OPEN) { statusEl.textContent = '연결이 끊어졌습니다.'; statusEl.style.color = 'var(--danger)'; return; }
+    if (nickname === currentUserId) {
+      _profileNicknameChecked = true;
+      document.getElementById('btn-profile-apply').disabled = false;
+      statusEl.textContent = '✓ 현재 닉네임과 동일합니다.'; statusEl.style.color = 'var(--success)';
+      return;
+    }
     statusEl.textContent = '확인 중...'; statusEl.style.color = 'var(--text-secondary)';
-    _onNicknameCheckDone = (available) => {
-      _onNicknameCheckDone = null;
+    try {
+      const { data, error } = await supabaseClient.from('profiles').select('id').eq('username', nickname).limit(1);
+      if (error) throw error;
+      const available = !data || data.length === 0;
+      _profileNicknameChecked = available;
+      document.getElementById('btn-profile-apply').disabled = !available;
       if (available) { statusEl.textContent = '✓ 사용 가능한 닉네임입니다.'; statusEl.style.color = 'var(--success)'; }
       else { statusEl.textContent = '✗ 이미 사용 중인 닉네임입니다.'; statusEl.style.color = 'var(--danger)'; }
-    };
-    sendRaw(JSON.stringify({ action: 'check_nickname', payload: { nickname } }));
+    } catch (e) {
+      statusEl.textContent = '확인 중 오류가 발생했습니다.'; statusEl.style.color = 'var(--danger)';
+    }
   }
   function saveProfileNickname() {
-    const nickname = document.getElementById('profile-nickname').value.trim();
+    if (!_profileNicknameChecked) { showToast('중복확인을 먼저 해주세요.', 'error'); return; }
+    const nickname = document.getElementById('profile-new-nickname').value.trim();
     if (!nickname || nickname.length < 2 || nickname.length > 20) {
       showToast('닉네임은 2~20자로 입력하세요.', 'error'); return;
     }
     if (!ws || ws.readyState !== WebSocket.OPEN) { showToast('연결이 끊어졌습니다.', 'error'); return; }
     sendRaw(JSON.stringify({ action: 'set_nickname', payload: { nickname } }));
+    currentUserId = nickname;
+    document.getElementById('auth-welcome-text').textContent = `환영합니다, ${nickname}님!`;
     closeProfileModal();
     showToast('닉네임이 변경되었습니다.', 'info');
   }
@@ -1861,8 +1939,9 @@
     setAuthStatus('로그인 중...', 'loading');
     const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
     if (error) { setAuthStatus(error.message, 'error'); return; }
-    currentToken  = data.session.access_token;
-    currentUserId = data.user.email;
+    currentToken     = data.session.access_token;
+    currentUserEmail = data.user.email;
+    currentUserId    = data.user.email;  // auth_ok에서 닉네임으로 갱신됨
     showLoggedIn(data.user.email);
     connect();
   }
@@ -1875,18 +1954,22 @@
     if (!email || !password) { setAuthStatus('이메일과 비밀번호를 입력하세요.', 'error'); return; }
     if (password.length < 6)  { setAuthStatus('비밀번호는 6자 이상이어야 합니다.', 'error'); return; }
     if (password !== confirm)  { setAuthStatus('비밀번호가 일치하지 않습니다.', 'error'); return; }
-    if (nickname && (nickname.length < 2 || nickname.length > 20)) {
+    if (!nickname || nickname.length < 2 || nickname.length > 20) {
       setAuthStatus('닉네임은 2~20자로 입력하세요.', 'error'); return;
+    }
+    if (!_signupNicknameChecked) {
+      setAuthStatus('닉네임 중복확인을 해주세요.', 'error'); return;
     }
     setAuthStatus('가입 중...', 'loading');
     const { data, error } = await supabaseClient.auth.signUp({ email, password });
     if (error) { setAuthStatus(error.message, 'error'); return; }
     if (data.session) {
-      currentToken  = data.session.access_token;
-      currentUserId = data.user.email;
-      showLoggedIn(data.user.email);
+      currentToken     = data.session.access_token;
+      currentUserEmail = data.user.email;
+      currentUserId    = nickname;
+      showLoggedIn(data.user.email, nickname);
       connect();
-      if (nickname) pendingNickname = nickname;
+      pendingNickname = nickname;
     } else {
       setAuthStatus('📧 가입 확인 이메일을 발송했습니다. 이메일을 확인해 주세요.', 'loading');
     }
@@ -1902,13 +1985,19 @@
     showToast('로그아웃 되었습니다.', 'info');
   }
 
-  function showLoggedIn(displayName) {
+  function showLoggedIn(email, nickname) {
     document.getElementById('auth-panel').style.display      = 'none';
     document.getElementById('auth-logged-in').classList.add('visible');
-    document.getElementById('auth-user-email').textContent   = displayName || currentUserId;
+    if (email) currentUserEmail = email;
+    if (nickname) currentUserId = nickname;
+    document.getElementById('auth-welcome-text').textContent = '환영합니다, ' + (currentUserId || currentUserEmail || '') + '님!';
     document.getElementById('game-cards').style.display      = 'flex';
     document.getElementById('btn-profile').style.display     = '';
     setAuthStatus('');
+  }
+  function updateWelcomeText() {
+    const el = document.getElementById('auth-welcome-text');
+    if (el) el.textContent = '환영합니다, ' + (currentUserId || currentUserEmail || '') + '님!';
   }
 
   function showLoggedOut() {
@@ -1971,9 +2060,12 @@
       document.getElementById('room-code-text').textContent = roomCode;
       document.getElementById('room-code-badge').classList.add('visible');
 
-      // 인게임 룰 버튼: omok / blackjack 방에서만 표시
+      // 인게임 룰 버튼: omok / blackjack / tictactoe / connect4 / indian / holdem / sevenpoker 방에서 표시
       const rulesBtn = document.getElementById('btn-ingame-rules');
-      rulesBtn.style.display = (roomId.startsWith('omok') || roomId.startsWith('blackjack') || roomId.startsWith('tictactoe') || roomId.startsWith('connect4') || roomId.startsWith('indian')) ? '' : 'none';
+      rulesBtn.style.display = (roomId.startsWith('omok') || roomId.startsWith('blackjack') || roomId.startsWith('tictactoe') || roomId.startsWith('connect4') || roomId.startsWith('indian') || roomId.startsWith('holdem') || roomId.startsWith('sevenpoker')) ? '' : 'none';
+      // 족보 보기 버튼: holdem / sevenpoker 방에서만 표시
+      const handRankingsBtn = document.getElementById('btn-hand-rankings');
+      handRankingsBtn.style.display = (roomId.startsWith('holdem') || roomId.startsWith('sevenpoker')) ? '' : 'none';
 
       // Sync debug inputs
       if (inputUserId) inputUserId.value = userId;
@@ -2007,7 +2099,7 @@
       document.getElementById('board-placeholder').style.display   = 'flex';
       // Reset rematch UI
       document.getElementById('rematch-area').classList.remove('visible');
-      document.getElementById('rematch-count').textContent = '0';
+      document.getElementById('rematch-count').textContent = '0/0';
       document.getElementById('btn-rematch').disabled = false;
 
       // Clear chat
@@ -2306,9 +2398,11 @@
         </ul>
         <h3>쇼다운 및 족보</h3>
         <ul>
-          <li>7장 중 베스트 5장 족보로 승부. 로티플~하이카드 순.</li>
+          <li>7장 중 베스트 5장 족보로 승부.</li>
           <li>동점 시 팟 분할, 나머지는 다음 라운드 이월.</li>
         </ul>
+        <h3>📋 포커 족보 순서</h3>
+        <p>로티플 &gt; 스트레이트플러시 &gt; 포카드 &gt; 풀하우스 &gt; 플러시 &gt; 스트레이트 &gt; 트리플 &gt; 투페어 &gt; 원페어 &gt; 하이카드</p>
         <h3>매치 종료</h3>
         <ul>
           <li>파산자(별 0개) ≥ 전체 유저 수/2 이면 매치 종료.</li>
@@ -2338,9 +2432,10 @@
         </ul>
         <h3>쇼다운 및 족보</h3>
         <ul>
-          <li>로티플 > 스트레이트플러시 > 포카드 > 풀하우스 > 플러시 > 스트레이트 > 트리플 > 투페어 > 원페어 > 하이카드</li>
           <li>동점 시 팟을 n등분, 나머지는 다음 라운드로 이월</li>
         </ul>
+        <h3>📋 포커 족보 순서</h3>
+        <p>로티플 &gt; 스트레이트플러시 &gt; 포카드 &gt; 풀하우스 &gt; 플러시 &gt; 스트레이트 &gt; 트리플 &gt; 투페어 &gt; 원페어 &gt; 하이카드</p>
         <h3>매치 종료</h3>
         <ul>
           <li><strong>파산자 수 ≥ ceil(전체 유저 수 / 2)</strong>이면 매치 종료.</li>
@@ -2383,6 +2478,28 @@
     if (!rule) return;
     document.getElementById('rules-title').textContent  = rule.title;
     document.getElementById('rules-content').innerHTML  = rule.html;
+    document.getElementById('rules-modal').classList.add('show');
+  }
+
+  /** 홀덤/세븐포커 전용 족보 순서 모달 */
+  const POKER_HAND_RANKINGS_HTML = `
+    <h3>📋 포커 족보 순서 (강 → 약)</h3>
+    <ol style="margin:12px 0; padding-left:20px; line-height:2;">
+      <li>로티플 (Royal Flush)</li>
+      <li>스트레이트 플러시 (Straight Flush)</li>
+      <li>포카드 (Four of a Kind)</li>
+      <li>풀하우스 (Full House)</li>
+      <li>플러시 (Flush)</li>
+      <li>스트레이트 (Straight)</li>
+      <li>트리플 (Three of a Kind)</li>
+      <li>투페어 (Two Pair)</li>
+      <li>원페어 (One Pair)</li>
+      <li>하이카드 (High Card)</li>
+    </ol>
+  `;
+  function showHandRankingsModal() {
+    document.getElementById('rules-title').textContent = '📋 포커 족보 순서';
+    document.getElementById('rules-content').innerHTML = POKER_HAND_RANKINGS_HTML;
     document.getElementById('rules-modal').classList.add('show');
   }
   function closeRules() {
@@ -2450,7 +2567,7 @@
             case 'auth_ok':
               addLog('info', raw);
               if (parsed.userId) currentUserId = parsed.userId;
-              document.getElementById('auth-user-email').textContent = currentUserId;
+              updateWelcomeText();
               document.getElementById('btn-profile').style.display = '';
               // 대기 중인 방 입장 또는 닉네임 설정
               if (pendingJoin) {
@@ -2462,7 +2579,6 @@
               }
               break;
             case 'nickname_check':
-              _lastNicknameCheckAvailable = parsed.available;
               if (typeof _onNicknameCheckDone === 'function') _onNicknameCheckDone(parsed.available);
               break;
             case 'opponent_record':
@@ -2518,9 +2634,9 @@
                 renderBoard({ board: parsed.data.board, turn: '', colors: parsed.data.colors || {}, lastMove: parsed.data.lastMove || [-1,-1] });
                 setGomokuEnded();
               }
-              // 리매치 버튼 표시 (rematchEnabled 시 모든 PVP 게임 공통)
               if (parsed.rematchEnabled) {
-                document.getElementById('rematch-count').textContent = '0';
+                const total = parsed.data?.totalCount ?? 2;
+                document.getElementById('rematch-count').textContent = `0/${total}`;
                 document.getElementById('btn-rematch').disabled = false;
                 const rematchArea = document.getElementById('rematch-area');
                 rematchArea.style.display = 'flex';
@@ -2532,10 +2648,10 @@
               addChatMessage('game_notice', parsed);
               break;
             case 'rematch_update': {
-              const count = parsed.readyCount ?? 0;
-              document.getElementById('rematch-count').textContent = count;
-              if (count >= 2) {
-                // 양쪽 레디 → 새 게임 시작. 리매치 버튼 숨김
+              const ready = parsed.readyCount ?? 0;
+              const total = parsed.totalCount ?? 2;
+              document.getElementById('rematch-count').textContent = `${ready}/${total}`;
+              if (ready >= total && total > 1) {
                 document.getElementById('rematch-area').style.display = 'none';
                 document.getElementById('rematch-area').classList.remove('visible');
                 document.getElementById('btn-rematch').disabled = false;
@@ -2579,6 +2695,10 @@
             case 'indian_showdown_result':
               addLog('indian-showdown', raw);
               showIndianShowdownOverlay(parsed.data);
+              break;
+            case 'poker_showdown_result':
+              addLog('poker-showdown', raw);
+              showPokerShowdownOverlay(parsed.data);
               break;
             case 'dealer_action':
               addLog('bj-dealer', raw);
@@ -2844,13 +2964,15 @@
   }
 
   /** currentRoomId 접두사에 맞는 타이머 요소를 찾아 업데이트 (5초 이하 시 urgent 클래스) */
-  const PREFIX_TO_TIMER = { omok: ['status-seconds', 'status-timer-block'], tictactoe: ['ttt-seconds', 'ttt-timer-block'], connect4: ['c4-seconds', 'c4-timer-block'], indian: ['indian-seconds', 'indian-timer-block'] };
+  const PREFIX_TO_TIMER = { omok: ['status-seconds', 'status-timer-block'], tictactoe: ['ttt-seconds', 'ttt-timer-block'], connect4: ['c4-seconds', 'c4-timer-block'], indian: ['indian-seconds', 'indian-timer-block'], holdem: ['holdem-seconds', 'holdem-timer-block'], sevenpoker: ['sevenpoker-seconds', 'sevenpoker-timer-block'] };
 
   function updateGameTimer(turnUser, remaining) {
     const prefix = currentRoomId.startsWith('omok') ? 'omok'
                  : currentRoomId.startsWith('tictactoe') ? 'tictactoe'
                  : currentRoomId.startsWith('connect4') ? 'connect4'
                  : currentRoomId.startsWith('indian') ? 'indian'
+                 : currentRoomId.startsWith('holdem') ? 'holdem'
+                 : currentRoomId.startsWith('sevenpoker') ? 'sevenpoker'
                  : null;
     if (!prefix || !PREFIX_TO_TIMER[prefix]) return;
     const [secsId, blockId] = PREFIX_TO_TIMER[prefix];
@@ -3355,6 +3477,42 @@
     if (indianShowdownTimeout) {
       clearTimeout(indianShowdownTimeout);
       indianShowdownTimeout = null;
+    }
+  }
+
+  /** 포커(홀덤/세븐포커) 쇼다운 결과 오버레이 — 5초간 표시 후 자동 닫힘 */
+  let pokerShowdownTimeout = null;
+  function showPokerShowdownOverlay(data) {
+    if (!data) return;
+    const winnerEl = document.getElementById('poker-showdown-winner');
+    const partEl = document.getElementById('poker-showdown-participants');
+    const overlay = document.getElementById('poker-showdown-overlay');
+
+    const winnerId = data.winnerId || '';
+    const winningHand = data.winningHand || '';
+    const participants = data.participants || [];
+    winnerEl.textContent = winningHand ? `승자: ${winnerId} (${winningHand})` : `승자: ${winnerId}`;
+
+    let html = '';
+    participants.forEach(p => {
+      html += `<div class="poker-showdown-row"><span>${escapeHTML(p.userId || '')}</span><span>${escapeHTML(p.handName || '-')}</span></div>`;
+    });
+    partEl.innerHTML = html || '<div class="poker-showdown-row">—</div>';
+
+    if (pokerShowdownTimeout) clearTimeout(pokerShowdownTimeout);
+    overlay.classList.add('show');
+    pokerShowdownTimeout = setTimeout(() => {
+      overlay.classList.remove('show');
+      pokerShowdownTimeout = null;
+    }, 5000);
+  }
+
+  function closePokerShowdownOverlay() {
+    const overlay = document.getElementById('poker-showdown-overlay');
+    if (overlay) overlay.classList.remove('show');
+    if (pokerShowdownTimeout) {
+      clearTimeout(pokerShowdownTimeout);
+      pokerShowdownTimeout = null;
     }
   }
 </script>
