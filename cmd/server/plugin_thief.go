@@ -64,6 +64,8 @@ func NewThiefGame(room *Room) *ThiefGame {
 	return &ThiefGame{room: room, startReady: make(map[*Client]bool), rematchReady: make(map[*Client]bool)}
 }
 
+func init() { RegisterPlugin("thief", func(room *Room) GamePlugin { return NewThiefGame(room) }) }
+
 func (g *ThiefGame) Name() string { return "thief" }
 
 // OnJoin은 플레이어 입장 시 호출됩니다.
@@ -119,7 +121,7 @@ func (g *ThiefGame) OnJoin(client *Client) {
 
 // OnLeave는 플레이어 퇴장 시 호출됩니다.
 // 방폭 방지: 남은 인원 2명 이상이면 방을 깨지 않고 게임 계속 진행.
-func (g *ThiefGame) OnLeave(client *Client) {
+func (g *ThiefGame) OnLeave(client *Client, remainingCount int) {
 	g.mu.Lock()
 	defer g.mu.Unlock()
 

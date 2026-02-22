@@ -83,7 +83,7 @@ func (c *Client) SafeSend(data []byte) bool {
 	case c.send <- data:
 		return true
 	default:
-		log.Printf("[WARN] 클라이언트 [%s] 전송 버퍼 초과, 메시지 드롭", c.UserID)
+		log.Printf("[SEND_DROP] User: %s, Room: %s - Buffer Full", c.UserID, c.RoomID)
 		return false
 	}
 }

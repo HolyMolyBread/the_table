@@ -780,10 +780,18 @@
     .table-seat-name { font-size: 12px; font-weight: 700; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
     .table-seat-count { font-size: 14px; font-weight: 700; color: var(--gold); margin-top: 4px; }
     .table-seat-target-cards { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; margin-top: 8px; }
-    .thief-hand {
-      display: flex; flex-wrap: wrap; gap: 8px; justify-content: center;
-      min-height: 90px;
+    .thief-hand, .onecard-hand {
+      display: flex; flex-wrap: nowrap; overflow-x: auto;
+      width: 100%; max-width: 90vw; padding: 10px 10px 20px 10px;
     }
+    .thief-hand::-webkit-scrollbar, .onecard-hand::-webkit-scrollbar { height: 6px; }
+    .thief-hand::-webkit-scrollbar-thumb, .onecard-hand::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+    .thief-card, .onecard-card {
+      flex-shrink: 0; margin-left: -24px; position: relative;
+      transition: transform 0.2s, z-index 0s;
+    }
+    .thief-card:first-child, .onecard-card:first-child { margin-left: 0; }
+    .thief-card:hover, .onecard-card:hover { transform: translateY(-15px); z-index: 100; margin-right: 15px; }
     .thief-card {
       width: 48px; height: 70px; background: #fff; border: 1px solid #ccc;
       border-radius: 6px; padding: 4px 5px; font-weight: 700; font-size: 11px;
@@ -825,10 +833,6 @@
       background: repeating-linear-gradient(-45deg, #1e3a8a 0, #1e3a8a 6px, #2563eb 6px, #2563eb 12px);
       border: 1px solid #1e40af; cursor: pointer;
       display: flex; align-items: center; justify-content: center; font-size: 24px;
-    }
-    .onecard-hand {
-      display: flex; flex-wrap: wrap; gap: 6px; justify-content: center;
-      min-height: 88px;
     }
     .onecard-hand .onecard-card { cursor: pointer; }
     .onecard-hand .onecard-card.playable { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent); }
@@ -1812,11 +1816,10 @@
             <button id="btn-sevenpoker-check" class="holdem-btn" onclick="sevenpokerCheck()" disabled>✅ 체크 (⭐ -1)</button>
             <button id="btn-sevenpoker-fold"  class="holdem-btn" onclick="sevenpokerFold()"  disabled>🏳️ 폴드</button>
           </div>
-          <div id="sevenpoker-choice-box" style="display:none; margin-top:10px; padding:10px; background:var(--bg-secondary); border-radius:8px; text-align:center;">
-            <p style="font-size:12px; margin-bottom:8px; color:var(--gold);">1장을 버리고 1장을 공개하세요.</p>
-            버릴 카드: <select id="sp-discard"><option value="0">1번째</option><option value="1">2번째</option><option value="2">3번째</option><option value="3">4번째</option></select>
-            공개할 카드: <select id="sp-open"><option value="0">1번째</option><option value="1" selected>2번째</option><option value="2">3번째</option><option value="3">4번째</option></select>
-            <button onclick="sendSevenPokerChoice()" style="margin-left:8px;" class="indian-btn">결정</button>
+          <div id="sevenpoker-choice-box" style="display:none; margin-top:10px; padding:12px; background:var(--bg-secondary); border-radius:8px; text-align:center;">
+            <p style="font-size:13px; margin-bottom:12px; color:var(--gold); font-weight:700;">1장을 ❌버리고 1장을 👁️공개하세요.</p>
+            <div id="sp-choice-cards" style="display:flex; gap:10px; justify-content:center; margin-bottom:12px; flex-wrap:wrap;"></div>
+            <button onclick="sendSevenPokerChoice()" class="indian-btn" id="btn-sp-choice-submit" disabled>선택 완료</button>
           </div>
           <div class="poker-hand-guide">
             <div class="poker-hand-guide-title">📋 포커 족보 가이드 (강한 순서)</div>
@@ -4042,6 +4045,10 @@
 
   let onecardPendingPlayIndex = -1;
 
+  let spChoiceDiscard = -1;
+  let spChoiceOpen = -1;
+  let spChoiceMyCards = [];
+
   function renderOneCard(data) {
     if (!data) return;
     const isMyTurn = data.turn === currentUserId;
@@ -4337,8 +4344,13 @@
 
     const choiceBox = document.getElementById('sevenpoker-choice-box');
     if (choiceBox) {
-      const showChoice = data.phase === 'choice' && isPlayer && !data.myChoiceDone && data.currentTurn === currentUserId;
+      const showChoice = data.phase === 'choice' && isPlayer && !data.myChoiceDone;
       choiceBox.style.display = showChoice ? 'block' : 'none';
+      if (showChoice) {
+        spChoiceDiscard = -1; spChoiceOpen = -1;
+        const me = data.players.find(p => p.userId === currentUserId);
+        if (me && me.cards) { spChoiceMyCards = me.cards; renderSpChoiceUI(); }
+      }
     }
 
     const sevenGuide = document.querySelector('#sevenpoker-container .poker-hand-guide-grid');
@@ -4364,19 +4376,39 @@
     sendRaw(JSON.stringify({ action: 'game_action', payload: { cmd: 'fold' } }));
   }
 
-  function sendSevenPokerChoice() {
+  window.setSpChoice = function(type, idx) {
+    if (type === 'discard') { spChoiceDiscard = idx; if (spChoiceOpen === idx) spChoiceOpen = -1; }
+    if (type === 'open') { spChoiceOpen = idx; if (spChoiceDiscard === idx) spChoiceDiscard = -1; }
+    renderSpChoiceUI();
+  };
+  window.renderSpChoiceUI = function() {
+    const container = document.getElementById('sp-choice-cards');
+    if (!container) return;
+    container.innerHTML = spChoiceMyCards.map((c, i) => {
+      const isDiscard = spChoiceDiscard === i;
+      const isOpen = spChoiceOpen === i;
+      const style = isDiscard ? 'opacity:0.4; border-color:var(--danger);' : (isOpen ? 'border-color:var(--accent); box-shadow:0 0 8px var(--accent);' : '');
+      let cardHtml = renderHoldemCard({...c, hidden: false});
+      if (style) cardHtml = cardHtml.replace(/^<div /, '<div style="' + style + '" ');
+      return `
+        <div style="display:flex; flex-direction:column; gap:6px; align-items:center;">
+          ${cardHtml}
+          <div style="display:flex; gap:4px;">
+            <button onclick="setSpChoice('discard', ${i})" style="padding:4px 6px; font-size:11px; background:${isDiscard?'var(--danger)':'var(--bg-tertiary)'}; color:#fff; border:1px solid var(--border); border-radius:4px; cursor:pointer;">❌</button>
+            <button onclick="setSpChoice('open', ${i})" style="padding:4px 6px; font-size:11px; background:${isOpen?'var(--accent)':'var(--bg-tertiary)'}; color:#fff; border:1px solid var(--border); border-radius:4px; cursor:pointer;">👁️</button>
+          </div>
+        </div>
+      `;
+    }).join('');
+    const btn = document.getElementById('btn-sp-choice-submit');
+    if (btn) btn.disabled = (spChoiceDiscard === -1 || spChoiceOpen === -1);
+  };
+  window.sendSevenPokerChoice = function() {
     if (!ws || ws.readyState !== WebSocket.OPEN) return;
-    const discardSel = document.getElementById('sp-discard');
-    const openSel = document.getElementById('sp-open');
-    if (!discardSel || !openSel) return;
-    const discardIdx = parseInt(discardSel.value, 10);
-    const openIdx = parseInt(openSel.value, 10);
-    if (discardIdx === openIdx) {
-      alert('버릴 카드와 공개할 카드는 서로 달라야 합니다.');
-      return;
-    }
-    sendRaw(JSON.stringify({ action: 'game_action', payload: { cmd: 'choice', discardIdx, openIdx } }));
-  }
+    if (spChoiceDiscard === -1 || spChoiceOpen === -1) return;
+    sendRaw(JSON.stringify({ action: 'game_action', payload: { cmd: 'choice', discardIdx: spChoiceDiscard, openIdx: spChoiceOpen } }));
+    spChoiceDiscard = -1; spChoiceOpen = -1;
+  };
 
   /** 인디언 포커 승부 결과 오버레이 — 4초간 표시 후 자동 닫힘 */
   let indianShowdownTimeout = null;

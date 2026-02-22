@@ -81,6 +81,8 @@ func NewOneCardGame(room *Room) *OneCardGame {
 	return &OneCardGame{room: room, direction: 1, startReady: make(map[*Client]bool), rematchReady: make(map[*Client]bool)}
 }
 
+func init() { RegisterPlugin("onecard", func(room *Room) GamePlugin { return NewOneCardGame(room) }) }
+
 func (g *OneCardGame) Name() string { return "onecard" }
 
 // OnJoin
@@ -135,7 +137,7 @@ func (g *OneCardGame) OnJoin(client *Client) {
 }
 
 // OnLeave
-func (g *OneCardGame) OnLeave(client *Client) {
+func (g *OneCardGame) OnLeave(client *Client, remainingCount int) {
 	g.mu.Lock()
 	defer g.mu.Unlock()
 

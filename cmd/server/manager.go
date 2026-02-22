@@ -37,6 +37,18 @@ type ChatPayload struct {
 	Message string `json:"message"`
 }
 
+// ── 플러그인 레지스트리 (OCP) ───────────────────────────────────────────────────
+
+// pluginRegistry는 접두사 → 플러그인 생성 함수 매핑입니다.
+// 새 게임 추가 시 manager.go 수정 없이 plugin_*.go의 init()에서 등록합니다.
+var pluginRegistry = make(map[string]PluginFactory)
+
+// RegisterPlugin은 접두사와 플러그인 생성 함수를 레지스트리에 등록합니다.
+// 각 plugin_*.go의 init() 함수에서 호출합니다.
+func RegisterPlugin(prefix string, factory PluginFactory) {
+	pluginRegistry[prefix] = factory
+}
+
 // ── Room ──────────────────────────────────────────────────────────────────────
 
 // Room은 같은 방에 속한 클라이언트 집합과 게임 플러그인을 Thread-safe하게 관리합니다.
@@ -47,45 +59,19 @@ type Room struct {
 	Plugin  GamePlugin // 이 방에서 실행 중인 게임 플러그인 (nil 가능)
 }
 
-// newRoom은 Plugin Factory 패턴으로 방 ID 접두사(prefix)에 따라
-// 적합한 게임 플러그인을 자동으로 주입합니다.
-//
-// 접두사 규칙:
-//   - "omok"       → GomokuGame      (1:1 PVP 오목, 렌주룰)
-//   - "blackjack"  → BlackjackGame   (PVE 블랙잭, 관전 지원)
-//   - "tictactoe"  → TicTacToeGame   (1:1 PVP 틱택토)
-//   - "connect4"   → Connect4Game    (1:1 PVP 4목)
-//   - "indian"     → IndianGame      (1:1 PVP 인디언 포커, 하트 서바이벌)
-//   - 그 외        → nil             (일반 채팅방, 게임 없음)
+// newRoom은 플러그인 레지스트리에서 방 ID 접두사에 맞는 플러그인을 찾아 주입합니다.
+// 새 게임 추가 시 manager.go 수정 없이 plugin_*.go의 init()에서 RegisterPlugin만 호출하면 됩니다.
 func newRoom(id string) *Room {
 	room := &Room{
 		ID:      id,
 		clients: make(map[*Client]bool),
 	}
 
-	switch {
-	case strings.HasPrefix(id, "omok"):
-		room.Plugin = NewGomokuGame(room)
-	case strings.HasPrefix(id, "blackjack"):
-		room.Plugin = NewBlackjackGame(room)
-	case strings.HasPrefix(id, "tictactoe"):
-		room.Plugin = NewTicTacToeGame(room)
-	case strings.HasPrefix(id, "connect4"):
-		room.Plugin = NewConnect4Game(room)
-	case strings.HasPrefix(id, "indian"):
-		room.Plugin = NewIndianGame(room)
-	case strings.HasPrefix(id, "holdem"):
-		room.Plugin = NewHoldemGame(room)
-	case strings.HasPrefix(id, "sevenpoker"):
-		room.Plugin = NewSevenPokerGame(room)
-	case strings.HasPrefix(id, "thief"):
-		room.Plugin = NewThiefGame(room)
-	case strings.HasPrefix(id, "onecard"):
-		room.Plugin = NewOneCardGame(room)
-	case strings.HasPrefix(id, "mahjong"):
-		room.Plugin = NewMahjongGame(room)
-	default:
-		// nil — 게임 플러그인 없는 순수 채팅방
+	for prefix, factory := range pluginRegistry {
+		if strings.HasPrefix(id, prefix) {
+			room.Plugin = factory(room)
+			break
+		}
 	}
 
 	if room.Plugin != nil {
@@ -209,7 +195,7 @@ func (m *RoomManager) leaveRoom(client *Client) {
 	// 플러그인 훅 호출 — client.RoomID가 아직 유효한 상태에서 호출
 	// 플러그인은 이 시점에 게임 상태 정리 및 남은 플레이어 알림을 처리할 수 있습니다.
 	if room.Plugin != nil {
-		room.Plugin.OnLeave(client)
+		room.Plugin.OnLeave(client, remaining)
 	}
 
 	client.RoomID = ""

@@ -2,11 +2,15 @@ package main
 
 import "encoding/json"
 
+// PluginFactory는 방 ID 접두사에 따라 게임 플러그인을 생성하는 함수 타입입니다.
+// 플러그인 레지스트리(OCP)에서 사용됩니다.
+type PluginFactory func(room *Room) GamePlugin
+
 // GamePlugin은 게임 룰 플러그인이 구현해야 하는 인터페이스입니다.
 //
 // 코어 서버(manager.go)는 이 인터페이스만 알고 있으며,
 // 구체적인 게임 로직은 플러그인 파일(plugin_*.go)에 완전히 캡슐화됩니다.
-// 새로운 게임을 추가할 때는 이 인터페이스를 구현하고 newRoom에 주입하기만 하면 됩니다.
+// 새로운 게임을 추가할 때는 이 인터페이스를 구현하고 init()에서 RegisterPlugin으로 등록하면 됩니다.
 type GamePlugin interface {
 	// Name은 게임의 식별 이름을 반환합니다.
 	Name() string
@@ -14,8 +18,9 @@ type GamePlugin interface {
 	// OnJoin은 플레이어가 방에 입장한 직후 호출되는 훅(Hook)입니다.
 	OnJoin(client *Client)
 
-	// OnLeave는 플레이어가 방에서 퇴장하기 직전에 호출되는 훅입니다.
-	OnLeave(client *Client)
+	// OnLeave는 플레이어가 방에서 퇴장한 직후 호출되는 훅입니다.
+	// remainingCount: 해당 유저 퇴장 후 방에 남은 클라이언트 수 (0이면 빈 방)
+	OnLeave(client *Client, remainingCount int)
 
 	// HandleAction은 action: "game_action" 메시지가 도착했을 때
 	// 코어 매니저로부터 페이로드를 위임받아 처리합니다.

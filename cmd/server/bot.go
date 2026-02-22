@@ -213,14 +213,19 @@ func makeBotProcess(bot *Client, room *Room, gamePrefix string) func(msg []byte)
 			if gamePrefix != "sevenpoker" {
 				return
 			}
-			var d SevenPokerData
+			var d struct {
+				Phase        string `json:"phase"`
+				CurrentTurn  string `json:"currentTurn"`
+				MyChoiceDone bool   `json:"myChoiceDone"`
+			}
 			if json.Unmarshal(base.Data, &d) != nil {
 				return
 			}
-			if d.CurrentTurn != bot.UserID {
-				return
-			}
+			// 초이스 페이즈는 전원 동시 진행이므로 턴 검사 전에 처리
 			if d.Phase == "choice" {
+				if d.MyChoiceDone {
+					return
+				}
 				time.Sleep(botThinkDelay)
 				discardIdx := rand.Intn(4)
 				openIdx := rand.Intn(4)
@@ -231,8 +236,11 @@ func makeBotProcess(bot *Client, room *Room, gamePrefix string) func(msg []byte)
 				room.Plugin.HandleAction(bot, "game_action", payload)
 				return
 			}
+			// 베팅 페이즈 턴 검사
+			if d.CurrentTurn != bot.UserID {
+				return
+			}
 			time.Sleep(botThinkDelay)
-			// Level 1: 85% check, 15% fold
 			cmd := "check"
 			if rand.Intn(100) < 15 {
 				cmd = "fold"

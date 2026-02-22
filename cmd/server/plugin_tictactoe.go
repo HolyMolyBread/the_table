@@ -49,6 +49,8 @@ func NewTicTacToeGame(room *Room) *TicTacToeGame {
 	return &TicTacToeGame{room: room}
 }
 
+func init() { RegisterPlugin("tictactoe", func(room *Room) GamePlugin { return NewTicTacToeGame(room) }) }
+
 func (g *TicTacToeGame) Name() string { return "틱택토 (Tic-Tac-Toe)" }
 
 // OnJoin은 플레이어가 방에 입장한 직후 호출됩니다.
@@ -96,7 +98,7 @@ func (g *TicTacToeGame) OnJoin(client *Client) {
 }
 
 // OnLeave는 플레이어가 퇴장하기 직전에 호출됩니다.
-func (g *TicTacToeGame) OnLeave(client *Client) {
+func (g *TicTacToeGame) OnLeave(client *Client, remainingCount int) {
 	g.mu.Lock()
 	defer g.mu.Unlock()
 

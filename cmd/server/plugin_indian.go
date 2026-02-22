@@ -98,6 +98,8 @@ func NewIndianGame(room *Room) *IndianGame {
 	return &IndianGame{room: room, phase: "waiting"}
 }
 
+func init() { RegisterPlugin("indian", func(room *Room) GamePlugin { return NewIndianGame(room) }) }
+
 func (g *IndianGame) Name() string { return "인디언 포커 (Indian Poker)" }
 
 // OnJoin은 플레이어가 방에 입장한 직후 호출됩니다.
@@ -143,7 +145,7 @@ func (g *IndianGame) OnJoin(client *Client) {
 }
 
 // OnLeave는 플레이어가 퇴장하기 직전에 호출됩니다.
-func (g *IndianGame) OnLeave(client *Client) {
+func (g *IndianGame) OnLeave(client *Client, remainingCount int) {
 	g.mu.Lock()
 	defer g.mu.Unlock()
 

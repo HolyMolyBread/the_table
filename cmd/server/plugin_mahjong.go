@@ -69,6 +69,8 @@ func NewMahjongGame(room *Room) *MahjongGame {
 	return &MahjongGame{room: room, startReady: make(map[*Client]bool)}
 }
 
+func init() { RegisterPlugin("mahjong", func(room *Room) GamePlugin { return NewMahjongGame(room) }) }
+
 func (g *MahjongGame) Name() string { return "mahjong" }
 
 func (g *MahjongGame) OnJoin(client *Client) {
@@ -119,7 +121,7 @@ func (g *MahjongGame) OnJoin(client *Client) {
 	g.sendStateToAllLocked()
 }
 
-func (g *MahjongGame) OnLeave(client *Client) {
+func (g *MahjongGame) OnLeave(client *Client, remainingCount int) {
 	g.mu.Lock()
 	defer g.mu.Unlock()
 

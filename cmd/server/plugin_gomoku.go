@@ -65,6 +65,8 @@ func NewGomokuGame(room *Room) *GomokuGame {
 	return &GomokuGame{room: room, lastMove: [2]int{-1, -1}}
 }
 
+func init() { RegisterPlugin("omok", func(room *Room) GamePlugin { return NewGomokuGame(room) }) }
+
 func (g *GomokuGame) Name() string { return "1:1 PVP 오목 (Gomoku)" }
 
 // OnJoin은 플레이어가 방에 입장한 직후 호출됩니다.
@@ -123,8 +125,8 @@ func (g *GomokuGame) OnJoin(client *Client) {
 	}
 }
 
-// OnLeave는 플레이어가 퇴장하기 직전에 호출됩니다.
-func (g *GomokuGame) OnLeave(client *Client) {
+// OnLeave는 플레이어가 퇴장한 직후 호출됩니다.
+func (g *GomokuGame) OnLeave(client *Client, remainingCount int) {
 	g.mu.Lock()
 	defer g.mu.Unlock()
 

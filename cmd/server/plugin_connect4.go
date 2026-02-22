@@ -58,6 +58,8 @@ func NewConnect4Game(room *Room) *Connect4Game {
 	return &Connect4Game{room: room, lastCol: -1, lastRow: -1}
 }
 
+func init() { RegisterPlugin("connect4", func(room *Room) GamePlugin { return NewConnect4Game(room) }) }
+
 func (g *Connect4Game) Name() string { return "4목 (Connect 4)" }
 
 // OnJoin은 플레이어가 방에 입장한 직후 호출됩니다.
@@ -105,7 +107,7 @@ func (g *Connect4Game) OnJoin(client *Client) {
 }
 
 // OnLeave는 플레이어가 퇴장하기 직전에 호출됩니다.
-func (g *Connect4Game) OnLeave(client *Client) {
+func (g *Connect4Game) OnLeave(client *Client, remainingCount int) {
 	g.mu.Lock()
 	defer g.mu.Unlock()
 

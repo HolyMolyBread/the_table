@@ -98,6 +98,8 @@ func NewBlackjackGame(room *Room) *BlackjackGame {
 	return &BlackjackGame{room: room, phase: BJBetting}
 }
 
+func init() { RegisterPlugin("blackjack", func(room *Room) GamePlugin { return NewBlackjackGame(room) }) }
+
 func (g *BlackjackGame) Name() string { return "블랙잭 PVE (1 vs 딜러 AI)" }
 
 // ── GamePlugin 인터페이스 구현 ────────────────────────────────────────────────
@@ -131,7 +133,7 @@ func (g *BlackjackGame) OnJoin(client *Client) {
 	}
 }
 
-func (g *BlackjackGame) OnLeave(client *Client) {
+func (g *BlackjackGame) OnLeave(client *Client, remainingCount int) {
 	g.mu.Lock()
 	defer g.mu.Unlock()
 

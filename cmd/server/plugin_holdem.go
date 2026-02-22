@@ -77,6 +77,8 @@ func NewHoldemGame(room *Room) *HoldemGame {
 	return &HoldemGame{room: room, phase: "waiting", startReady: make(map[*Client]bool), rematchReady: make(map[*Client]bool)}
 }
 
+func init() { RegisterPlugin("holdem", func(room *Room) GamePlugin { return NewHoldemGame(room) }) }
+
 func (g *HoldemGame) Name() string { return "holdem" }
 
 // OnJoin은 플레이어 입장 시 호출됩니다.
@@ -136,7 +138,7 @@ func (g *HoldemGame) OnJoin(client *Client) {
 }
 
 // OnLeave는 플레이어 퇴장 시 호출됩니다.
-func (g *HoldemGame) OnLeave(client *Client) {
+func (g *HoldemGame) OnLeave(client *Client, remainingCount int) {
 	g.mu.Lock()
 	defer g.mu.Unlock()
 

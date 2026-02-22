@@ -80,6 +80,8 @@ func NewSevenPokerGame(room *Room) *SevenPokerGame {
 	return &SevenPokerGame{room: room, phase: "waiting", startReady: make(map[*Client]bool), rematchReady: make(map[*Client]bool)}
 }
 
+func init() { RegisterPlugin("sevenpoker", func(room *Room) GamePlugin { return NewSevenPokerGame(room) }) }
+
 func (g *SevenPokerGame) Name() string { return "sevenpoker" }
 
 // OnJoin은 플레이어 입장 시 호출됩니다.
@@ -135,7 +137,7 @@ func (g *SevenPokerGame) OnJoin(client *Client) {
 }
 
 // OnLeave는 플레이어 퇴장 시 호출됩니다.
-func (g *SevenPokerGame) OnLeave(client *Client) {
+func (g *SevenPokerGame) OnLeave(client *Client, remainingCount int) {
 	g.mu.Lock()
 	defer g.mu.Unlock()
 
