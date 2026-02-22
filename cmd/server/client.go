@@ -31,6 +31,7 @@ type RecordUpdateResponse struct {
 }
 
 // Client는 WebSocket 연결 하나(유저 한 명)를 표현합니다.
+// IsBot이 true인 가상 클라이언트는 conn이 nil이며, SafeSend 시 BotProcess 콜백으로 메시지가 전달됩니다.
 type Client struct {
 	manager *RoomManager
 	conn    *websocket.Conn
@@ -40,6 +41,9 @@ type Client struct {
 	UserUUID string // Supabase auth.users.id (auth 액션 이후 설정)
 	RoomID   string
 	Records  map[string]*GameRecord // 게임별 + 총합 전적 ("total", "omok", "blackjack")
+
+	IsBot      bool              // true면 가상 클라이언트(AI 봇)
+	BotProcess func(msg []byte)  // 봇 전용: 수신 메시지 처리 콜백 (nil 가능)
 
 	limiter *rate.Limiter // 메시지 속도 제한 (10msg/s, 버스트 10)
 
@@ -64,7 +68,12 @@ func newClient(conn *websocket.Conn, manager *RoomManager) *Client {
 }
 
 // SafeSend는 send 채널이 닫혀있어도 패닉 없이 안전하게 메시지를 전송합니다.
+// 봇(IsBot)인 경우 웹소켓 전송 없이 BotProcess로 비동기 전달합니다.
 func (c *Client) SafeSend(data []byte) bool {
+	if c.IsBot && c.BotProcess != nil {
+		go c.BotProcess(data)
+		return true
+	}
 	c.sendMu.Lock()
 	defer c.sendMu.Unlock()
 	if c.closed {
@@ -80,6 +89,7 @@ func (c *Client) SafeSend(data []byte) bool {
 }
 
 // SendJSON은 v를 JSON으로 직렬화하여 클라이언트에 전송합니다.
+// 봇(IsBot)인 경우 BotProcess로 전달됩니다 (SafeSend 내부 처리).
 func (c *Client) SendJSON(v any) {
 	data, err := json.Marshal(v)
 	if err != nil {
@@ -133,11 +143,14 @@ func (c *Client) RecordResult(game string, result string) {
 }
 
 // closeOnce는 send 채널을 정확히 한 번만 닫습니다.
+// 봇(IsBot)은 send가 nil이므로 close를 건너뜁니다.
 func (c *Client) closeOnce() {
 	c.once.Do(func() {
 		c.sendMu.Lock()
 		c.closed = true
-		close(c.send)
+		if c.send != nil {
+			close(c.send)
+		}
 		c.sendMu.Unlock()
 	})
 }

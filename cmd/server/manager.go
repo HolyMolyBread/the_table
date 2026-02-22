@@ -460,6 +460,42 @@ func (m *RoomManager) HandleMessage(client *Client, rawMsg []byte) {
 			Records map[string]*GameRecord `json:"records"`
 		}{"opponent_record", p.UserID, target.Records})
 
+	case "add_bot":
+		if client.RoomID == "" {
+			client.SendJSON(ServerResponse{
+				Type:    "error",
+				Message: "먼저 방에 입장하세요 (action: join)",
+			})
+			return
+		}
+		m.mu.RLock()
+		room, ok := m.rooms[client.RoomID]
+		m.mu.RUnlock()
+		if !ok || room.Plugin == nil {
+			client.SendJSON(ServerResponse{
+				Type:    "error",
+				Message: "이 방에 활성화된 게임 플러그인이 없습니다",
+			})
+			return
+		}
+		// 오목, 4목, 틱택토만 AI 봇 지원
+		prefix := ""
+		if strings.HasPrefix(client.RoomID, "omok") {
+			prefix = "omok"
+		} else if strings.HasPrefix(client.RoomID, "connect4") {
+			prefix = "connect4"
+		} else if strings.HasPrefix(client.RoomID, "tictactoe") {
+			prefix = "tictactoe"
+		}
+		if prefix == "" {
+			client.SendJSON(ServerResponse{
+				Type:    "error",
+				Message: "이 게임은 AI 봇을 지원하지 않습니다 (오목/4목/틱택토만 가능)",
+			})
+			return
+		}
+		SpawnBot(m, room, prefix)
+
 	case "game_action":
 		// 코어는 게임 로직을 전혀 모릅니다.
 		// 방에 연결된 플러그인에게 페이로드를 그대로 위임(토스)합니다.

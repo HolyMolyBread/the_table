@@ -107,8 +107,6 @@
     .header-btn:hover { border-color: var(--accent); color: var(--accent); }
     .header-btn.danger { border-color: var(--danger); color: var(--danger); }
     .header-btn.danger:hover { background: var(--danger); color: #fff; }
-    #btn-debug { padding: 6px 10px; font-size: 16px; }
-
     /* ── App ── */
     #app { flex: 1; overflow: hidden; position: relative; display: flex; flex-direction: column; }
 
@@ -1219,7 +1217,6 @@
     </div>
     <button class="header-btn danger" id="btn-leave" style="display:none" onclick="leaveRoom()">🚪 나가기</button>
     <button class="header-btn" id="btn-profile" onclick="openProfileModal()" title="프로필 수정" style="display:none;">👤</button>
-    <button class="header-btn" id="btn-debug" onclick="toggleDebugPanel()" title="개발자 도구">⚙️</button>
   </div>
 </header>
 
@@ -1423,6 +1420,7 @@
         <div style="display:flex;gap:8px;align-items:center;">
           <button class="header-btn" id="btn-ingame-rules" onclick="showCurrentRules()" title="현재 게임 룰 보기" style="display:none;">📖 룰</button>
           <button class="header-btn" id="btn-hand-rankings" onclick="showHandRankingsModal()" title="포커 족보 순서 보기" style="display:none;">📋 족보 보기</button>
+          <button class="header-btn" id="btn-add-bot" onclick="requestAddBot()" title="AI 봇 추가 (오목/4목/틱택토)" style="display:none;">🤖 봇 추가</button>
           <button id="room-code-badge" onclick="copyRoomCode()" title="클릭하여 방 코드를 클립보드에 복사">
             방 코드&nbsp;<span id="room-code-text">------</span>&nbsp;📋
           </button>
@@ -1710,6 +1708,7 @@
       <button type="button" id="btn-profile-apply" class="header-btn profile-apply-btn" onclick="saveProfileNickname()" disabled>변경 적용</button>
     </div>
     <button type="button" id="btn-profile-logout" class="header-btn danger profile-logout-btn" onclick="authLogout(); closeProfileModal();">🚪 로그아웃</button>
+    <button type="button" class="header-btn" style="width: 100%; margin-top: 8px; padding: 10px;" onclick="closeProfileModal()">닫기</button>
   </div>
 </div>
 
@@ -2070,6 +2069,9 @@
       // 족보 보기 버튼: holdem / sevenpoker 방에서만 표시
       const handRankingsBtn = document.getElementById('btn-hand-rankings');
       handRankingsBtn.style.display = (roomId.startsWith('holdem') || roomId.startsWith('sevenpoker')) ? '' : 'none';
+      // 봇 추가 버튼: 오목, 4목, 틱택토 방에서만 표시
+      const addBotBtn = document.getElementById('btn-add-bot');
+      addBotBtn.style.display = (roomId.startsWith('omok') || roomId.startsWith('connect4') || roomId.startsWith('tictactoe')) ? '' : 'none';
 
       // Sync debug inputs
       if (inputUserId) inputUserId.value = userId;
@@ -2083,6 +2085,7 @@
       document.getElementById('room-code-badge').classList.remove('visible');
       document.getElementById('room-code-text').textContent = '------';
       document.getElementById('btn-ingame-rules').style.display = 'none';
+      document.getElementById('btn-add-bot').style.display = 'none';
       document.getElementById('chat-input').disabled      = true;
       document.getElementById('btn-send-chat').disabled   = true;
 
@@ -2764,6 +2767,16 @@
   function sendJoin(roomId) {
     // UserID는 서버에서 auth 시점에 이미 설정되어 있음. payload에도 전달 (방 입장 메시지 표시용)
     sendRaw(JSON.stringify({ action: 'join', payload: { roomId, userId: currentUserId } }));
+  }
+
+  /** AI 봇 추가 요청 (오목/4목/틱택토 방에서만 유효) */
+  function requestAddBot() {
+    if (!ws || ws.readyState !== WebSocket.OPEN) {
+      showToast('연결이 끊어졌습니다.', 'error');
+      return;
+    }
+    sendRaw(JSON.stringify({ action: 'add_bot', payload: {} }));
+    showToast('AI 봇 추가 요청을 보냈습니다.', 'info');
   }
 
   /** 방 코드 클립보드 복사 */
