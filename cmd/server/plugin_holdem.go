@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"log"
 	"math"
-	"sort"
 	"sync"
 	"time"
 )
@@ -16,232 +15,6 @@ const (
 	holdemCheckCost      = 1
 	holdemTurnTimeLimit  = 15
 )
-
-// ── 족보 판정 ─────────────────────────────────────────────────────────────────
-
-// holdemCardRank는 카드 숫자 값을 반환합니다. 2=2, ..., A=14
-func holdemCardRank(c Card) int {
-	m := map[string]int{
-		"2": 2, "3": 3, "4": 4, "5": 5, "6": 6,
-		"7": 7, "8": 8, "9": 9, "10": 10,
-		"J": 11, "Q": 12, "K": 13, "A": 14,
-	}
-	if v, ok := m[c.Value]; ok {
-		return v
-	}
-	return 0
-}
-
-// holdemSuitRank는 문양 순위 (동점 시 비교용). ♣<♦<♥<♠
-func holdemSuitRank(c Card) int {
-	m := map[string]int{"♣": 1, "♦": 2, "♥": 3, "♠": 4}
-	if v, ok := m[c.Suit]; ok {
-		return v
-	}
-	return 0
-}
-
-// evaluateHand는 7장 카드에서 최고 5장 족보 점수를 반환합니다.
-// 점수: (족보등급 << 20) | (타이브레이크 값들)
-// 족보: 로티플(10) > 스트레이트플러시(9) > 포카드(8) > 풀하우스(7) > 플러시(6) > 스트레이트(5) > 트리플(4) > 투페어(3) > 원페어(2) > 하이카드(1)
-func evaluateHand(cards []Card) int64 {
-	if len(cards) < 5 {
-		return 0
-	}
-	// 7장에서 5장 조합 C(7,5)=21가지 모두 평가
-	best := int64(0)
-	indices := make([]int, 5)
-	var comb func(start, depth int)
-	comb = func(start, depth int) {
-		if depth == 5 {
-			five := make([]Card, 5)
-			for i, idx := range indices {
-				five[i] = cards[idx]
-			}
-			score := evalFive(five)
-			if score > best {
-				best = score
-			}
-			return
-		}
-		for i := start; i <= len(cards)-5+depth; i++ {
-			indices[depth] = i
-			comb(i+1, depth+1)
-		}
-	}
-	comb(0, 0)
-	return best
-}
-
-func evalFive(cards []Card) int64 {
-	ranks := make([]int, 5)
-	suits := make([]int, 5)
-	for i, c := range cards {
-		ranks[i] = holdemCardRank(c)
-		suits[i] = holdemSuitRank(c)
-	}
-	sort.Slice(cards, func(i, j int) bool {
-		ri, rj := holdemCardRank(cards[i]), holdemCardRank(cards[j])
-		if ri != rj {
-			return ri > rj
-		}
-		return holdemSuitRank(cards[i]) > holdemSuitRank(cards[j])
-	})
-	rankCounts := make(map[int]int)
-	for _, r := range ranks {
-		rankCounts[r]++
-	}
-	sortedRanks := make([]int, len(ranks))
-	copy(sortedRanks, ranks)
-	sort.Sort(sort.Reverse(sort.IntSlice(sortedRanks)))
-
-	flush := suits[0] == suits[1] && suits[1] == suits[2] && suits[2] == suits[3] && suits[3] == suits[4]
-	straightVal := straightValue(sortedRanks)
-
-	// 로티플: 10-J-Q-K-A 동일 문양
-	if flush && straightVal == 14 {
-		return (10 << 20) | int64(sortedRanks[0])
-	}
-	// 스트레이트 플러시
-	if flush && straightVal > 0 {
-		return (9 << 20) | int64(straightVal)
-	}
-	// 포카드
-	for r, cnt := range rankCounts {
-		if cnt == 4 {
-			kicker := 0
-			for _, v := range sortedRanks {
-				if v != r {
-					kicker = v
-					break
-				}
-			}
-			return (8 << 20) | (int64(r) << 8) | int64(kicker)
-		}
-	}
-	// 풀하우스
-	var trip, pair int
-	for r, cnt := range rankCounts {
-		if cnt == 3 {
-			trip = r
-		}
-		if cnt == 2 {
-			if pair == 0 || r > pair {
-				pair = r
-			}
-		}
-	}
-	if trip > 0 && pair > 0 {
-		return (7 << 20) | (int64(trip) << 8) | int64(pair)
-	}
-	// 플러시
-	if flush {
-		score := int64(6 << 20)
-		for i, r := range sortedRanks {
-			score |= int64(r) << (uint(4-i) * 4)
-		}
-		return score
-	}
-	// 스트레이트
-	if straightVal > 0 {
-		return (5 << 20) | int64(straightVal)
-	}
-	// 트리플
-	if trip > 0 {
-		kickers := make([]int, 0)
-		for _, r := range sortedRanks {
-			if r != trip {
-				kickers = append(kickers, r)
-			}
-		}
-		score := (4 << 20) | (int64(trip) << 12)
-		for i, k := range kickers {
-			if i < 2 {
-				score |= int64(k) << (uint(1-i) * 4)
-			}
-		}
-		return score
-	}
-	// 투페어
-	pairs := make([]int, 0)
-	for r, cnt := range rankCounts {
-		if cnt == 2 {
-			pairs = append(pairs, r)
-		}
-	}
-	sort.Sort(sort.Reverse(sort.IntSlice(pairs)))
-	if len(pairs) >= 2 {
-		kicker := 0
-		for _, r := range sortedRanks {
-			if r != pairs[0] && r != pairs[1] {
-				kicker = r
-				break
-			}
-		}
-		return (3 << 20) | (int64(pairs[0]) << 12) | (int64(pairs[1]) << 8) | int64(kicker)
-	}
-	// 원페어
-	if len(pairs) == 1 {
-		kickers := make([]int, 0)
-		for _, r := range sortedRanks {
-			if r != pairs[0] {
-				kickers = append(kickers, r)
-			}
-		}
-		score := (2 << 20) | (int64(pairs[0]) << 12)
-		for i, k := range kickers {
-			if i < 3 {
-				score |= int64(k) << (uint(2-i) * 4)
-			}
-		}
-		return score
-	}
-	// 하이카드
-	score := int64(1 << 20)
-	for i, r := range sortedRanks {
-		if i < 5 {
-			score |= int64(r) << (uint(4-i) * 4)
-		}
-	}
-	return score
-}
-
-// handRankName은 족보 점수에서 한글 족보명을 반환합니다.
-func handRankName(score int64) string {
-	rank := int(score >> 20)
-	names := map[int]string{
-		10: "로티플", 9: "스트레이트플러시", 8: "포카드", 7: "풀하우스",
-		6: "플러시", 5: "스트레이트", 4: "트리플", 3: "투페어",
-		2: "원페어", 1: "하이카드",
-	}
-	if n, ok := names[rank]; ok {
-		return n
-	}
-	return "하이카드"
-}
-
-// straightValue는 정렬된 랭크에서 스트레이트 최고값. 없으면 0.
-func straightValue(sorted []int) int {
-	unique := make([]int, 0)
-	seen := make(map[int]bool)
-	for _, r := range sorted {
-		if !seen[r] {
-			seen[r] = true
-			unique = append(unique, r)
-		}
-	}
-	sort.Sort(sort.Reverse(sort.IntSlice(unique)))
-	for i := 0; i <= len(unique)-5; i++ {
-		if unique[i]-unique[i+4] == 4 {
-			return unique[i]
-		}
-	}
-	// A-2-3-4-5 (휠)
-	if seen[14] && seen[2] && seen[3] && seen[4] && seen[5] {
-		return 5
-	}
-	return 0
-}
 
 // ── 응답 타입 ─────────────────────────────────────────────────────────────────
 
@@ -270,19 +43,6 @@ type HoldemStateResponse struct {
 	Type   string     `json:"type"`
 	RoomID string     `json:"roomId"`
 	Data   HoldemData `json:"data"`
-}
-
-// PokerShowdownParticipant는 쇼다운 참가자 정보입니다.
-type PokerShowdownParticipant struct {
-	UserID   string `json:"userId"`
-	HandName string `json:"handName"`
-}
-
-// PokerShowdownResultData는 poker_showdown_result 메시지의 data 필드입니다.
-type PokerShowdownResultData struct {
-	WinnerID     string                    `json:"winnerId"`
-	WinningHand  string                    `json:"winningHand"`
-	Participants []PokerShowdownParticipant `json:"participants"`
 }
 
 // ── HoldemGame 플러그인 ───────────────────────────────────────────────────────
@@ -672,7 +432,7 @@ func (g *HoldemGame) resolveShowdownLocked() {
 		for j := 0; j < 5; j++ {
 			cards7[i] = append(cards7[i], g.communityCards[j])
 		}
-		scores[i] = evaluateHand(cards7[i])
+		scores[i] = EvaluateHand(cards7[i])
 	}
 
 	// 최고 점수 찾기
@@ -697,12 +457,12 @@ func (g *HoldemGame) resolveShowdownLocked() {
 	}
 	g.potCarryOver = remainder
 
-	winningHandName := handRankName(bestScore)
+	winningHandName := HandRankName(bestScore)
 	participants := make([]PokerShowdownParticipant, len(survivors))
 	for i, idx := range survivors {
 		participants[i] = PokerShowdownParticipant{
 			UserID:   g.players[idx].UserID,
-			HandName: handRankName(scores[i]),
+			HandName: HandRankName(scores[i]),
 		}
 	}
 	showdownData, _ := json.Marshal(map[string]any{
@@ -833,7 +593,7 @@ func (g *HoldemGame) startRoundLocked() {
 	}
 
 	// 덱 셔플 및 카드 배분
-	g.deck = newShuffledDeck()
+	g.deck = NewShuffledDeck()
 	cardIdx := 0
 	for i := 0; i < holdemMaxPlayers; i++ {
 		if g.players[i] != nil && g.stars[i] > 0 {

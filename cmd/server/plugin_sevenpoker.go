@@ -415,7 +415,7 @@ func (g *SevenPokerGame) resolveShowdownLocked() {
 			cards7[i][j] = g.cards[idx][j]
 			cards7[i][j].Hidden = false // 쇼다운 시 모두 공개
 		}
-		scores[i] = evaluateHand(cards7[i])
+		scores[i] = EvaluateHand(cards7[i])
 	}
 
 	bestScore := int64(0)
@@ -438,12 +438,12 @@ func (g *SevenPokerGame) resolveShowdownLocked() {
 	}
 	g.potCarryOver = remainder
 
-	winningHandName := handRankName(bestScore)
+	winningHandName := HandRankName(bestScore)
 	participants := make([]PokerShowdownParticipant, len(survivors))
 	for i, idx := range survivors {
 		participants[i] = PokerShowdownParticipant{
 			UserID:   g.players[idx].UserID,
-			HandName: handRankName(scores[i]),
+			HandName: HandRankName(scores[i]),
 		}
 	}
 	showdownData, _ := json.Marshal(map[string]any{
@@ -569,7 +569,7 @@ func (g *SevenPokerGame) startRoundLocked() {
 		g.actedThisPhase[i] = false
 	}
 
-	g.deck = newShuffledDeck()
+	g.deck = NewShuffledDeck()
 	cardIdx := 0
 
 	// deal3: 3장 분배 (0,1 Hidden, 2 visible)

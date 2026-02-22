@@ -4,37 +4,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
-	"math/rand"
 	"strconv"
 	"sync"
 	"time"
 )
-
-// ── 카드 / 덱 ────────────────────────────────────────────────────────────────
-
-// Card는 트럼프 카드 한 장을 표현합니다.
-type Card struct {
-	Suit   string `json:"suit"`   // ♠ ♥ ♦ ♣
-	Value  string `json:"value"`  // A 2~10 J Q K
-	Hidden bool   `json:"hidden"` // true → 클라이언트에 뒷면으로 전송
-}
-
-var (
-	bjSuits  = []string{"♠", "♥", "♦", "♣"}
-	bjValues = []string{"A", "2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K"}
-)
-
-// newShuffledDeck은 52장의 표준 덱을 생성하고 셔플합니다.
-func newShuffledDeck() []Card {
-	deck := make([]Card, 0, 52)
-	for _, s := range bjSuits {
-		for _, v := range bjValues {
-			deck = append(deck, Card{Suit: s, Value: v})
-		}
-	}
-	rand.Shuffle(len(deck), func(i, j int) { deck[i], deck[j] = deck[j], deck[i] })
-	return deck
-}
 
 // handScore는 손패의 블랙잭 점수를 계산합니다.
 // Hidden 카드는 제외하며 A는 버스트를 막기 위해 1 또는 11로 자동 조정합니다.
@@ -225,7 +198,7 @@ func (g *BlackjackGame) handleStart(client *Client) {
 	}
 
 	// 덱 셔플 및 딜 (딜러 두 번째 카드는 블라인드)
-	g.deck = newShuffledDeck()
+	g.deck = NewShuffledDeck()
 	g.playerHand = []Card{g.deck[0], g.deck[2]}
 	g.dealerHand = []Card{
 		g.deck[1],
@@ -417,7 +390,7 @@ func (g *BlackjackGame) settle(stopCh chan struct{}) {
 // drawCardLocked는 덱에서 카드 한 장을 뽑습니다. g.mu 보유 상태에서 호출.
 func (g *BlackjackGame) drawCardLocked() Card {
 	if len(g.deck) == 0 {
-		g.deck = newShuffledDeck()
+		g.deck = NewShuffledDeck()
 	}
 	c := g.deck[0]
 	g.deck = g.deck[1:]

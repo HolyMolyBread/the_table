@@ -40,14 +40,6 @@ type GomokuResultData struct {
 	LastMove [2]int                     `json:"lastMove"`
 }
 
-// TimerTickMessage는 매 초마다 방 전체에 전송되는 타이머 틱 메시지입니다.
-type TimerTickMessage struct {
-	Type      string `json:"type"`
-	RoomID    string `json:"roomId"`
-	TurnUser  string `json:"turnUser"`
-	Remaining int    `json:"remaining"` // 0 ~ turnTimeLimit
-}
-
 // ── GomokuGame 플러그인 ───────────────────────────────────────────────────────
 
 // GomokuGame은 1:1 PVP 오목 게임 플러그인입니다.

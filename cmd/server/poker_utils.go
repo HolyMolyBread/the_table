@@ -1,0 +1,260 @@
+package main
+
+import (
+	"math/rand"
+	"sort"
+)
+
+// ── 카드 / 덱 (포커·블랙잭·인디언 공통) ─────────────────────────────────────────
+
+// Card는 트럼프 카드 한 장을 표현합니다.
+type Card struct {
+	Suit   string `json:"suit"`   // ♠ ♥ ♦ ♣
+	Value  string `json:"value"`  // A 2~10 J Q K
+	Hidden bool   `json:"hidden"` // true → 클라이언트에 뒷면으로 전송
+}
+
+var (
+	standardSuits  = []string{"♠", "♥", "♦", "♣"}
+	standardValues = []string{"A", "2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K"}
+)
+
+// NewShuffledDeck은 52장의 표준 덱을 생성하고 셔플합니다.
+func NewShuffledDeck() []Card {
+	deck := make([]Card, 0, 52)
+	for _, s := range standardSuits {
+		for _, v := range standardValues {
+			deck = append(deck, Card{Suit: s, Value: v})
+		}
+	}
+	rand.Shuffle(len(deck), func(i, j int) { deck[i], deck[j] = deck[j], deck[i] })
+	return deck
+}
+
+// ── 족보 판정 (홀덤·세븐포커 공통) ─────────────────────────────────────────────
+
+// cardRank는 카드 숫자 값을 반환합니다. 2=2, ..., A=14
+func cardRank(c Card) int {
+	m := map[string]int{
+		"2": 2, "3": 3, "4": 4, "5": 5, "6": 6,
+		"7": 7, "8": 8, "9": 9, "10": 10,
+		"J": 11, "Q": 12, "K": 13, "A": 14,
+	}
+	if v, ok := m[c.Value]; ok {
+		return v
+	}
+	return 0
+}
+
+// suitRank는 문양 순위 (동점 시 비교용). ♣<♦<♥<♠
+func suitRank(c Card) int {
+	m := map[string]int{"♣": 1, "♦": 2, "♥": 3, "♠": 4}
+	if v, ok := m[c.Suit]; ok {
+		return v
+	}
+	return 0
+}
+
+// EvaluateHand는 7장 카드에서 최고 5장 족보 점수를 반환합니다.
+// 점수: (족보등급 << 20) | (타이브레이크 값들)
+// 족보: 로티플(10) > 스트레이트플러시(9) > 포카드(8) > 풀하우스(7) > 플러시(6) > 스트레이트(5) > 트리플(4) > 투페어(3) > 원페어(2) > 하이카드(1)
+func EvaluateHand(cards []Card) int64 {
+	if len(cards) < 5 {
+		return 0
+	}
+	best := int64(0)
+	indices := make([]int, 5)
+	var comb func(start, depth int)
+	comb = func(start, depth int) {
+		if depth == 5 {
+			five := make([]Card, 5)
+			for i, idx := range indices {
+				five[i] = cards[idx]
+			}
+			score := evalFive(five)
+			if score > best {
+				best = score
+			}
+			return
+		}
+		for i := start; i <= len(cards)-5+depth; i++ {
+			indices[depth] = i
+			comb(i+1, depth+1)
+		}
+	}
+	comb(0, 0)
+	return best
+}
+
+func evalFive(cards []Card) int64 {
+	ranks := make([]int, 5)
+	suits := make([]int, 5)
+	for i, c := range cards {
+		ranks[i] = cardRank(c)
+		suits[i] = suitRank(c)
+	}
+	sort.Slice(cards, func(i, j int) bool {
+		ri, rj := cardRank(cards[i]), cardRank(cards[j])
+		if ri != rj {
+			return ri > rj
+		}
+		return suitRank(cards[i]) > suitRank(cards[j])
+	})
+	rankCounts := make(map[int]int)
+	for _, r := range ranks {
+		rankCounts[r]++
+	}
+	sortedRanks := make([]int, len(ranks))
+	copy(sortedRanks, ranks)
+	sort.Sort(sort.Reverse(sort.IntSlice(sortedRanks)))
+
+	flush := suits[0] == suits[1] && suits[1] == suits[2] && suits[2] == suits[3] && suits[3] == suits[4]
+	straightVal := straightValue(sortedRanks)
+
+	if flush && straightVal == 14 {
+		return (10 << 20) | int64(sortedRanks[0])
+	}
+	if flush && straightVal > 0 {
+		return (9 << 20) | int64(straightVal)
+	}
+	for r, cnt := range rankCounts {
+		if cnt == 4 {
+			kicker := 0
+			for _, v := range sortedRanks {
+				if v != r {
+					kicker = v
+					break
+				}
+			}
+			return (8 << 20) | (int64(r) << 8) | int64(kicker)
+		}
+	}
+	var trip, pair int
+	for r, cnt := range rankCounts {
+		if cnt == 3 {
+			trip = r
+		}
+		if cnt == 2 {
+			if pair == 0 || r > pair {
+				pair = r
+			}
+		}
+	}
+	if trip > 0 && pair > 0 {
+		return (7 << 20) | (int64(trip) << 8) | int64(pair)
+	}
+	if flush {
+		score := int64(6 << 20)
+		for i, r := range sortedRanks {
+			score |= int64(r) << (uint(4-i) * 4)
+		}
+		return score
+	}
+	if straightVal > 0 {
+		return (5 << 20) | int64(straightVal)
+	}
+	if trip > 0 {
+		kickers := make([]int, 0)
+		for _, r := range sortedRanks {
+			if r != trip {
+				kickers = append(kickers, r)
+			}
+		}
+		score := (4 << 20) | (int64(trip) << 12)
+		for i, k := range kickers {
+			if i < 2 {
+				score |= int64(k) << (uint(1-i) * 4)
+			}
+		}
+		return score
+	}
+	pairs := make([]int, 0)
+	for r, cnt := range rankCounts {
+		if cnt == 2 {
+			pairs = append(pairs, r)
+		}
+	}
+	sort.Sort(sort.Reverse(sort.IntSlice(pairs)))
+	if len(pairs) >= 2 {
+		kicker := 0
+		for _, r := range sortedRanks {
+			if r != pairs[0] && r != pairs[1] {
+				kicker = r
+				break
+			}
+		}
+		return (3 << 20) | (int64(pairs[0]) << 12) | (int64(pairs[1]) << 8) | int64(kicker)
+	}
+	if len(pairs) == 1 {
+		kickers := make([]int, 0)
+		for _, r := range sortedRanks {
+			if r != pairs[0] {
+				kickers = append(kickers, r)
+			}
+		}
+		score := (2 << 20) | (int64(pairs[0]) << 12)
+		for i, k := range kickers {
+			if i < 3 {
+				score |= int64(k) << (uint(2-i) * 4)
+			}
+		}
+		return score
+	}
+	score := int64(1 << 20)
+	for i, r := range sortedRanks {
+		if i < 5 {
+			score |= int64(r) << (uint(4-i) * 4)
+		}
+	}
+	return score
+}
+
+// HandRankName은 족보 점수에서 한글 족보명을 반환합니다.
+func HandRankName(score int64) string {
+	rank := int(score >> 20)
+	names := map[int]string{
+		10: "로티플", 9: "스트레이트플러시", 8: "포카드", 7: "풀하우스",
+		6: "플러시", 5: "스트레이트", 4: "트리플", 3: "투페어",
+		2: "원페어", 1: "하이카드",
+	}
+	if n, ok := names[rank]; ok {
+		return n
+	}
+	return "하이카드"
+}
+
+func straightValue(sorted []int) int {
+	unique := make([]int, 0)
+	seen := make(map[int]bool)
+	for _, r := range sorted {
+		if !seen[r] {
+			seen[r] = true
+			unique = append(unique, r)
+		}
+	}
+	sort.Sort(sort.Reverse(sort.IntSlice(unique)))
+	for i := 0; i <= len(unique)-5; i++ {
+		if unique[i]-unique[i+4] == 4 {
+			return unique[i]
+		}
+	}
+	if seen[14] && seen[2] && seen[3] && seen[4] && seen[5] {
+		return 5
+	}
+	return 0
+}
+
+// ── 쇼다운 응답 타입 (홀덤·세븐포커 공통) ─────────────────────────────────────
+
+// PokerShowdownParticipant는 쇼다운 참가자 정보입니다.
+type PokerShowdownParticipant struct {
+	UserID   string `json:"userId"`
+	HandName string `json:"handName"`
+}
+
+// PokerShowdownResultData는 poker_showdown_result 메시지의 data 필드입니다.
+type PokerShowdownResultData struct {
+	WinnerID     string                    `json:"winnerId"`
+	WinningHand  string                    `json:"winningHand"`
+	Participants []PokerShowdownParticipant `json:"participants"`
+}

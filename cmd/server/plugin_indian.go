@@ -385,7 +385,7 @@ func (g *IndianGame) endGameLocked(winnerIdx, loserIdx int) {
 func (g *IndianGame) startRoundLocked() {
 	// 덱 부족 시 재셔플
 	if len(g.deck) < 2 {
-		g.deck = newShuffledDeck()
+		g.deck = NewShuffledDeck()
 	}
 	g.cards[0] = g.deck[0]
 	g.cards[1] = g.deck[1]

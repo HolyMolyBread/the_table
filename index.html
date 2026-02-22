@@ -445,11 +445,8 @@
     #status-seconds { font-family: var(--font-mono); font-size: 32px; font-weight: 900; color: var(--accent); line-height: 1; display: block; }
     .status-unit { font-size: 11px; color: var(--text-secondary); }
     #status-timer-block.urgent #status-seconds { color: var(--error-color); animation: timerPulse 0.5s ease infinite; }
-    #ttt-timer-block.urgent #ttt-seconds,
-    #c4-timer-block.urgent #c4-seconds,
-    #indian-timer-block.urgent #indian-seconds,
-    #holdem-timer-block.urgent #holdem-seconds,
-    #sevenpoker-timer-block.urgent #sevenpoker-seconds { color: var(--danger); animation: timerPulse 0.5s ease infinite; }
+    .game-timer-block { font-size: 12px; color: var(--text-secondary); }
+    .game-timer-block.urgent .timer-num { color: var(--danger); animation: timerPulse 0.5s ease infinite; }
     @keyframes timerPulse { 0%,100%{opacity:1} 50%{opacity:0.35} }
 
     /* ── Gomoku Color info ── */
@@ -1487,9 +1484,9 @@
         <div id="tictactoe-container">
           <div id="ttt-status-bar" style="display:flex;align-items:center;gap:16px;padding:8px 16px;background:var(--bg-tertiary);border-radius:var(--radius);">
             <div id="ttt-status">상대방을 기다리는 중...</div>
-            <div id="ttt-timer-block" style="font-size:12px;color:var(--text-secondary);">
+            <div id="ttt-timer-block" class="game-timer-block">
               <span class="status-label">남은 시간</span>
-              <span id="ttt-seconds">--</span>초
+              <span id="ttt-seconds" class="timer-num">--</span>초
             </div>
           </div>
           <div id="ttt-color-info"></div>
@@ -1499,7 +1496,7 @@
         <!-- Texas Holdem container -->
         <div id="holdem-container">
           <div id="holdem-round-bar">라운드 —</div>
-          <div id="holdem-timer-block" style="font-size:12px;color:var(--text-secondary);"><span class="status-label">남은 시간</span> <span id="holdem-seconds">--</span>초</div>
+          <div id="holdem-timer-block" class="game-timer-block"><span class="status-label">남은 시간</span> <span id="holdem-seconds" class="timer-num">--</span>초</div>
           <div id="holdem-pot-bar">팟 ⭐×0</div>
           <div id="holdem-community-wrap">
             <div id="holdem-community-cards" class="holdem-cards-row"></div>
@@ -1516,7 +1513,7 @@
         <!-- Seven Poker container -->
         <div id="sevenpoker-container">
           <div id="sevenpoker-round-bar">라운드 —</div>
-          <div id="sevenpoker-timer-block" style="font-size:12px;color:var(--text-secondary);"><span class="status-label">남은 시간</span> <span id="sevenpoker-seconds">--</span>초</div>
+          <div id="sevenpoker-timer-block" class="game-timer-block"><span class="status-label">남은 시간</span> <span id="sevenpoker-seconds" class="timer-num">--</span>초</div>
           <div id="sevenpoker-pot-bar">팟 ⭐×0</div>
           <div id="sevenpoker-players-wrap">
             <div id="sevenpoker-players" class="sevenpoker-players-grid"></div>
@@ -1532,9 +1529,9 @@
           <div id="indian-round-bar">라운드 —</div>
           <div style="display:flex;align-items:center;justify-content:center;gap:12px;flex-wrap:wrap;">
             <div id="indian-status">상대방을 기다리는 중...</div>
-            <div id="indian-timer-block" style="font-size:12px;color:var(--text-secondary);">
+            <div id="indian-timer-block" class="game-timer-block">
               <span class="status-label">남은 시간</span>
-              <span id="indian-seconds">--</span>초
+              <span id="indian-seconds" class="timer-num">--</span>초
             </div>
           </div>
 
@@ -1569,9 +1566,9 @@
         <div id="connect4-container">
           <div style="display:flex;align-items:center;justify-content:center;gap:16px;flex-wrap:wrap;">
             <div id="c4-status">상대방을 기다리는 중...</div>
-            <div id="c4-timer-block" style="font-size:12px;color:var(--text-secondary);">
+            <div id="c4-timer-block" class="game-timer-block">
               <span class="status-label">남은 시간</span>
-              <span id="c4-seconds">--</span>초
+              <span id="c4-seconds" class="timer-num">--</span>초
             </div>
           </div>
           <div id="c4-color-info"></div>
@@ -2667,31 +2664,11 @@
               showBlackjackUI();
               renderBlackjackState(parsed.data);
               break;
-            case 'tictactoe_state':
-              addLog('ttt-state', raw);
-              showTicTacToeUI();
-              renderTicTacToe(parsed.data);
+            case 'tictactoe_state': case 'connect4_state': case 'indian_state': case 'holdem_state': case 'sevenpoker_state': {
+              const h = GAME_STATE_HANDLERS[parsed.type];
+              if (h) { addLog(h.logKey, raw); h.show(); h.render(parsed.data); }
               break;
-            case 'connect4_state':
-              addLog('c4-state', raw);
-              showConnect4UI();
-              renderConnect4(parsed.data);
-              break;
-            case 'indian_state':
-              addLog('indian-state', raw);
-              showIndianUI();
-              renderIndian(parsed.data);
-              break;
-            case 'holdem_state':
-              addLog('holdem-state', raw);
-              showHoldemUI();
-              renderHoldem(parsed.data);
-              break;
-            case 'sevenpoker_state':
-              addLog('sevenpoker-state', raw);
-              showSevenPokerUI();
-              renderSevenPoker(parsed.data);
-              break;
+            }
             case 'indian_showdown_result':
               addLog('indian-showdown', raw);
               showIndianShowdownOverlay(parsed.data);
@@ -2846,6 +2823,14 @@
   // ── 게임 뷰 전환 (DRY) ─────────────────────────────────────────────────────
   const GAME_VIEW_IDS = ['board-placeholder', 'gomoku-container', 'blackjack-container', 'tictactoe-container', 'connect4-container', 'indian-container', 'holdem-container', 'sevenpoker-container'];
   const PREFIX_TO_CONTAINER = { omok: 'gomoku-container', blackjack: 'blackjack-container', tictactoe: 'tictactoe-container', connect4: 'connect4-container', indian: 'indian-container', holdem: 'holdem-container', sevenpoker: 'sevenpoker-container' };
+
+  const GAME_STATE_HANDLERS = {
+    tictactoe_state:  { logKey: 'ttt-state',       show: showTicTacToeUI,  render: renderTicTacToe },
+    connect4_state:   { logKey: 'c4-state',       show: showConnect4UI,   render: renderConnect4 },
+    indian_state:     { logKey: 'indian-state',   show: showIndianUI,     render: renderIndian },
+    holdem_state:     { logKey: 'holdem-state',   show: showHoldemUI,     render: renderHoldem },
+    sevenpoker_state: { logKey: 'sevenpoker-state', show: showSevenPokerUI, render: renderSevenPoker },
+  };
 
   function switchGameView(prefix) {
     const showId = PREFIX_TO_CONTAINER[prefix] || 'board-placeholder';

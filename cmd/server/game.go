@@ -41,3 +41,11 @@ type RematchUpdateMessage struct {
 	ReadyCount int    `json:"readyCount"` // 현재 레디한 플레이어 수
 	TotalCount int    `json:"totalCount"` // 방 전체 인원 수 (다인용)
 }
+
+// TimerTickMessage는 매 초마다 방 전체에 전송되는 타이머 틱 메시지입니다.
+type TimerTickMessage struct {
+	Type      string `json:"type"`
+	RoomID    string `json:"roomId"`
+	TurnUser  string `json:"turnUser"`
+	Remaining int    `json:"remaining"` // 0 ~ turnTimeLimit
+}
