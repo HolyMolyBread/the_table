@@ -142,24 +142,81 @@ func (g *SevenPokerGame) OnLeave(client *Client) {
 	}
 	delete(g.rematchReady, client)
 
-	if g.gameStarted {
-		for i := 0; i < sevenPokerMaxPlayers; i++ {
-			if i == idx {
-				client.RecordResult("sevenpoker", "lose")
-			} else if g.players[i] != nil && g.stars[i] > 0 {
-				g.players[i].RecordResult("sevenpoker", "win")
-			}
-		}
-		msg := fmt.Sprintf("[%s]님이 퇴장했습니다. 매치 종료.", client.UserID)
-		data, _ := json.Marshal(GameResultResponse{
-			Type:    "game_result",
-			Message: msg,
-			RoomID:  g.room.ID,
-		})
-		g.room.broadcastAll(data)
+	// 슬롯 비우기
+	g.players[idx] = nil
+	g.stars[idx] = 0
+	g.playerCount--
+
+	if !g.gameStarted {
+		g.sendStateToAllLocked()
+		return
 	}
 
-	g.resetForLeaveLocked(idx)
+	// 퇴장자에게만 lose 전적 기록 (게임 진행 중이었을 때)
+	client.RecordResult("sevenpoker", "lose")
+
+	// [턴 넘김] 퇴장자가 현재 차례였다면 폴드 처리 후 턴 진행
+	if g.currentPlayerIdx == idx {
+		g.stopTurnTimerLocked()
+		g.foldedThisRound[idx] = true
+		g.actedThisPhase[idx] = true
+		g.advanceTurnLocked()
+	}
+
+	// [생존자 체크] 별 1개 이상인 플레이어 수
+	survivorCount := 0
+	for i := 0; i < sevenPokerMaxPlayers; i++ {
+		if g.players[i] != nil && g.stars[i] >= 1 {
+			survivorCount++
+		}
+	}
+
+	if survivorCount >= 2 {
+		notice, _ := json.Marshal(ServerResponse{
+			Type:    "game_notice",
+			Message: fmt.Sprintf("[%s]님이 퇴장했습니다.", client.UserID),
+			RoomID:  g.room.ID,
+		})
+		g.room.broadcastAll(notice)
+		g.sendStateToAllLocked()
+		return
+	}
+
+	// 생존자 1명 이하 → 매치 종료
+	if survivorCount == 1 {
+		for i := 0; i < sevenPokerMaxPlayers; i++ {
+			if g.players[i] != nil && g.stars[i] >= 1 {
+				g.players[i].RecordResult("sevenpoker", "win")
+				break
+			}
+		}
+	}
+	g.stopTurnTimerLocked()
+	survivors := ""
+	for i := 0; i < sevenPokerMaxPlayers; i++ {
+		if g.players[i] != nil && g.stars[i] > 0 {
+			if survivors != "" {
+				survivors += ", "
+			}
+			survivors += g.players[i].UserID
+		}
+	}
+	msg := fmt.Sprintf("[%s]님이 퇴장했습니다. 매치 종료! 생존자 [%s] 승리!", client.UserID, survivors)
+	if survivors == "" {
+		msg = fmt.Sprintf("[%s]님이 퇴장했습니다. 매치 종료.", client.UserID)
+	}
+	g.room.mu.RLock()
+	totalCount := len(g.room.clients)
+	g.room.mu.RUnlock()
+	data, _ := json.Marshal(GameResultResponse{
+		Type:           "game_result",
+		Message:        msg,
+		RoomID:         g.room.ID,
+		Data:           map[string]any{"totalCount": totalCount},
+		RematchEnabled: true,
+	})
+	g.room.broadcastAll(data)
+	g.resetForLeaveLocked()
 }
 
 // HandleAction은 game_action 메시지를 처리합니다.
@@ -721,11 +778,10 @@ func (g *SevenPokerGame) handleRematch(client *Client) {
 	}
 }
 
-func (g *SevenPokerGame) resetForLeaveLocked(leaveIdx int) {
+// resetForLeaveLocked는 매치가 인원 부족으로 종료되었을 때만 호출됩니다.
+// 방의 모든 게임 상태를 대기(waiting) 상태로 초기화합니다.
+func (g *SevenPokerGame) resetForLeaveLocked() {
 	g.stopTurnTimerLocked()
-	g.players[leaveIdx] = nil
-	g.stars[leaveIdx] = 0
-	g.playerCount--
 	g.gameStarted = false
 	g.phase = "waiting"
 	g.round = 0
