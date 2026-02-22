@@ -1289,7 +1289,8 @@
           <div class="card-join-row">
             <input type="text" class="card-code-input" id="code-input-omok"
                    maxlength="6" placeholder="코드 6자리"
-                   autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false" />
+                   autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false"
+                   onkeydown="if(event.key==='Enter') joinWithCode('omok','code-input-omok')" />
             <button class="card-btn-join-code" onclick="joinWithCode('omok','code-input-omok')">입장</button>
           </div>
         </div>
@@ -1307,7 +1308,8 @@
           <div class="card-join-row">
             <input type="text" class="card-code-input" id="code-input-connect4"
                    maxlength="6" placeholder="코드 6자리"
-                   autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false" />
+                   autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false"
+                   onkeydown="if(event.key==='Enter') joinWithCode('connect4','code-input-connect4')" />
             <button class="card-btn-join-code" onclick="joinWithCode('connect4','code-input-connect4')">입장</button>
           </div>
         </div>
@@ -1325,7 +1327,8 @@
           <div class="card-join-row">
             <input type="text" class="card-code-input" id="code-input-tictactoe"
                    maxlength="6" placeholder="코드 6자리"
-                   autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false" />
+                   autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false"
+                   onkeydown="if(event.key==='Enter') joinWithCode('tictactoe','code-input-tictactoe')" />
             <button class="card-btn-join-code" onclick="joinWithCode('tictactoe','code-input-tictactoe')">입장</button>
           </div>
         </div>
@@ -1344,7 +1347,8 @@
           <div class="card-join-row">
             <input type="text" class="card-code-input" id="code-input-blackjack"
                    maxlength="6" placeholder="코드 6자리"
-                   autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false" />
+                   autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false"
+                   onkeydown="if(event.key==='Enter') joinWithCode('blackjack','code-input-blackjack')" />
             <button class="card-btn-join-code" onclick="joinWithCode('blackjack','code-input-blackjack')">입장</button>
           </div>
         </div>
@@ -1362,7 +1366,8 @@
           <div class="card-join-row">
             <input type="text" class="card-code-input" id="code-input-holdem"
                    maxlength="6" placeholder="코드 6자리"
-                   autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false" />
+                   autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false"
+                   onkeydown="if(event.key==='Enter') joinWithCode('holdem','code-input-holdem')" />
             <button class="card-btn-join-code" onclick="joinWithCode('holdem','code-input-holdem')">입장</button>
           </div>
         </div>
@@ -1380,7 +1385,8 @@
           <div class="card-join-row">
             <input type="text" class="card-code-input" id="code-input-sevenpoker"
                    maxlength="6" placeholder="코드 6자리"
-                   autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false" />
+                   autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false"
+                   onkeydown="if(event.key==='Enter') joinWithCode('sevenpoker','code-input-sevenpoker')" />
             <button class="card-btn-join-code" onclick="joinWithCode('sevenpoker','code-input-sevenpoker')">입장</button>
           </div>
         </div>
@@ -1398,7 +1404,8 @@
           <div class="card-join-row">
             <input type="text" class="card-code-input" id="code-input-indian"
                    maxlength="6" placeholder="코드 6자리"
-                   autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false" />
+                   autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false"
+                   onkeydown="if(event.key==='Enter') joinWithCode('indian','code-input-indian')" />
             <button class="card-btn-join-code" onclick="joinWithCode('indian','code-input-indian')">입장</button>
           </div>
         </div>
@@ -1696,7 +1703,7 @@
     <div class="profile-section">
       <div class="profile-section-title">닉네임 변경</div>
       <div style="display:flex;gap:8px;align-items:center;">
-        <input class="auth-input" type="text" id="profile-new-nickname" placeholder="새 닉네임" maxlength="20" style="flex:1;" oninput="resetNicknameCheck('profile')" />
+        <input class="auth-input" type="text" id="profile-new-nickname" placeholder="새 닉네임" maxlength="20" style="flex:1;" oninput="resetNicknameCheck('profile')" onkeydown="if(event.key==='Enter') checkNicknameProfile()" />
         <button type="button" class="header-btn" onclick="checkNicknameProfile()">중복확인</button>
       </div>
       <div id="profile-nickname-status" class="profile-status-text"></div>

@@ -431,12 +431,34 @@ func (g *SevenPokerGame) resolveShowdownLocked() {
 		}
 	}
 
-	share := totalPot / len(winners)
-	remainder := totalPot % len(winners)
-	for _, idx := range winners {
-		g.stars[idx] += share
+	// 한국 세븐 포커 룰: 동점 시 7장 중 가장 높은 카드(숫자+문양)로 단독 승자 결정, 팟 독식
+	if len(winners) > 1 {
+		idxToCards := make(map[int]int)
+		for i, idx := range survivors {
+			idxToCards[idx] = i
+		}
+		singleWinner := winners[0]
+		bestRank, bestSuit := 0, 0
+		for _, idx := range winners {
+			cards := cards7[idxToCards[idx]]
+			playerBestR, playerBestS := 0, 0
+			for _, c := range cards {
+				r, s := cardRank(c), suitRank(c)
+				if r > playerBestR || (r == playerBestR && s > playerBestS) {
+					playerBestR, playerBestS = r, s
+				}
+			}
+			if playerBestR > bestRank || (playerBestR == bestRank && playerBestS > bestSuit) {
+				bestRank, bestSuit = playerBestR, playerBestS
+				singleWinner = idx
+			}
+		}
+		winners = []int{singleWinner}
 	}
-	g.potCarryOver = remainder
+
+	// 단독 승자에게 팟 전액 지급
+	winnerIdx := winners[0]
+	g.stars[winnerIdx] += totalPot
 
 	winningHandName := HandRankName(bestScore)
 	participants := make([]PokerShowdownParticipant, len(survivors))
@@ -450,24 +472,14 @@ func (g *SevenPokerGame) resolveShowdownLocked() {
 		"type":   "poker_showdown_result",
 		"roomId": g.room.ID,
 		"data": map[string]any{
-			"winnerId":     g.players[winners[0]].UserID,
+			"winnerId":     g.players[winnerIdx].UserID,
 			"winningHand":  winningHandName,
 			"participants": participants,
 		},
 	})
 	g.room.broadcastAll(showdownData)
 
-	winnerNames := ""
-	for i, idx := range winners {
-		if i > 0 {
-			winnerNames += ", "
-		}
-		winnerNames += g.players[idx].UserID
-	}
-	msg := fmt.Sprintf("🏆 [%s] 승리! 팟 ⭐×%d 분배 (나머지 %d 이월)", winnerNames, share, remainder)
-	if remainder > 0 {
-		msg = fmt.Sprintf("🏆 [%s] 동점! 팟 ⭐×%d씩 분배, 나머지 %d 다음 라운드 이월", winnerNames, share, remainder)
-	}
+	msg := fmt.Sprintf("🏆 [%s] 승리! 팟 ⭐×%d 독식!", g.players[winnerIdx].UserID, totalPot)
 	notice, _ := json.Marshal(ServerResponse{
 		Type:    "game_notice",
 		Message: msg,
@@ -499,6 +511,7 @@ func (g *SevenPokerGame) afterRoundLocked() {
 }
 
 func (g *SevenPokerGame) endMatchLocked() {
+	g.stopTurnTimerLocked()
 	for i := 0; i < sevenPokerMaxPlayers; i++ {
 		if g.players[i] == nil {
 			continue
@@ -709,6 +722,7 @@ func (g *SevenPokerGame) handleRematch(client *Client) {
 }
 
 func (g *SevenPokerGame) resetForLeaveLocked(leaveIdx int) {
+	g.stopTurnTimerLocked()
 	g.players[leaveIdx] = nil
 	g.stars[leaveIdx] = 0
 	g.playerCount--

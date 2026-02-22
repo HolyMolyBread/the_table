@@ -520,6 +520,7 @@ func (g *HoldemGame) afterRoundLocked() {
 }
 
 func (g *HoldemGame) endMatchLocked() {
+	g.stopTurnTimerLocked()
 	for i := 0; i < holdemMaxPlayers; i++ {
 		if g.players[i] == nil {
 			continue
@@ -731,6 +732,7 @@ func (g *HoldemGame) handleRematch(client *Client) {
 }
 
 func (g *HoldemGame) resetForLeaveLocked(leaveIdx int) {
+	g.stopTurnTimerLocked()
 	g.players[leaveIdx] = nil
 	g.stars[leaveIdx] = 0
 	g.playerCount--
