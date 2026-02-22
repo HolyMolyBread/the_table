@@ -770,6 +770,104 @@
     #btn-indian-giveup   { background: var(--bg-tertiary); color: var(--text-primary); border: 1px solid var(--border); }
     #btn-indian-giveup:hover:not(:disabled)   { background: var(--bg-secondary); }
 
+    /* ══ TEXAS HOLDEM ════════════════════════════════════════════════════════ */
+    #holdem-container {
+      display: none; flex-direction: column; align-items: center; gap: 12px;
+      width: 100%; max-width: 480px;
+    }
+    #holdem-round-bar {
+      font-size: 13px; font-weight: 600; color: var(--text-secondary);
+      background: var(--bg-tertiary); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 6px 16px; text-align: center;
+    }
+    #holdem-pot-bar {
+      font-size: 16px; font-weight: 700; color: var(--gold);
+      background: rgba(255,215,0,0.08); border: 1px solid rgba(255,215,0,0.3);
+      border-radius: var(--radius); padding: 8px 20px;
+    }
+    .holdem-cards-row {
+      display: flex; gap: 8px; flex-wrap: wrap; justify-content: center;
+    }
+    .holdem-card {
+      width: 44px; height: 64px;
+      background: #fff; border: 1px solid #ccc; border-radius: 6px;
+      display: flex; flex-direction: column; justify-content: space-between;
+      padding: 4px 5px; font-weight: 700; font-size: 11px;
+      box-shadow: 2px 2px 6px rgba(0,0,0,0.4);
+    }
+    .holdem-card.red-suit { color: #dc2626; }
+    .holdem-card.black-suit { color: #111; }
+    .holdem-card-top { font-size: 10px; line-height: 1; }
+    .holdem-card-suit { text-align: center; font-size: 14px; line-height: 1; }
+    .holdem-card-bot { font-size: 10px; line-height: 1; transform: rotate(180deg); align-self: flex-end; }
+    .holdem-card.hidden {
+      background: repeating-linear-gradient(-45deg, #1e3a8a 0px, #1e3a8a 4px, #2563eb 4px, #2563eb 8px);
+      border-color: #1e40af; color: transparent;
+    }
+    .holdem-players-grid {
+      display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px;
+      width: 100%;
+    }
+    .holdem-player-box {
+      background: var(--bg-tertiary); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 10px 12px;
+      display: flex; flex-direction: column; gap: 6px;
+    }
+    .holdem-player-box.my-turn { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(88,166,255,0.3); }
+    .holdem-player-box.folded { opacity: 0.6; }
+    .holdem-player-name {
+      font-size: 12px; font-weight: 600; color: var(--text-secondary);
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .holdem-player-stars { font-size: 14px; font-weight: 700; color: var(--gold); }
+    .holdem-player-status { font-size: 11px; color: var(--text-muted); }
+    .holdem-player-cards { display: flex; gap: 4px; }
+    #holdem-actions {
+      display: flex; gap: 12px; margin-top: 4px;
+    }
+    .holdem-btn {
+      padding: 10px 20px; border: none; border-radius: var(--radius);
+      font-size: 14px; font-weight: 700; cursor: pointer;
+      transition: transform 0.1s, opacity 0.15s;
+    }
+    .holdem-btn:active { transform: scale(0.96); }
+    .holdem-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+    #btn-holdem-check { background: var(--success); color: #000; }
+    #btn-holdem-check:hover:not(:disabled) { background: #4ade80; }
+    #btn-holdem-fold  { background: var(--bg-tertiary); color: var(--text-primary); border: 1px solid var(--border); }
+    #btn-holdem-fold:hover:not(:disabled)  { background: var(--danger); color: #fff; border-color: var(--danger); }
+
+    /* ══ SEVEN POKER ═════════════════════════════════════════════════════════ */
+    #sevenpoker-container {
+      display: none; flex-direction: column; align-items: center; gap: 12px;
+      width: 100%; max-width: 520px;
+    }
+    #sevenpoker-round-bar {
+      font-size: 13px; font-weight: 600; color: var(--text-secondary);
+      background: var(--bg-tertiary); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 6px 16px; text-align: center;
+    }
+    #sevenpoker-pot-bar {
+      font-size: 16px; font-weight: 700; color: var(--gold);
+      background: rgba(255,215,0,0.08); border: 1px solid rgba(255,215,0,0.3);
+      border-radius: var(--radius); padding: 8px 20px;
+    }
+    .sevenpoker-players-grid {
+      display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px;
+      width: 100%;
+    }
+    .sevenpoker-player-box {
+      background: var(--bg-tertiary); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 10px 12px;
+      display: flex; flex-direction: column; gap: 6px;
+    }
+    .sevenpoker-player-box.my-turn { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(88,166,255,0.3); }
+    .sevenpoker-player-box.folded { opacity: 0.6; }
+    .sevenpoker-player-name { font-size: 12px; font-weight: 600; color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .sevenpoker-player-stars { font-size: 14px; font-weight: 700; color: var(--gold); }
+    .sevenpoker-player-status { font-size: 11px; color: var(--text-muted); }
+    .sevenpoker-player-cards { display: flex; gap: 4px; flex-wrap: wrap; }
+
     /* ══ DEBUG PANEL (slide-in from right) ══════════════════════════════════ */
     #debug-backdrop {
       display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 500;
@@ -980,7 +1078,16 @@
         overflow-y: auto;
       }
       #game-area-content {
+        justify-content: flex-start !important;
         padding: 10px 6px;
+        padding-bottom: 40px !important;
+      }
+
+      /* ── 게임 컨테이너: 압착 방지 및 유연한 중앙 정렬 ── */
+      #gomoku-container, #blackjack-container, #tictactoe-container, #connect4-container, #indian-container, #holdem-container, #sevenpoker-container {
+        flex-shrink: 0;
+        margin: auto 0;
+        width: 100%;
       }
 
       /* ── 채팅 패널: 하단 고정, 높이 제한 ── */
@@ -1073,6 +1180,14 @@
         <div class="record-popup-row">
           <span class="record-game-label">🃏 인디언 포커</span>
           <span id="record-indian" class="record-val">0승 0패 0무</span>
+        </div>
+        <div class="record-popup-row">
+          <span class="record-game-label">♠️ 텍사스 홀덤</span>
+          <span id="record-holdem" class="record-val">0승 0패 0무</span>
+        </div>
+        <div class="record-popup-row">
+          <span class="record-game-label">🃏 세븐 포커</span>
+          <span id="record-sevenpoker" class="record-val">0승 0패 0무</span>
         </div>
       </div>
     </div>
@@ -1196,6 +1311,26 @@
         </div>
       </div>
       <!-- 게임 순서 변경 시 이 블록을 이동하세요 -->
+      <!-- 텍사스 홀덤 -->
+      <div class="game-card">
+        <div class="card-icon">♠️</div>
+        <div class="card-title">텍사스 홀덤</div>
+        <div class="card-desc">별 10개로 시작! 체크(⭐ -1) 또는 폴드. 커뮤니티 카드 5장으로 족보 대결, 절반 파산 시 생존자 승리!</div>
+        <div class="card-badge pvp">PVP</div>
+        <div class="card-actions-bottom">
+          <div class="card-top-actions">
+            <button class="card-btn-rule"   onclick="showRules('holdem')">📖 룰</button>
+            <button class="card-btn-create" onclick="createRoom('holdem')">➕ 방 만들기</button>
+          </div>
+          <div class="card-join-row">
+            <input type="text" class="card-code-input" id="code-input-holdem"
+                   maxlength="6" placeholder="코드 6자리"
+                   autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false" />
+            <button class="card-btn-join-code" onclick="joinWithCode('holdem','code-input-holdem')">입장</button>
+          </div>
+        </div>
+      </div>
+      <!-- 게임 순서 변경 시 이 블록을 이동하세요 -->
       <!-- 인디언 포커 -->
       <div class="game-card">
         <div class="card-icon">🃏</div>
@@ -1212,6 +1347,26 @@
                    maxlength="6" placeholder="코드 6자리"
                    autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false" />
             <button class="card-btn-join-code" onclick="joinWithCode('indian','code-input-indian')">입장</button>
+          </div>
+        </div>
+      </div>
+      <!-- 게임 순서 변경 시 이 블록을 이동하세요 -->
+      <!-- 세븐 포커 -->
+      <div class="game-card">
+        <div class="card-icon">🃏</div>
+        <div class="card-title">세븐 포커</div>
+        <div class="card-desc">3~7구 분배! 각자 7장, 히든 카드가 있는 별 서바이벌. 체크(⭐ -1) 또는 폴드로 승부!</div>
+        <div class="card-badge pvp">PVP</div>
+        <div class="card-actions-bottom">
+          <div class="card-top-actions">
+            <button class="card-btn-rule"   onclick="showRules('sevenpoker')">📖 룰</button>
+            <button class="card-btn-create" onclick="createRoom('sevenpoker')">➕ 방 만들기</button>
+          </div>
+          <div class="card-join-row">
+            <input type="text" class="card-code-input" id="code-input-sevenpoker"
+                   maxlength="6" placeholder="코드 6자리"
+                   autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false" />
+            <button class="card-btn-join-code" onclick="joinWithCode('sevenpoker','code-input-sevenpoker')">입장</button>
           </div>
         </div>
       </div>
@@ -1322,6 +1477,35 @@
           </div>
           <div id="ttt-color-info"></div>
           <div id="ttt-board"></div>
+        </div>
+
+        <!-- Texas Holdem container -->
+        <div id="holdem-container">
+          <div id="holdem-round-bar">라운드 —</div>
+          <div id="holdem-pot-bar">팟 ⭐×0</div>
+          <div id="holdem-community-wrap">
+            <div id="holdem-community-cards" class="holdem-cards-row"></div>
+          </div>
+          <div id="holdem-players-wrap">
+            <div id="holdem-players" class="holdem-players-grid"></div>
+          </div>
+          <div id="holdem-actions">
+            <button id="btn-holdem-check" class="holdem-btn" onclick="holdemCheck()" disabled>✅ 체크 (⭐ -1)</button>
+            <button id="btn-holdem-fold"  class="holdem-btn" onclick="holdemFold()"  disabled>🏳️ 폴드</button>
+          </div>
+        </div>
+
+        <!-- Seven Poker container -->
+        <div id="sevenpoker-container">
+          <div id="sevenpoker-round-bar">라운드 —</div>
+          <div id="sevenpoker-pot-bar">팟 ⭐×0</div>
+          <div id="sevenpoker-players-wrap">
+            <div id="sevenpoker-players" class="sevenpoker-players-grid"></div>
+          </div>
+          <div id="sevenpoker-actions">
+            <button id="btn-sevenpoker-check" class="holdem-btn" onclick="sevenpokerCheck()" disabled>✅ 체크 (⭐ -1)</button>
+            <button id="btn-sevenpoker-fold"  class="holdem-btn" onclick="sevenpokerFold()"  disabled>🏳️ 폴드</button>
+          </div>
         </div>
 
         <!-- Indian Poker container -->
@@ -1818,6 +2002,8 @@
       document.getElementById('tictactoe-container').style.display = 'none';
       document.getElementById('connect4-container').style.display  = 'none';
       document.getElementById('indian-container').style.display    = 'none';
+      document.getElementById('holdem-container').style.display    = 'none';
+      document.getElementById('sevenpoker-container').style.display = 'none';
       document.getElementById('board-placeholder').style.display   = 'flex';
       // Reset rematch UI
       document.getElementById('rematch-area').classList.remove('visible');
@@ -1839,6 +2025,8 @@
     if (records.tictactoe)  document.getElementById('record-tictactoe').textContent = fmt(records.tictactoe);
     if (records.connect4)   document.getElementById('record-connect4').textContent   = fmt(records.connect4);
     if (records.indian)     document.getElementById('record-indian').textContent     = fmt(records.indian);
+    if (records.holdem)     document.getElementById('record-holdem').textContent     = fmt(records.holdem);
+    if (records.sevenpoker) document.getElementById('record-sevenpoker').textContent = fmt(records.sevenpoker);
   }
 
   /** 채팅창 접기/펼치기 토글 */
@@ -1964,6 +2152,8 @@
                  : currentRoomId.startsWith('tictactoe') ? 'tictactoe'
                  : currentRoomId.startsWith('connect4')  ? 'connect4'
                  : currentRoomId.startsWith('indian')   ? 'indian'
+                 : currentRoomId.startsWith('holdem')   ? 'holdem'
+                 : currentRoomId.startsWith('sevenpoker') ? 'sevenpoker'
                  : null;
     if (prefix) showRules(prefix);
   }
@@ -2091,6 +2281,70 @@
         <h3>최종 전적 기록</h3>
         <ul>
           <li>누군가의 하트가 0이 되어 매치가 완전히 종료되면, 최종 생존자에게 <strong>1승</strong>, 탈락자에게 <strong>1패</strong>가 서버 전적에 기록됩니다.</li>
+        </ul>`
+    },
+    sevenpoker: {
+      title: '🃏 세븐 포커 룰',
+      html: `
+        <h3>게임 개요</h3>
+        <ul>
+          <li>최대 4인, 각 플레이어는 <strong>별(⭐)×10개</strong>로 시작합니다.</li>
+          <li>커뮤니티 카드 없이 <strong>각자 7장</strong>을 받는 3~7구 분배 방식입니다.</li>
+        </ul>
+        <h3>카드 분배 (3~7구)</h3>
+        <ul>
+          <li><strong>3구</strong>: 3장 분배 (1~2번째 카드 히든, 3번째 공개)</li>
+          <li><strong>4구</strong>: 4번째 카드 공개</li>
+          <li><strong>5구</strong>: 5번째 카드 공개</li>
+          <li><strong>6구</strong>: 6번째 카드 공개</li>
+          <li><strong>7구</strong>: 7번째 카드 히든 (쇼다운 전까지 비공개)</li>
+        </ul>
+        <h3>액션</h3>
+        <ul>
+          <li>✅ <strong>체크</strong>: 팟에 별 1개 지불 (별 0개면 무료 체크)</li>
+          <li>🏳️ <strong>폴드</strong>: 이번 라운드 포기</li>
+        </ul>
+        <h3>쇼다운 및 족보</h3>
+        <ul>
+          <li>7장 중 베스트 5장 족보로 승부. 로티플~하이카드 순.</li>
+          <li>동점 시 팟 분할, 나머지는 다음 라운드 이월.</li>
+        </ul>
+        <h3>매치 종료</h3>
+        <ul>
+          <li>파산자(별 0개) ≥ 전체 유저 수/2 이면 매치 종료.</li>
+          <li>생존자 → 1승, 파산자 → 1패 전적 기록.</li>
+        </ul>`
+    },
+    holdem: {
+      title: '♠️ 텍사스 홀덤 룰',
+      html: `
+        <h3>게임 개요</h3>
+        <ul>
+          <li>최대 4인, 각 플레이어는 <strong>별(⭐)×10개</strong>로 시작합니다.</li>
+          <li>전통적인 칩 베팅(레이즈/올인) 없이, 캐주얼한 <strong>별 서바이벌 룰</strong>을 적용합니다.</li>
+        </ul>
+        <h3>페이즈</h3>
+        <ul>
+          <li><strong>프리플랍</strong>: 개인 카드 2장 배분 → 체크/폴드</li>
+          <li><strong>플랍</strong>: 커뮤니티 카드 3장 공개 → 체크/폴드</li>
+          <li><strong>턴</strong>: 커뮤니티 카드 +1장 → 체크/폴드</li>
+          <li><strong>리버</strong>: 커뮤니티 카드 +1장 → 체크/폴드</li>
+          <li><strong>쇼다운</strong>: 생존자들의 7장(개인 2장+공유 5장)으로 족보 판정, 최고 족보가 팟 획득</li>
+        </ul>
+        <h3>액션</h3>
+        <ul>
+          <li>✅ <strong>체크</strong>: 팟에 별 1개 지불하고 다음 페이즈 진행. (별 0개면 무료 체크)</li>
+          <li>🏳️ <strong>폴드</strong>: 이번 라운드 포기. (이미 낸 별은 돌려받지 못함)</li>
+        </ul>
+        <h3>쇼다운 및 족보</h3>
+        <ul>
+          <li>로티플 > 스트레이트플러시 > 포카드 > 풀하우스 > 플러시 > 스트레이트 > 트리플 > 투페어 > 원페어 > 하이카드</li>
+          <li>동점 시 팟을 n등분, 나머지는 다음 라운드로 이월</li>
+        </ul>
+        <h3>매치 종료</h3>
+        <ul>
+          <li><strong>파산자 수 ≥ ceil(전체 유저 수 / 2)</strong>이면 매치 종료.</li>
+          <li>생존자(별 보유) → <strong>1승</strong>, 파산자 → <strong>1패</strong> 전적 기록.</li>
         </ul>`
     },
     connect4: {
@@ -2312,6 +2566,16 @@
               showIndianUI();
               renderIndian(parsed.data);
               break;
+            case 'holdem_state':
+              addLog('holdem-state', raw);
+              showHoldemUI();
+              renderHoldem(parsed.data);
+              break;
+            case 'sevenpoker_state':
+              addLog('sevenpoker-state', raw);
+              showSevenPokerUI();
+              renderSevenPoker(parsed.data);
+              break;
             case 'indian_showdown_result':
               addLog('indian-showdown', raw);
               showIndianShowdownOverlay(parsed.data);
@@ -2460,8 +2724,8 @@
   }
 
   // ── 게임 뷰 전환 (DRY) ─────────────────────────────────────────────────────
-  const GAME_VIEW_IDS = ['board-placeholder', 'gomoku-container', 'blackjack-container', 'tictactoe-container', 'connect4-container', 'indian-container'];
-  const PREFIX_TO_CONTAINER = { omok: 'gomoku-container', blackjack: 'blackjack-container', tictactoe: 'tictactoe-container', connect4: 'connect4-container', indian: 'indian-container' };
+  const GAME_VIEW_IDS = ['board-placeholder', 'gomoku-container', 'blackjack-container', 'tictactoe-container', 'connect4-container', 'indian-container', 'holdem-container', 'sevenpoker-container'];
+  const PREFIX_TO_CONTAINER = { omok: 'gomoku-container', blackjack: 'blackjack-container', tictactoe: 'tictactoe-container', connect4: 'connect4-container', indian: 'indian-container', holdem: 'holdem-container', sevenpoker: 'sevenpoker-container' };
 
   function switchGameView(prefix) {
     const showId = PREFIX_TO_CONTAINER[prefix] || 'board-placeholder';
@@ -2942,6 +3206,117 @@
   function indianGiveUp() {
     if (!ws || ws.readyState !== WebSocket.OPEN) return;
     sendRaw(JSON.stringify({ action: 'game_action', payload: { cmd: 'give_up' } }));
+  }
+
+  // ── Texas Holdem UI ───────────────────────────────────────────────────────
+
+  function showHoldemUI() {
+    switchGameView('holdem');
+  }
+
+  function renderHoldemCard(card) {
+    if (!card || card.hidden) {
+      return `<div class="holdem-card hidden">🃏</div>`;
+    }
+    const isRed = card.suit === '♥' || card.suit === '♦';
+    return `<div class="holdem-card ${isRed ? 'red-suit' : 'black-suit'}">
+      <span class="holdem-card-top">${card.value}</span>
+      <span class="holdem-card-suit">${card.suit}</span>
+      <span class="holdem-card-bot">${card.value}</span>
+    </div>`;
+  }
+
+  function renderHoldem(data) {
+    if (!data) return;
+
+    const isMyTurn = data.currentTurn === currentUserId;
+    const isPlayer = data.players && data.players.some(p => p.userId === currentUserId);
+
+    document.getElementById('holdem-round-bar').textContent = `라운드 ${data.round || 0}`;
+    document.getElementById('holdem-pot-bar').textContent = `팟 ⭐×${data.pot || 0}`;
+
+    const communityEl = document.getElementById('holdem-community-cards');
+    if (communityEl && data.communityCards) {
+      communityEl.innerHTML = data.communityCards.map(c => renderHoldemCard(c)).join('');
+    }
+
+    const playersEl = document.getElementById('holdem-players');
+    if (playersEl && data.players) {
+      playersEl.innerHTML = data.players.map(p => {
+        const isMe = p.userId === currentUserId;
+        const isTurn = p.userId === data.currentTurn;
+        const folded = p.status === 'fold';
+        const cardsHtml = (p.cards || []).map(c => renderHoldemCard(c)).join('');
+        return `
+          <div class="holdem-player-box ${isTurn ? 'my-turn' : ''} ${folded ? 'folded' : ''}">
+            <div class="holdem-player-name">${escapeHTML(p.userId)}${isMe ? ' (나)' : ''}</div>
+            <div class="holdem-player-stars">⭐×${p.stars}</div>
+            <div class="holdem-player-status">${folded ? '🏳️ 폴드' : p.status === 'check' ? '✅ 체크' : ''}</div>
+            <div class="holdem-player-cards">${cardsHtml}</div>
+          </div>`;
+      }).join('');
+    }
+
+    const canAct = isMyTurn && isPlayer && data.phase !== 'waiting' && data.phase !== 'showdown';
+    document.getElementById('btn-holdem-check').disabled = !canAct;
+    document.getElementById('btn-holdem-fold').disabled = !canAct;
+  }
+
+  function holdemCheck() {
+    if (!ws || ws.readyState !== WebSocket.OPEN) return;
+    sendRaw(JSON.stringify({ action: 'game_action', payload: { cmd: 'check' } }));
+  }
+
+  function holdemFold() {
+    if (!ws || ws.readyState !== WebSocket.OPEN) return;
+    sendRaw(JSON.stringify({ action: 'game_action', payload: { cmd: 'fold' } }));
+  }
+
+  // ── Seven Poker UI ────────────────────────────────────────────────────────
+
+  function showSevenPokerUI() {
+    switchGameView('sevenpoker');
+  }
+
+  function renderSevenPoker(data) {
+    if (!data) return;
+
+    const isMyTurn = data.currentTurn === currentUserId;
+    const isPlayer = data.players && data.players.some(p => p.userId === currentUserId);
+
+    document.getElementById('sevenpoker-round-bar').textContent = `라운드 ${data.round || 0}`;
+    document.getElementById('sevenpoker-pot-bar').textContent = `팟 ⭐×${data.pot || 0}`;
+
+    const playersEl = document.getElementById('sevenpoker-players');
+    if (playersEl && data.players) {
+      playersEl.innerHTML = data.players.map(p => {
+        const isMe = p.userId === currentUserId;
+        const isTurn = p.userId === data.currentTurn;
+        const folded = p.status === 'fold';
+        const cardsHtml = (p.cards || []).map(c => renderHoldemCard(c)).join('');
+        return `
+          <div class="sevenpoker-player-box ${isTurn ? 'my-turn' : ''} ${folded ? 'folded' : ''}">
+            <div class="sevenpoker-player-name">${escapeHTML(p.userId)}${isMe ? ' (나)' : ''}</div>
+            <div class="sevenpoker-player-stars">⭐×${p.stars}</div>
+            <div class="sevenpoker-player-status">${folded ? '🏳️ 폴드' : p.status === 'check' ? '✅ 체크' : ''}</div>
+            <div class="sevenpoker-player-cards">${cardsHtml}</div>
+          </div>`;
+      }).join('');
+    }
+
+    const canAct = isMyTurn && isPlayer && data.phase !== 'waiting' && data.phase !== 'showdown';
+    document.getElementById('btn-sevenpoker-check').disabled = !canAct;
+    document.getElementById('btn-sevenpoker-fold').disabled = !canAct;
+  }
+
+  function sevenpokerCheck() {
+    if (!ws || ws.readyState !== WebSocket.OPEN) return;
+    sendRaw(JSON.stringify({ action: 'game_action', payload: { cmd: 'check' } }));
+  }
+
+  function sevenpokerFold() {
+    if (!ws || ws.readyState !== WebSocket.OPEN) return;
+    sendRaw(JSON.stringify({ action: 'game_action', payload: { cmd: 'fold' } }));
   }
 
   /** 인디언 포커 승부 결과 오버레이 — 4초간 표시 후 자동 닫힘 */

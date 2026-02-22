@@ -74,6 +74,10 @@ func newRoom(id string) *Room {
 		room.Plugin = NewConnect4Game(room)
 	case strings.HasPrefix(id, "indian"):
 		room.Plugin = NewIndianGame(room)
+	case strings.HasPrefix(id, "holdem"):
+		room.Plugin = NewHoldemGame(room)
+	case strings.HasPrefix(id, "sevenpoker"):
+		room.Plugin = NewSevenPokerGame(room)
 	default:
 		// nil — 게임 플러그인 없는 순수 채팅방
 	}
