@@ -443,8 +443,18 @@
     #status-seconds { font-family: var(--font-mono); font-size: 32px; font-weight: 900; color: var(--accent); line-height: 1; display: block; }
     .status-unit { font-size: 11px; color: var(--text-secondary); }
     #status-timer-block.urgent #status-seconds { color: var(--error-color); animation: timerPulse 0.5s ease infinite; }
-    .game-timer-block { font-size: 12px; color: var(--text-secondary); }
-    .game-timer-block.urgent .timer-num { color: var(--danger); animation: timerPulse 0.5s ease infinite; }
+    .game-timer-block {
+      display: flex; align-items: center; justify-content: center; gap: 4px;
+      font-size: 12px; color: var(--text-secondary);
+    }
+    .game-timer-block .timer-num {
+      font-family: var(--font-mono); font-size: 26px; font-weight: 900;
+      color: var(--accent); line-height: 1; padding-bottom: 2px;
+    }
+    .game-timer-block.urgent .timer-num {
+      color: var(--danger);
+      animation: timerPulse 0.5s ease infinite;
+    }
     @keyframes timerPulse { 0%,100%{opacity:1} 50%{opacity:0.35} }
 
     /* ── Gomoku Color info ── */
@@ -3460,12 +3470,16 @@
     switchGameView('indian');
   }
 
-  /** 하트 바 HTML 생성 (최대 10칸, 초과분은 숫자로 표시) */
+  /** 하트 바 HTML 생성 (기본 10칸, 10개 초과 시 최대 20개까지 아이콘 확장) */
   function renderHeartsBar(count) {
-    const MAX_ICONS = 10;
+    const MAX_ICONS = 20; // 아이콘으로 표시할 최대 개수
+    const displayMax = Math.max(10, count); // 기본 10칸 유지, 넘으면 그만큼 슬롯 확장
+
     let html = '';
     const iconCount = Math.min(count, MAX_ICONS);
-    for (let i = 0; i < MAX_ICONS; i++) {
+    const totalSlots = Math.min(displayMax, MAX_ICONS);
+
+    for (let i = 0; i < totalSlots; i++) {
       html += `<span class="indian-heart${i >= iconCount ? ' lost' : ''}">❤️</span>`;
     }
     if (count > MAX_ICONS) {
@@ -3725,7 +3739,10 @@
         const isMe = p.userId === currentUserId;
         const isTurn = p.userId === data.currentTurn;
         const folded = p.status === 'fold';
-        const cardsHtml = (p.cards || []).map(c => renderHoldemCard(c)).join('');
+        const cardsHtml = (p.cards || []).map(c => {
+          const displayCard = isMe ? { ...c, hidden: false } : c;
+          return renderHoldemCard(displayCard);
+        }).join('');
         return `
           <div class="sevenpoker-player-box ${isTurn ? 'my-turn' : ''} ${folded ? 'folded' : ''}">
             <div class="sevenpoker-player-name">${escapeHTML(p.userId)}${isMe ? ' (나)' : ''}</div>
