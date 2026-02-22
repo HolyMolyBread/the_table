@@ -119,34 +119,32 @@ func (g *Connect4Game) OnLeave(client *Client) {
 		}
 	}
 	if playerIdx == -1 {
-		return // 관전자 또는 미등록 (처리 불필요)
+		return
 	}
 
 	if g.gameStarted {
-		winner := g.players[1-playerIdx]
-		loser := client
-		if winner != nil {
-			winner.RecordResult("connect4", "win")
+		g.players[playerIdx] = nil
+		g.stopTurnTimerLocked()
+		g.currentTurn = 1 - playerIdx
+		playerIds := make([]string, 0)
+		if g.players[g.currentTurn] != nil {
+			playerIds = append(playerIds, g.players[g.currentTurn].UserID)
 		}
-		loser.RecordResult("connect4", "lose")
+		pausedMsg, _ := json.Marshal(struct {
+			Type      string   `json:"type"`
+			RoomID    string   `json:"roomId"`
+			PlayerIds []string `json:"playerIds"`
+		}{"game_paused", g.room.ID, playerIds})
+		g.room.broadcastAll(pausedMsg)
+		log.Printf("[CONNECT4] room:[%s] [%s] 퇴장 — 난입 대기", g.room.ID, client.UserID)
+		return
+	}
 
-		msg := fmt.Sprintf("[%s]님이 퇴장했습니다. [%s]의 몰수승!", loser.UserID, winner.UserID)
-		data, _ := json.Marshal(GameResultResponse{
-			Type:    "game_result",
-			Message: msg,
-			RoomID:  g.room.ID,
-		})
-		g.room.broadcastAll(data)
-		log.Printf("[CONNECT4] room:[%s] 몰수승: winner=[%s] loser=[%s]",
-			g.room.ID, winner.UserID, loser.UserID)
-	} else if g.players[0] != nil && g.players[1] != nil {
+	if g.players[0] != nil && g.players[1] != nil {
 		g.rematchReady = [2]bool{}
 		g.startReady = [2]bool{}
 	}
-
 	g.resetLocked()
-
-	// 방 전체에 해산 알림 (error 타입 → 클라이언트 자동 로비 이동)
 	dissolveMsg, _ := json.Marshal(ServerResponse{
 		Type:    "error",
 		Message: "플레이어가 퇴장하여 방이 해산됩니다.",
@@ -174,6 +172,8 @@ func (g *Connect4Game) HandleAction(client *Client, action string, payload json.
 		g.handleReady(client)
 	case "rematch":
 		g.handleRematch(client)
+	case "takeover":
+		g.handleTakeover(client)
 	default:
 		client.SendJSON(ServerResponse{
 			Type:    "error",
@@ -538,4 +538,42 @@ func (g *Connect4Game) handleRematch(client *Client) {
 	g.startTurnTimerLocked()
 	log.Printf("[CONNECT4] room:[%s] 리매치: 빨강=[%s] 노랑=[%s]",
 		g.room.ID, g.players[0].UserID, g.players[1].UserID)
+}
+
+func (g *Connect4Game) handleTakeover(client *Client) {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+
+	if !g.gameStarted {
+		client.SendJSON(ServerResponse{Type: "error", Message: "게임이 일시정지 상태가 아닙니다."})
+		return
+	}
+	for i := range g.players {
+		if g.players[i] == client {
+			client.SendJSON(ServerResponse{Type: "error", Message: "이미 플레이어입니다."})
+			return
+		}
+	}
+	emptySlot := -1
+	for i := range g.players {
+		if g.players[i] == nil {
+			emptySlot = i
+			break
+		}
+	}
+	if emptySlot < 0 {
+		client.SendJSON(ServerResponse{Type: "error", Message: "난입할 빈자리가 없습니다."})
+		return
+	}
+
+	g.players[emptySlot] = client
+	notice, _ := json.Marshal(ServerResponse{
+		Type:    "game_notice",
+		Message: fmt.Sprintf("🪑 [%s]님이 난입했습니다!", client.UserID),
+		RoomID:  g.room.ID,
+	})
+	g.room.broadcastAll(notice)
+	g.broadcastStateLocked()
+	g.startTurnTimerLocked()
+	log.Printf("[CONNECT4] room:[%s] [%s] 난입 (슬롯 %d)", g.room.ID, client.UserID, emptySlot)
 }

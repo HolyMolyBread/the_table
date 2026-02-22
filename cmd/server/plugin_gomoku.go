@@ -127,7 +127,6 @@ func (g *GomokuGame) OnLeave(client *Client) {
 	g.mu.Lock()
 	defer g.mu.Unlock()
 
-	// 등록된 플레이어인지 확인
 	playerIdx := -1
 	for i, p := range g.players {
 		if p == client {
@@ -136,38 +135,32 @@ func (g *GomokuGame) OnLeave(client *Client) {
 		}
 	}
 	if playerIdx == -1 {
-		return // 관전자 또는 미등록 (처리 불필요)
+		return
 	}
 
 	if g.gameStarted {
-		// 게임 진행 중 퇴장 → 몰수패
-		winner := g.players[1-playerIdx]
-		loser := client
-		if winner != nil {
-			winner.RecordResult("omok", "win")
+		g.players[playerIdx] = nil
+		g.stopTurnTimerLocked()
+		g.currentTurn = 1 - playerIdx
+		playerIds := make([]string, 0)
+		if g.players[g.currentTurn] != nil {
+			playerIds = append(playerIds, g.players[g.currentTurn].UserID)
 		}
-		loser.RecordResult("omok", "lose")
+		pausedMsg, _ := json.Marshal(struct {
+			Type      string   `json:"type"`
+			RoomID    string   `json:"roomId"`
+			PlayerIds []string `json:"playerIds"`
+		}{"game_paused", g.room.ID, playerIds})
+		g.room.broadcastAll(pausedMsg)
+		log.Printf("[GOMOKU] room:[%s] [%s] 퇴장 — 난입 대기", g.room.ID, client.UserID)
+		return
+	}
 
-		msg := fmt.Sprintf("[%s]님이 퇴장했습니다. [%s]의 몰수승!",
-			loser.UserID, winner.UserID)
-		data, _ := json.Marshal(GameResultResponse{
-			Type:    "game_result",
-			Message: msg,
-			RoomID:  g.room.ID,
-		})
-		g.room.broadcastAll(data)
-		log.Printf("[GOMOKU] room:[%s] 몰수승: winner=[%s] loser=[%s]",
-			g.room.ID, winner.UserID, loser.UserID)
-	} else if g.players[0] != nil && g.players[1] != nil {
-		// 리매치 대기 중 퇴장
+	if g.players[0] != nil && g.players[1] != nil {
 		g.rematchReady = [2]bool{}
 		g.startReady = [2]bool{}
 	}
-
-	// 퇴장 시 항상 전체 초기화 (players 포함)
 	g.resetLocked()
-
-	// 관전자 포함 방 전체에 해산 알림 (error 타입 → 클라이언트 자동 로비 이동)
 	dissolveMsg, _ := json.Marshal(ServerResponse{
 		Type:    "error",
 		Message: "플레이어가 퇴장하여 방이 해산됩니다.",
@@ -196,6 +189,8 @@ func (g *GomokuGame) HandleAction(client *Client, action string, payload json.Ra
 		g.handleReady(client)
 	case "rematch":
 		g.handleRematch(client)
+	case "takeover":
+		g.handleTakeover(client)
 	default:
 		client.SendJSON(ServerResponse{
 			Type:    "error",
@@ -686,4 +681,42 @@ func (g *GomokuGame) handleRematch(client *Client) {
 	g.startTurnTimerLocked()
 	log.Printf("[GOMOKU] room:[%s] 리매치: 흑=[%s] 백=[%s]",
 		g.room.ID, g.players[0].UserID, g.players[1].UserID)
+}
+
+func (g *GomokuGame) handleTakeover(client *Client) {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+
+	if !g.gameStarted {
+		client.SendJSON(ServerResponse{Type: "error", Message: "게임이 일시정지 상태가 아닙니다."})
+		return
+	}
+	for i := range g.players {
+		if g.players[i] == client {
+			client.SendJSON(ServerResponse{Type: "error", Message: "이미 플레이어입니다."})
+			return
+		}
+	}
+	emptySlot := -1
+	for i := range g.players {
+		if g.players[i] == nil {
+			emptySlot = i
+			break
+		}
+	}
+	if emptySlot < 0 {
+		client.SendJSON(ServerResponse{Type: "error", Message: "난입할 빈자리가 없습니다."})
+		return
+	}
+
+	g.players[emptySlot] = client
+	notice, _ := json.Marshal(ServerResponse{
+		Type:    "game_notice",
+		Message: fmt.Sprintf("🪑 [%s]님이 난입했습니다!", client.UserID),
+		RoomID:  g.room.ID,
+	})
+	g.room.broadcastAll(notice)
+	g.broadcastBoardLocked()
+	g.startTurnTimerLocked()
+	log.Printf("[GOMOKU] room:[%s] [%s] 난입 (슬롯 %d)", g.room.ID, client.UserID, emptySlot)
 }

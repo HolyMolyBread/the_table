@@ -64,6 +64,7 @@ type IndianData struct {
 	Round          int    `json:"round"`          // 현재 라운드 번호
 	MyName         string `json:"myName"`         // 본인 유저 ID
 	OpponentName   string `json:"opponentName"`   // 상대 유저 ID
+	CanTakeover    bool   `json:"canTakeover,omitempty"`
 }
 
 // ── IndianGame 플러그인 ───────────────────────────────────────────────────────
@@ -209,6 +210,8 @@ func (g *IndianGame) HandleAction(client *Client, action string, payload json.Ra
 		g.handleReady(client)
 	case "rematch":
 		g.handleRematch(client)
+	case "takeover":
+		g.handleTakeover(client)
 	default:
 		client.SendJSON(ServerResponse{
 			Type:    "error",
@@ -513,6 +516,31 @@ func (g *IndianGame) sendStateToPlayerLocked(playerIdx int) {
 // 관전자는 players[0]의 관점을 기준으로 표시됩니다.
 // g.mu 보유 상태에서 호출합니다.
 func (g *IndianGame) sendStateToSpectatorLocked(client *Client) {
+	canTakeover := !g.gameStarted && (g.players[0] == nil || g.players[1] == nil)
+	if canTakeover {
+		turn := ""
+		if g.players[g.currentTurn] != nil {
+			turn = g.players[g.currentTurn].UserID
+		}
+		myName, oppName := "", ""
+		if g.players[0] != nil {
+			myName = g.players[0].UserID
+		}
+		if g.players[1] != nil {
+			oppName = g.players[1].UserID
+		}
+		data := IndianData{
+			Phase:       g.phase,
+			Round:       g.round,
+			Turn:        turn,
+			MyName:      myName,
+			OpponentName: oppName,
+			CanTakeover: true,
+		}
+		client.SendJSON(IndianStateResponse{Type: "indian_state", RoomID: g.room.ID, Data: data})
+		return
+	}
+
 	c0 := g.cards[0]
 	c0.Hidden = false
 	c1 := g.cards[1]
@@ -749,4 +777,58 @@ func (g *IndianGame) handleRematch(client *Client) {
 	g.startRoundLocked()
 	log.Printf("[INDIAN] room:[%s] 리매치: [%s] vs [%s]",
 		g.room.ID, g.players[0].UserID, g.players[1].UserID)
+}
+
+func (g *IndianGame) handleTakeover(client *Client) {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+
+	if g.gameStarted {
+		client.SendJSON(ServerResponse{Type: "error", Message: "게임 진행 중에는 빈자리 참여가 불가합니다."})
+		return
+	}
+	for i := range g.players {
+		if g.players[i] == client {
+			client.SendJSON(ServerResponse{Type: "error", Message: "이미 플레이어입니다."})
+			return
+		}
+	}
+	emptySlot := -1
+	for i := range g.players {
+		if g.players[i] == nil {
+			emptySlot = i
+			break
+		}
+	}
+	if emptySlot < 0 {
+		client.SendJSON(ServerResponse{Type: "error", Message: "빈자리가 없습니다."})
+		return
+	}
+
+	g.players[emptySlot] = client
+	g.hearts[emptySlot] = indianStartHearts
+
+	notice, _ := json.Marshal(ServerResponse{
+		Type:    "game_notice",
+		Message: fmt.Sprintf("🪑 [%s]님이 빈자리에 참여했습니다.", client.UserID),
+		RoomID:  g.room.ID,
+	})
+	g.room.broadcastAll(notice)
+
+	total := 0
+	ready := 0
+	for i := range g.players {
+		if g.players[i] != nil {
+			total++
+			if g.startReady[i] {
+				ready++
+			}
+		}
+	}
+	upd, _ := json.Marshal(ReadyUpdateMessage{
+		Type: "ready_update", RoomID: g.room.ID, ReadyCount: ready, TotalCount: total,
+	})
+	g.room.broadcastAll(upd)
+	g.sendStateToBothLocked()
+	log.Printf("[INDIAN] room:[%s] [%s] 빈자리 참여 (슬롯 %d)", g.room.ID, client.UserID, emptySlot)
 }

@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"log"
 	"math/rand"
 	"strings"
@@ -22,17 +23,6 @@ func SpawnBot(m *RoomManager, room *Room, gamePrefix string) error {
 		return nil // 에러 대신 무시
 	}
 
-	// 이미 봇이 있는지 확인
-	room.mu.RLock()
-	for c := range room.clients {
-		if c.IsBot {
-			room.mu.RUnlock()
-			log.Printf("[BOT] room:[%s] 이미 봇이 있습니다", room.ID)
-			return nil
-		}
-	}
-	room.mu.RUnlock()
-
 	// 인원 제한: 1:1 게임은 2명, 다인(holdem, sevenpoker, thief, onecard)은 4명
 	maxPlayers := 2
 	if prefix == "holdem" || prefix == "sevenpoker" || prefix == "thief" || prefix == "onecard" {
@@ -47,7 +37,7 @@ func SpawnBot(m *RoomManager, room *Room, gamePrefix string) error {
 		manager:   m,
 		conn:      nil,
 		send:      nil, // 봇은 send 채널 미사용
-		UserID:    "🤖 AI (Level 1)",
+		UserID:    fmt.Sprintf("🤖 AI (Level 1) - %04d", rand.Intn(10000)),
 		RoomID:    room.ID,
 		IsBot:     true,
 		BotProcess: nil, // 아래에서 설정

@@ -10,28 +10,40 @@ import (
 )
 
 const (
-	oneCardMaxPlayers   = 4
-	oneCardHandSize     = 7
-	oneCardTurnTimeLimit = 15
+	oneCardMaxPlayers     = 4
+	oneCardHandSize       = 7
+	oneCardTurnTimeLimit  = 15
+	oneCardBankruptcyLimit = 20
+)
+
+var (
+	oneCardBJoker = Card{Suit: "🃏", Value: "B_JOKER"}
+	oneCardCJoker = Card{Suit: "🃏", Value: "C_JOKER"}
 )
 
 // ── 응답 타입 ─────────────────────────────────────────────────────────────────
 
 // OneCardData는 onecard_state 응답의 data 필드입니다.
 type OneCardData struct {
-	Hand         []Card `json:"hand"`         // 내 패
-	TopCard      Card   `json:"topCard"`      // 바닥(탑) 카드
-	DeckCount    int    `json:"deckCount"`    // 남은 덱 수
-	Turn         string `json:"turn"`         // 현재 차례 유저 ID
-	Direction    int    `json:"direction"`    // 1=시계, -1=반시계
-	Players      []OneCardPlayerInfo `json:"players"`
-	Message      string `json:"message,omitempty"`
+	Hand            []Card `json:"hand"`
+	TopCard         Card   `json:"topCard"`
+	TargetSuit      string `json:"targetSuit,omitempty"`      // 7 카드로 강제된 문양
+	DeckCount       int    `json:"deckCount"`
+	DiscardCount    int    `json:"discardCount"`
+	Turn            string `json:"turn"`
+	Direction       int    `json:"direction"`
+	AttackPenalty   int    `json:"attackPenalty"`
+	OneCardVulnerable string `json:"oneCardVulnerable,omitempty"` // 손패 1장인 유저 (원카드 콜 대상)
+	Players         []OneCardPlayerInfo `json:"players"`
+	Message         string `json:"message,omitempty"`
+	CanTakeover     bool   `json:"canTakeover,omitempty"`
 }
 
 // OneCardPlayerInfo는 한 플레이어의 공개 정보입니다.
 type OneCardPlayerInfo struct {
 	UserID    string `json:"userId"`
 	CardCount int    `json:"cardCount"`
+	IsTurn    bool   `json:"isTurn"`
 }
 
 // OneCardStateResponse는 원카드 게임 상태 응답입니다.
@@ -43,23 +55,26 @@ type OneCardStateResponse struct {
 
 // ── OneCardGame 플러그인 ──────────────────────────────────────────────────────
 
-// OneCardGame은 2~4인 원카드 게임 플러그인입니다.
-// 탑 카드와 문양/숫자 일치 카드만 낼 수 있음. J=스킵, Q=방향반전. 패 0장이면 승리.
 type OneCardGame struct {
-	room          *Room
-	players       [oneCardMaxPlayers]*Client
-	hands         [oneCardMaxPlayers][]Card
-	deck          []Card
-	topCard       Card
-	direction     int    // 1=시계, -1=반시계
-	currentTurn   int
-	skipNext      bool   // J로 인한 스킵
-	playerCount   int
-	gameStarted   bool
-	stopTick      chan struct{}
-	startReady    map[*Client]bool
-	rematchReady  map[*Client]bool
-	mu            sync.Mutex
+	room             *Room
+	players          [oneCardMaxPlayers]*Client
+	hands            [oneCardMaxPlayers][]Card
+	deck             []Card
+	discardPile      []Card
+	topCard          Card
+	targetSuit       string // 7 카드로 강제된 문양 (빈 문자열이면 topCard 기준)
+	direction        int
+	currentTurn      int
+	skipNext         bool
+	attackPenalty    int
+	playAgain        bool   // K 카드로 인한 연속 턴
+	oneCardVulnerable string // 손패 1장인 유저 ID
+	playerCount      int
+	gameStarted      bool
+	stopTick         chan struct{}
+	startReady       map[*Client]bool
+	rematchReady     map[*Client]bool
+	mu               sync.Mutex
 }
 
 func NewOneCardGame(room *Room) *OneCardGame {
@@ -68,7 +83,7 @@ func NewOneCardGame(room *Room) *OneCardGame {
 
 func (g *OneCardGame) Name() string { return "onecard" }
 
-// OnJoin은 플레이어 입장 시 호출됩니다.
+// OnJoin
 func (g *OneCardGame) OnJoin(client *Client) {
 	g.mu.Lock()
 	defer g.mu.Unlock()
@@ -118,8 +133,7 @@ func (g *OneCardGame) OnJoin(client *Client) {
 	}
 }
 
-// OnLeave는 플레이어 퇴장 시 호출됩니다.
-// 방폭 방지: 남은 인원 2명 이상이면 방을 깨지 않고 게임 계속 진행.
+// OnLeave
 func (g *OneCardGame) OnLeave(client *Client) {
 	g.mu.Lock()
 	defer g.mu.Unlock()
@@ -157,16 +171,13 @@ func (g *OneCardGame) OnLeave(client *Client) {
 		return
 	}
 
-	// 퇴장자에게 lose 전적 기록
 	client.RecordResult("onecard", "lose")
 
-	// 퇴장자가 현재 차례였다면 타이머 정지 후 턴 진행
 	if idx == g.currentTurn {
 		g.stopTurnTimerLocked()
 		g.advanceTurnLocked()
 	}
 
-	// 생존자(패 보유) 수
 	survivorCount := 0
 	for i := 0; i < oneCardMaxPlayers; i++ {
 		if g.players[i] != nil && len(g.hands[i]) > 0 {
@@ -186,7 +197,6 @@ func (g *OneCardGame) OnLeave(client *Client) {
 		return
 	}
 
-	// 생존자 1명 이하 → 매치 종료
 	g.stopTurnTimerLocked()
 	for i := 0; i < oneCardMaxPlayers; i++ {
 		if g.players[i] != nil && len(g.hands[i]) == 0 {
@@ -211,11 +221,12 @@ func (g *OneCardGame) OnLeave(client *Client) {
 	log.Printf("[ONECARD] room:[%s] [%s] 퇴장 — 매치 종료", g.room.ID, client.UserID)
 }
 
-// HandleAction은 game_action 메시지를 처리합니다.
+// HandleAction
 func (g *OneCardGame) HandleAction(client *Client, action string, payload json.RawMessage) {
 	var p struct {
-		Cmd   string `json:"cmd"`
-		Index int    `json:"index"`
+		Cmd         string `json:"cmd"`
+		Index       int    `json:"index"`
+		TargetSuit  string `json:"targetSuit"`
 	}
 	if err := json.Unmarshal(payload, &p); err != nil {
 		client.SendJSON(ServerResponse{Type: "error", Message: "game_action 페이로드 파싱 오류"})
@@ -224,13 +235,17 @@ func (g *OneCardGame) HandleAction(client *Client, action string, payload json.R
 
 	switch p.Cmd {
 	case "play":
-		g.handlePlay(client, p.Index)
+		g.handlePlay(client, p.Index, p.TargetSuit)
 	case "draw":
 		g.handleDraw(client)
 	case "ready":
 		g.handleReady(client)
 	case "rematch":
 		g.handleRematch(client)
+	case "takeover":
+		g.handleTakeover(client)
+	case "call_onecard":
+		g.handleCallOneCard(client)
 	default:
 		client.SendJSON(ServerResponse{
 			Type:    "error",
@@ -239,7 +254,92 @@ func (g *OneCardGame) HandleAction(client *Client, action string, payload json.R
 	}
 }
 
-func (g *OneCardGame) handlePlay(client *Client, index int) {
+func (g *OneCardGame) replenishDeckLocked() {
+	if len(g.deck) > 0 {
+		return
+	}
+	if len(g.discardPile) < 2 {
+		return
+	}
+	// 탑 카드 제외하고 나머지를 셔플하여 덱으로
+	top := g.topCard
+	newDeck := make([]Card, 0, len(g.discardPile))
+	for _, c := range g.discardPile {
+		newDeck = append(newDeck, c)
+	}
+	g.discardPile = nil
+	rand.Shuffle(len(newDeck), func(i, j int) { newDeck[i], newDeck[j] = newDeck[j], newDeck[i] })
+	g.deck = newDeck
+	g.topCard = top
+}
+
+func (g *OneCardGame) drawFromDeckLocked() (Card, bool) {
+	g.replenishDeckLocked()
+	if len(g.deck) == 0 {
+		return Card{}, false
+	}
+	c := g.deck[len(g.deck)-1]
+	g.deck = g.deck[:len(g.deck)-1]
+	return c, true
+}
+
+func (g *OneCardGame) discardLocked(c Card) {
+	g.discardPile = append(g.discardPile, c)
+}
+
+// isAttackCard returns penalty amount (0 = not attack)
+func isAttackCard(c Card) int {
+	switch c.Value {
+	case "A":
+		return 3
+	case "B_JOKER":
+		return 5
+	case "C_JOKER":
+		return 7
+	}
+	return 0
+}
+
+// canDefend returns true if defCard can defend against attackCard
+func canDefend(attackCard, defCard Card) bool {
+	switch attackCard.Value {
+	case "A":
+		return defCard.Value == "A" || defCard.Value == "B_JOKER" || defCard.Value == "C_JOKER"
+	case "B_JOKER":
+		return defCard.Value == "C_JOKER"
+	case "C_JOKER":
+		return false
+	}
+	return false
+}
+
+func (g *OneCardGame) canPlayNormal(c Card) bool {
+	t := g.topCard
+	suit := g.targetSuit
+	if suit == "" {
+		suit = t.Suit
+	}
+	return c.Suit == suit || c.Value == t.Value || c.Value == "B_JOKER" || c.Value == "C_JOKER"
+}
+
+func (g *OneCardGame) canPlay(c Card) bool {
+	if g.attackPenalty > 0 {
+		return canDefend(g.topCard, c)
+	}
+	return g.canPlayNormal(c)
+}
+
+func (g *OneCardGame) hasDefenseCard(idx int) bool {
+	t := g.topCard
+	for _, c := range g.hands[idx] {
+		if canDefend(t, c) {
+			return true
+		}
+	}
+	return false
+}
+
+func (g *OneCardGame) handlePlay(client *Client, index int, targetSuit string) {
 	g.mu.Lock()
 	defer g.mu.Unlock()
 
@@ -264,25 +364,63 @@ func (g *OneCardGame) handlePlay(client *Client, index int) {
 	}
 
 	card := g.hands[idx][index]
+
+	// 7 카드는 targetSuit 필수
+	if card.Value == "7" {
+		validSuits := map[string]bool{"♠": true, "♥": true, "♦": true, "♣": true}
+		if targetSuit == "" || !validSuits[targetSuit] {
+			client.SendJSON(ServerResponse{Type: "error", Message: "7 카드는 무늬(♠♥♦♣)를 선택해야 합니다."})
+			return
+		}
+	}
+
 	if !g.canPlay(card) {
-		client.SendJSON(ServerResponse{Type: "error", Message: "바닥 카드와 문양 또는 숫자가 일치해야 합니다."})
+		client.SendJSON(ServerResponse{Type: "error", Message: "낼 수 없는 카드입니다."})
 		return
 	}
 
-	// 카드 제거
 	g.hands[idx] = append(g.hands[idx][:index], g.hands[idx][index+1:]...)
+	oldTop := g.topCard
+	g.discardLocked(g.topCard)
 	g.topCard = card
+	g.targetSuit = ""
+
+	// 공격 상태에서 방어 카드를 냈으면 패널티 초기화 (방어 시 새 공격 누적 안 함)
+	wasDefense := g.attackPenalty > 0 && canDefend(oldTop, card)
+	if wasDefense {
+		g.attackPenalty = 0
+	}
 
 	notice := ""
-	if card.Value == "J" {
+	penalty := isAttackCard(card)
+	if penalty > 0 && !wasDefense {
+		g.attackPenalty += penalty
+		notice = fmt.Sprintf("[%s]가 %s%s를 내서 공격 +%d! (누적 %d장)", client.UserID, card.Suit, card.Value, penalty, g.attackPenalty)
+	} else if card.Value == "7" {
+		g.targetSuit = targetSuit
+		notice = fmt.Sprintf("[%s]가 7을 내서 다음 문양을 %s로 변경!", client.UserID, targetSuit)
+	} else if card.Value == "J" {
 		g.skipNext = true
 		notice = fmt.Sprintf("[%s]가 %s%s를 내서 다음 턴 스킵!", client.UserID, card.Suit, card.Value)
 	} else if card.Value == "Q" {
 		g.direction *= -1
 		notice = fmt.Sprintf("[%s]가 %s%s를 내서 방향 반전!", client.UserID, card.Suit, card.Value)
+	} else if card.Value == "K" {
+		g.playAgain = true
+		notice = fmt.Sprintf("[%s]가 %s%s를 내서 한 번 더!", client.UserID, card.Suit, card.Value)
 	} else {
 		notice = fmt.Sprintf("[%s]가 %s%s를 냈습니다.", client.UserID, card.Suit, card.Value)
 	}
+
+	// 원카드 취약 상태 갱신 (손패 1장)
+	g.oneCardVulnerable = ""
+	for i := 0; i < oneCardMaxPlayers; i++ {
+		if g.players[i] != nil && len(g.hands[i]) == 1 {
+			g.oneCardVulnerable = g.players[i].UserID
+			break
+		}
+	}
+
 	msg, _ := json.Marshal(ServerResponse{Type: "game_notice", Message: notice, RoomID: g.room.ID})
 	g.room.broadcastAll(msg)
 
@@ -311,7 +449,11 @@ func (g *OneCardGame) handlePlay(client *Client, index int) {
 		return
 	}
 
-	g.advanceTurnLocked()
+	// K가 아니면 턴 진행
+	if !g.playAgain {
+		g.advanceTurnLocked()
+	}
+	g.playAgain = false
 	g.startTurnTimerLocked()
 	g.sendStateToAllLocked()
 }
@@ -335,31 +477,133 @@ func (g *OneCardGame) handleDraw(client *Client) {
 		return
 	}
 	g.stopTurnTimerLocked()
-	if len(g.deck) == 0 {
-		client.SendJSON(ServerResponse{Type: "error", Message: "덱에 카드가 없습니다."})
-		return
+
+	if g.attackPenalty > 0 {
+		// 공격 중: 방어 불가 → 패널티만큼 드로우
+		count := g.attackPenalty
+		g.attackPenalty = 0
+		for i := 0; i < count; i++ {
+			if c, ok := g.drawFromDeckLocked(); ok {
+				g.hands[idx] = append(g.hands[idx], c)
+			}
+		}
+		notice, _ := json.Marshal(ServerResponse{
+			Type:    "game_notice",
+			Message: fmt.Sprintf("[%s]가 공격을 맞아 %d장 드로우!", client.UserID, count),
+			RoomID:  g.room.ID,
+		})
+		g.room.broadcastAll(notice)
+	} else {
+		c, ok := g.drawFromDeckLocked()
+		if !ok {
+			client.SendJSON(ServerResponse{Type: "error", Message: "덱에 카드가 없습니다."})
+			return
+		}
+		g.hands[idx] = append(g.hands[idx], c)
+		notice, _ := json.Marshal(ServerResponse{
+			Type:    "game_notice",
+			Message: fmt.Sprintf("[%s]가 %s%s를 드로우했습니다.", client.UserID, c.Suit, c.Value),
+			RoomID:  g.room.ID,
+		})
+		g.room.broadcastAll(notice)
 	}
 
-	// 덱에서 1장 드로우
-	drawn := g.deck[len(g.deck)-1]
-	g.deck = g.deck[:len(g.deck)-1]
-	g.hands[idx] = append(g.hands[idx], drawn)
-
-	notice, _ := json.Marshal(ServerResponse{
-		Type:    "game_notice",
-		Message: fmt.Sprintf("[%s]가 %s%s를 드로우했습니다.", client.UserID, drawn.Suit, drawn.Value),
-		RoomID:  g.room.ID,
-	})
-	g.room.broadcastAll(notice)
+	// 파산 체크 (20장 초과)
+	if len(g.hands[idx]) > oneCardBankruptcyLimit {
+		client.RecordResult("onecard", "lose")
+		for i := 0; i < oneCardMaxPlayers; i++ {
+			if g.players[i] != nil && i != idx {
+				g.players[i].RecordResult("onecard", "win")
+			}
+		}
+		msg := fmt.Sprintf("💀 [%s] 파산! (손패 %d장 초과)", client.UserID, oneCardBankruptcyLimit)
+		g.room.mu.RLock()
+		totalCount := len(g.room.clients)
+		g.room.mu.RUnlock()
+		data, _ := json.Marshal(GameResultResponse{
+			Type:           "game_result",
+			Message:        msg,
+			RoomID:         g.room.ID,
+			Data:           map[string]any{"totalCount": totalCount},
+			RematchEnabled: true,
+		})
+		g.room.broadcastAll(data)
+		g.gameStarted = false
+		g.stopTurnTimerLocked()
+		return
+	}
 
 	g.advanceTurnLocked()
 	g.startTurnTimerLocked()
 	g.sendStateToAllLocked()
 }
 
-func (g *OneCardGame) canPlay(c Card) bool {
-	t := g.topCard
-	return c.Suit == t.Suit || c.Value == t.Value
+func (g *OneCardGame) handleCallOneCard(client *Client) {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+
+	if !g.gameStarted || g.oneCardVulnerable == "" {
+		client.SendJSON(ServerResponse{Type: "error", Message: "원카드 콜할 대상이 없습니다."})
+		return
+	}
+
+	if client.UserID == g.oneCardVulnerable {
+		g.oneCardVulnerable = ""
+		notice, _ := json.Marshal(ServerResponse{
+			Type:    "game_notice",
+			Message: fmt.Sprintf("[%s]가 원카드!를 선언하여 안전해졌습니다!", client.UserID),
+			RoomID:  g.room.ID,
+		})
+		g.room.broadcastAll(notice)
+	} else {
+		victimIdx := -1
+		for i := 0; i < oneCardMaxPlayers; i++ {
+			if g.players[i] != nil && g.players[i].UserID == g.oneCardVulnerable {
+				victimIdx = i
+				break
+			}
+		}
+		if victimIdx >= 0 {
+			if c, ok := g.drawFromDeckLocked(); ok {
+				g.hands[victimIdx] = append(g.hands[victimIdx], c)
+			}
+			notice, _ := json.Marshal(ServerResponse{
+				Type:    "game_notice",
+				Message: fmt.Sprintf("[%s]가 [%s]에게 원카드!를 외쳐 벌칙 1장 드로우!", client.UserID, g.oneCardVulnerable),
+				RoomID:  g.room.ID,
+			})
+			g.room.broadcastAll(notice)
+			// 파산 체크
+			if len(g.hands[victimIdx]) > oneCardBankruptcyLimit {
+				victim := g.players[victimIdx]
+				victim.RecordResult("onecard", "lose")
+				for i := 0; i < oneCardMaxPlayers; i++ {
+					if g.players[i] != nil && i != victimIdx {
+						g.players[i].RecordResult("onecard", "win")
+					}
+				}
+				msg := fmt.Sprintf("💀 [%s] 파산! (손패 %d장 초과)", victim.UserID, oneCardBankruptcyLimit)
+				g.room.mu.RLock()
+				totalCount := len(g.room.clients)
+				g.room.mu.RUnlock()
+				data, _ := json.Marshal(GameResultResponse{
+					Type:           "game_result",
+					Message:        msg,
+					RoomID:         g.room.ID,
+					Data:           map[string]any{"totalCount": totalCount},
+					RematchEnabled: true,
+				})
+				g.room.broadcastAll(data)
+				g.gameStarted = false
+				g.stopTurnTimerLocked()
+				g.oneCardVulnerable = ""
+				g.sendStateToAllLocked()
+				return
+			}
+		}
+		g.oneCardVulnerable = ""
+	}
+	g.sendStateToAllLocked()
 }
 
 func (g *OneCardGame) advanceTurnLocked() {
@@ -387,9 +631,15 @@ func (g *OneCardGame) playerIndex(c *Client) int {
 	return -1
 }
 
-func (g *OneCardGame) startGameLocked() {
+func (g *OneCardGame) newOneCardDeck() []Card {
 	deck := NewShuffledDeck()
+	deck = append(deck, oneCardBJoker, oneCardCJoker)
 	rand.Shuffle(len(deck), func(i, j int) { deck[i], deck[j] = deck[j], deck[i] })
+	return deck
+}
+
+func (g *OneCardGame) startGameLocked() {
+	deck := g.newOneCardDeck()
 
 	playerIndices := make([]int, 0, oneCardMaxPlayers)
 	for i := 0; i < oneCardMaxPlayers; i++ {
@@ -398,7 +648,6 @@ func (g *OneCardGame) startGameLocked() {
 		}
 	}
 
-	// 각 7장씩 분배
 	for _, pi := range playerIndices {
 		for j := 0; j < oneCardHandSize && len(deck) > 0; j++ {
 			g.hands[pi] = append(g.hands[pi], deck[len(deck)-1])
@@ -406,19 +655,23 @@ func (g *OneCardGame) startGameLocked() {
 		}
 	}
 
-	// 탑 카드
 	if len(deck) > 0 {
 		g.topCard = deck[len(deck)-1]
 		deck = deck[:len(deck)-1]
 	}
 	g.deck = deck
+	g.discardPile = nil
+	g.targetSuit = ""
 	g.direction = 1
 	g.skipNext = false
+	g.attackPenalty = 0
+	g.playAgain = false
+	g.oneCardVulnerable = ""
 	g.currentTurn = playerIndices[0]
 
 	notice, _ := json.Marshal(ServerResponse{
 		Type:    "game_notice",
-		Message: "원카드 시작! 바닥 카드와 문양 또는 숫자가 같은 카드를 내세요. J=스킵, Q=방향반전. 낼 카드가 없으면 드로우!",
+		Message: "원카드 시작! A=+3, 조커=+5/+7 공격. 7=문양 변경, K=한 번 더. 20장 초과 시 파산!",
 		RoomID:  g.room.ID,
 	})
 	g.room.broadcastAll(notice)
@@ -558,9 +811,59 @@ func (g *OneCardGame) handleRematch(client *Client) {
 			g.hands[i] = nil
 		}
 		g.deck = nil
+		g.discardPile = nil
 		g.gameStarted = true
 		g.startGameLocked()
 	}
+}
+
+func (g *OneCardGame) handleTakeover(client *Client) {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+
+	if g.gameStarted {
+		client.SendJSON(ServerResponse{Type: "error", Message: "게임 진행 중에는 빈자리 참여가 불가합니다."})
+		return
+	}
+	if g.playerIndex(client) >= 0 {
+		client.SendJSON(ServerResponse{Type: "error", Message: "이미 플레이어입니다."})
+		return
+	}
+	slot := -1
+	for i := 0; i < oneCardMaxPlayers; i++ {
+		if g.players[i] == nil {
+			slot = i
+			break
+		}
+	}
+	if slot < 0 {
+		client.SendJSON(ServerResponse{Type: "error", Message: "빈자리가 없습니다."})
+		return
+	}
+
+	g.players[slot] = client
+	g.playerCount++
+
+	notice, _ := json.Marshal(ServerResponse{
+		Type:    "game_notice",
+		Message: fmt.Sprintf("🪑 [%s]님이 빈자리에 참여했습니다. (%d/%d)", client.UserID, g.playerCount, oneCardMaxPlayers),
+		RoomID:  g.room.ID,
+	})
+	g.room.broadcastAll(notice)
+
+	total := g.playerCount
+	ready := 0
+	for i := 0; i < oneCardMaxPlayers; i++ {
+		if g.players[i] != nil && g.startReady[g.players[i]] {
+			ready++
+		}
+	}
+	upd, _ := json.Marshal(ReadyUpdateMessage{
+		Type: "ready_update", RoomID: g.room.ID, ReadyCount: ready, TotalCount: total,
+	})
+	g.room.broadcastAll(upd)
+	g.sendStateToAllLocked()
+	log.Printf("[ONECARD] room:[%s] [%s] 빈자리 참여 (슬롯 %d)", g.room.ID, client.UserID, slot)
 }
 
 func (g *OneCardGame) sendStateToAllLocked() {
@@ -579,6 +882,7 @@ func (g *OneCardGame) sendStateToAllLocked() {
 func (g *OneCardGame) sendStateToClientLocked(client *Client) {
 	idx := g.playerIndex(client)
 	if idx < 0 {
+		g.sendStateToSpectatorLocked(client)
 		return
 	}
 
@@ -590,6 +894,7 @@ func (g *OneCardGame) sendStateToClientLocked(client *Client) {
 		players = append(players, OneCardPlayerInfo{
 			UserID:    g.players[i].UserID,
 			CardCount: len(g.hands[i]),
+			IsTurn:    i == g.currentTurn,
 		})
 	}
 
@@ -605,12 +910,58 @@ func (g *OneCardGame) sendStateToClientLocked(client *Client) {
 	}
 
 	data := OneCardData{
-		Hand:      myHand,
-		TopCard:   g.topCard,
-		DeckCount: len(g.deck),
-		Turn:      turnUser,
-		Direction: g.direction,
-		Players:   players,
+		Hand:              myHand,
+		TopCard:           g.topCard,
+		TargetSuit:        g.targetSuit,
+		DeckCount:         len(g.deck),
+		DiscardCount:      len(g.discardPile),
+		Turn:              turnUser,
+		Direction:         g.direction,
+		AttackPenalty:     g.attackPenalty,
+		OneCardVulnerable: g.oneCardVulnerable,
+		Players:           players,
+	}
+	client.SendJSON(OneCardStateResponse{
+		Type:   "onecard_state",
+		RoomID: g.room.ID,
+		Data:   data,
+	})
+}
+
+func (g *OneCardGame) sendStateToSpectatorLocked(client *Client) {
+	players := make([]OneCardPlayerInfo, 0)
+	for i := 0; i < oneCardMaxPlayers; i++ {
+		if g.players[i] == nil {
+			continue
+		}
+		players = append(players, OneCardPlayerInfo{
+			UserID:    g.players[i].UserID,
+			CardCount: len(g.hands[i]),
+			IsTurn:    i == g.currentTurn,
+		})
+	}
+	canTakeover := false
+	if !g.gameStarted {
+		for i := 0; i < oneCardMaxPlayers; i++ {
+			if g.players[i] == nil {
+				canTakeover = true
+				break
+			}
+		}
+	}
+	turnUser := ""
+	if g.players[g.currentTurn] != nil {
+		turnUser = g.players[g.currentTurn].UserID
+	}
+	data := OneCardData{
+		Hand:         []Card{},
+		TopCard:      g.topCard,
+		DeckCount:    len(g.deck),
+		DiscardCount: len(g.discardPile),
+		Turn:         turnUser,
+		Direction:    g.direction,
+		Players:      players,
+		CanTakeover:  canTakeover,
 	}
 	client.SendJSON(OneCardStateResponse{
 		Type:   "onecard_state",

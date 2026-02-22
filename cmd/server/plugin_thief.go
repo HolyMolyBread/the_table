@@ -20,11 +20,13 @@ var thiefJoker = Card{Suit: "🃏", Value: "JOKER"}
 
 // ThiefData는 thief_state 응답의 data 필드입니다.
 type ThiefData struct {
-	Hand        []Card `json:"hand"`        // 내 패 (앞면)
-	Turn        string `json:"turn"`       // 현재 차례 유저 ID
-	Players     []ThiefPlayerInfo `json:"players"`     // 전체 플레이어 (패 수 등)
-	Escaped     []string `json:"escaped"`   // 탈출한 유저 ID 목록
-	Message     string   `json:"message,omitempty"`
+	Hand         []Card `json:"hand"`         // 내 패 (앞면)
+	Turn         string `json:"turn"`         // 현재 차례 유저 ID
+	TargetUserID string `json:"targetUserId"` // 내 차례일 때 뽑을 대상 유저 ID (비어 있으면 해당 없음)
+	Players      []ThiefPlayerInfo `json:"players"`      // 전체 플레이어 (패 수 등)
+	Escaped      []string `json:"escaped"`    // 탈출한 유저 ID 목록
+	Message      string   `json:"message,omitempty"`
+	CanTakeover  bool     `json:"canTakeover,omitempty"`
 }
 
 // ThiefPlayerInfo는 한 플레이어의 공개 정보입니다.
@@ -210,7 +212,9 @@ func (g *ThiefGame) OnLeave(client *Client) {
 // HandleAction은 game_action 메시지를 처리합니다.
 func (g *ThiefGame) HandleAction(client *Client, action string, payload json.RawMessage) {
 	var p struct {
-		Cmd string `json:"cmd"`
+		Cmd      string `json:"cmd"`
+		TargetID string `json:"targetId"`
+		Index    int    `json:"index"`
 	}
 	if err := json.Unmarshal(payload, &p); err != nil {
 		client.SendJSON(ServerResponse{Type: "error", Message: "game_action 페이로드 파싱 오류"})
@@ -219,11 +223,15 @@ func (g *ThiefGame) HandleAction(client *Client, action string, payload json.Raw
 
 	switch p.Cmd {
 	case "draw":
-		g.handleDraw(client)
+		g.handleDraw(client, p.TargetID, p.Index)
+	case "hover":
+		g.handleHover(client, p.TargetID, p.Index)
 	case "ready":
 		g.handleReady(client)
 	case "rematch":
 		g.handleRematch(client)
+	case "takeover":
+		g.handleTakeover(client)
 	default:
 		client.SendJSON(ServerResponse{
 			Type:    "error",
@@ -232,7 +240,40 @@ func (g *ThiefGame) HandleAction(client *Client, action string, payload json.Raw
 	}
 }
 
-func (g *ThiefGame) handleDraw(client *Client) {
+func (g *ThiefGame) handleHover(client *Client, targetID string, index int) {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+
+	if !g.gameStarted {
+		return
+	}
+	idx := g.playerIndex(client)
+	if idx < 0 || g.players[g.currentTurn] != client {
+		return
+	}
+	targetIdx := -1
+	for i := 0; i < thiefMaxPlayers; i++ {
+		if g.players[i] != nil && g.players[i].UserID == targetID {
+			targetIdx = i
+			break
+		}
+	}
+	if targetIdx < 0 || g.escaped[targetIdx] || len(g.hands[targetIdx]) == 0 {
+		return
+	}
+	if index < 0 || index >= len(g.hands[targetIdx]) {
+		return
+	}
+	msg, _ := json.Marshal(map[string]any{
+		"type":     "thief_hover",
+		"userId":   client.UserID,
+		"targetId": targetID,
+		"index":    index,
+	})
+	g.room.broadcastAll(msg)
+}
+
+func (g *ThiefGame) handleDraw(client *Client, targetID string, drawIndex int) {
 	g.mu.Lock()
 	defer g.mu.Unlock()
 
@@ -269,10 +310,18 @@ func (g *ThiefGame) handleDraw(client *Client) {
 		client.SendJSON(ServerResponse{Type: "error", Message: "뽑을 상대가 없습니다."})
 		return
 	}
+	if targetID != "" && g.players[targetIdx].UserID != targetID {
+		client.SendJSON(ServerResponse{Type: "error", Message: "잘못된 대상입니다."})
+		return
+	}
 
-	// 타겟 패에서 무작위 1장 뽑기
 	targetHand := g.hands[targetIdx]
-	drawIdx := rand.Intn(len(targetHand))
+	var drawIdx int
+	if targetID != "" && drawIndex >= 0 && drawIndex < len(targetHand) {
+		drawIdx = drawIndex
+	} else {
+		drawIdx = rand.Intn(len(targetHand))
+	}
 	drawn := targetHand[drawIdx]
 	g.hands[targetIdx] = append(targetHand[:drawIdx], targetHand[drawIdx+1:]...)
 	g.hands[idx] = append(g.hands[idx], drawn)
@@ -520,7 +569,7 @@ func (g *ThiefGame) handleTimeOver(timedOutPlayer *Client) {
 	})
 	g.room.broadcastAll(notice)
 	g.mu.Unlock()
-	g.handleDraw(timedOutPlayer)
+	g.handleDraw(timedOutPlayer, "", -1)
 }
 
 func (g *ThiefGame) handleReady(client *Client) {
@@ -594,6 +643,55 @@ func (g *ThiefGame) handleRematch(client *Client) {
 	}
 }
 
+func (g *ThiefGame) handleTakeover(client *Client) {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+
+	if g.gameStarted {
+		client.SendJSON(ServerResponse{Type: "error", Message: "게임 진행 중에는 빈자리 참여가 불가합니다."})
+		return
+	}
+	if g.playerIndex(client) >= 0 {
+		client.SendJSON(ServerResponse{Type: "error", Message: "이미 플레이어입니다."})
+		return
+	}
+	slot := -1
+	for i := 0; i < thiefMaxPlayers; i++ {
+		if g.players[i] == nil {
+			slot = i
+			break
+		}
+	}
+	if slot < 0 {
+		client.SendJSON(ServerResponse{Type: "error", Message: "빈자리가 없습니다."})
+		return
+	}
+
+	g.players[slot] = client
+	g.playerCount++
+
+	notice, _ := json.Marshal(ServerResponse{
+		Type:    "game_notice",
+		Message: fmt.Sprintf("🪑 [%s]님이 빈자리에 참여했습니다. (%d/%d)", client.UserID, g.playerCount, thiefMaxPlayers),
+		RoomID:  g.room.ID,
+	})
+	g.room.broadcastAll(notice)
+
+	total := g.playerCount
+	ready := 0
+	for i := 0; i < thiefMaxPlayers; i++ {
+		if g.players[i] != nil && g.startReady[g.players[i]] {
+			ready++
+		}
+	}
+	upd, _ := json.Marshal(ReadyUpdateMessage{
+		Type: "ready_update", RoomID: g.room.ID, ReadyCount: ready, TotalCount: total,
+	})
+	g.room.broadcastAll(upd)
+	g.sendStateToAllLocked()
+	log.Printf("[THIEF] room:[%s] [%s] 빈자리 참여 (슬롯 %d)", g.room.ID, client.UserID, slot)
+}
+
 func (g *ThiefGame) sendStateToAllLocked() {
 	g.room.mu.RLock()
 	clients := make([]*Client, 0, len(g.room.clients))
@@ -610,6 +708,7 @@ func (g *ThiefGame) sendStateToAllLocked() {
 func (g *ThiefGame) sendStateToClientLocked(client *Client) {
 	idx := g.playerIndex(client)
 	if idx < 0 {
+		g.sendStateToSpectatorLocked(client)
 		return
 	}
 
@@ -633,6 +732,17 @@ func (g *ThiefGame) sendStateToClientLocked(client *Client) {
 		turnUser = g.players[g.currentTurn].UserID
 	}
 
+	targetUserID := ""
+	if g.players[g.currentTurn] == client {
+		for i := 1; i <= thiefMaxPlayers; i++ {
+			next := (g.currentTurn + i) % thiefMaxPlayers
+			if g.players[next] != nil && !g.escaped[next] && len(g.hands[next]) > 0 {
+				targetUserID = g.players[next].UserID
+				break
+			}
+		}
+	}
+
 	myHand := make([]Card, len(g.hands[idx]))
 	copy(myHand, g.hands[idx])
 	for i := range myHand {
@@ -640,10 +750,45 @@ func (g *ThiefGame) sendStateToClientLocked(client *Client) {
 	}
 
 	data := ThiefData{
-		Hand:    myHand,
-		Turn:    turnUser,
-		Players: players,
-		Escaped: escaped,
+		Hand:         myHand,
+		Turn:         turnUser,
+		TargetUserID: targetUserID,
+		Players:      players,
+		Escaped:      escaped,
+	}
+	client.SendJSON(ThiefStateResponse{
+		Type:   "thief_state",
+		RoomID: g.room.ID,
+		Data:   data,
+	})
+}
+
+func (g *ThiefGame) sendStateToSpectatorLocked(client *Client) {
+	players := make([]ThiefPlayerInfo, 0)
+	for i := 0; i < thiefMaxPlayers; i++ {
+		if g.players[i] == nil {
+			continue
+		}
+		players = append(players, ThiefPlayerInfo{
+			UserID:    g.players[i].UserID,
+			CardCount: len(g.hands[i]),
+		})
+	}
+	canTakeover := false
+	if !g.gameStarted {
+		for i := 0; i < thiefMaxPlayers; i++ {
+			if g.players[i] == nil {
+				canTakeover = true
+				break
+			}
+		}
+	}
+	data := ThiefData{
+		Hand:        []Card{},
+		Turn:        "",
+		Players:     players,
+		Escaped:     []string{},
+		CanTakeover: canTakeover,
 	}
 	client.SendJSON(ThiefStateResponse{
 		Type:   "thief_state",

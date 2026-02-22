@@ -29,13 +29,14 @@ type HoldemPlayerInfo struct {
 
 // HoldemData는 holdem_state 응답의 data 필드입니다.
 type HoldemData struct {
-	Phase         string             `json:"phase"`
-	Round         int                `json:"round"`
-	Pot           int                `json:"pot"`
+	Phase          string             `json:"phase"`
+	Round          int                `json:"round"`
+	Pot            int                `json:"pot"`
 	CommunityCards []Card            `json:"communityCards"`
-	Players       []HoldemPlayerInfo `json:"players"`
-	CurrentTurn   string             `json:"currentTurn"`
-	Message       string             `json:"message,omitempty"`
+	Players        []HoldemPlayerInfo `json:"players"`
+	CurrentTurn    string             `json:"currentTurn"`
+	Message        string             `json:"message,omitempty"`
+	CanTakeover    bool               `json:"canTakeover,omitempty"`
 }
 
 // HoldemStateResponse는 홀덤 게임 상태 응답입니다.
@@ -257,6 +258,8 @@ func (g *HoldemGame) HandleAction(client *Client, action string, payload json.Ra
 		g.handleReady(client)
 	case "rematch":
 		g.handleRematch(client)
+	case "takeover":
+		g.handleTakeover(client)
 	default:
 		client.SendJSON(ServerResponse{
 			Type:    "error",
@@ -354,6 +357,18 @@ func (g *HoldemGame) playerIndex(c *Client) int {
 
 // advanceTurnLocked는 다음 플레이어로 넘기거나, 페이즈/라운드를 진행합니다.
 func (g *HoldemGame) advanceTurnLocked() {
+	// 단독 생존자 체크 (나머지 모두 폴드)
+	activeCount := 0
+	for i := 0; i < holdemMaxPlayers; i++ {
+		if g.players[i] != nil && !g.foldedThisRound[i] {
+			activeCount++
+		}
+	}
+	if activeCount == 1 {
+		g.resolveShowdownLocked()
+		return
+	}
+
 	// 이번 페이즈에서 아직 액션 안 한 생존자 확인
 	nextIdx := -1
 	for i := 1; i <= holdemMaxPlayers; i++ {
@@ -935,6 +950,16 @@ func (g *HoldemGame) buildHoldemDataForPlayer(viewerIdx int) HoldemData {
 		currentTurn = g.players[g.currentPlayerIdx].UserID
 	}
 
+	canTakeover := false
+	if viewerIdx < 0 && phase == "waiting" && !g.gameStarted {
+		for i := 0; i < holdemMaxPlayers; i++ {
+			if g.players[i] == nil {
+				canTakeover = true
+				break
+			}
+		}
+	}
+
 	return HoldemData{
 		Phase:          phase,
 		Round:          g.round,
@@ -942,6 +967,7 @@ func (g *HoldemGame) buildHoldemDataForPlayer(viewerIdx int) HoldemData {
 		CommunityCards: communityCards,
 		Players:        players,
 		CurrentTurn:    currentTurn,
+		CanTakeover:    canTakeover,
 	}
 }
 
@@ -961,4 +987,54 @@ func (g *HoldemGame) sendStateToSpectatorLocked(client *Client) {
 		RoomID: g.room.ID,
 		Data:   data,
 	})
+}
+
+func (g *HoldemGame) handleTakeover(client *Client) {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+
+	if g.gameStarted {
+		client.SendJSON(ServerResponse{Type: "error", Message: "게임 진행 중에는 빈자리 참여가 불가합니다."})
+		return
+	}
+	if g.playerIndex(client) >= 0 {
+		client.SendJSON(ServerResponse{Type: "error", Message: "이미 플레이어입니다."})
+		return
+	}
+	slot := -1
+	for i := 0; i < holdemMaxPlayers; i++ {
+		if g.players[i] == nil {
+			slot = i
+			break
+		}
+	}
+	if slot < 0 {
+		client.SendJSON(ServerResponse{Type: "error", Message: "빈자리가 없습니다."})
+		return
+	}
+
+	g.players[slot] = client
+	g.stars[slot] = holdemStartStars
+	g.playerCount++
+
+	notice, _ := json.Marshal(ServerResponse{
+		Type:    "game_notice",
+		Message: fmt.Sprintf("🪑 [%s]님이 빈자리에 참여했습니다. (%d/4)", client.UserID, g.playerCount),
+		RoomID:  g.room.ID,
+	})
+	g.room.broadcastAll(notice)
+
+	total := g.playerCount
+	ready := 0
+	for i := 0; i < holdemMaxPlayers; i++ {
+		if g.players[i] != nil && g.startReady[g.players[i]] {
+			ready++
+		}
+	}
+	upd, _ := json.Marshal(ReadyUpdateMessage{
+		Type: "ready_update", RoomID: g.room.ID, ReadyCount: ready, TotalCount: total,
+	})
+	g.room.broadcastAll(upd)
+	g.sendStateToAllLocked()
+	log.Printf("[HOLDEM] room:[%s] [%s] 빈자리 참여 (슬롯 %d)", g.room.ID, client.UserID, slot)
 }

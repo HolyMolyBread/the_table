@@ -184,7 +184,10 @@
     #auth-confirm-group { display: none; }
 
     /* ── Game Cards ── */
-    #game-cards { display: none; gap: 20px; flex-wrap: wrap; justify-content: center; }
+    #game-cards { display: none; flex-direction: column; align-items: center; gap: 20px; }
+    .lobby-category { width: 100%; margin-bottom: 20px; }
+    .lobby-category h3 { font-size: 16px; margin-bottom: 12px; border-bottom: 1px solid var(--border); padding-bottom: 8px; }
+    .lobby-category .category-cards { display: flex; gap: 20px; flex-wrap: wrap; justify-content: center; }
 
     .game-card {
       width: 240px; background: var(--bg-secondary); border: 1px solid var(--border);
@@ -767,6 +770,20 @@
     }
     .thief-card.red-suit { color: #dc2626; }
     .thief-card.black-suit { color: #111; }
+    .thief-target-card {
+      width: 48px; height: 70px; background: var(--bg-tertiary); border: 1px solid var(--border);
+      border-radius: 6px; display: flex; align-items: center; justify-content: center;
+      font-size: 24px; cursor: pointer; transition: transform 0.15s ease; user-select: none;
+    }
+    #thief-target-area { display: none; }
+    #thief-target-area.visible { display: flex; }
+    .thief-target-card:hover { border-color: var(--accent); }
+    .thief-target-card.hovered { transform: translateY(-10px); border-color: var(--accent); }
+    .thief-card.hover-finger { position: relative; }
+    .thief-card.hover-finger::after {
+      content: '👆'; position: absolute; top: -8px; left: 50%; transform: translateX(-50%);
+      font-size: 18px; animation: timerPulse 0.5s ease infinite;
+    }
 
     /* ══ ONECARD (원카드) ═══════════════════════════════════════════════════════ */
     #onecard-container {
@@ -794,6 +811,45 @@
     }
     .onecard-hand .onecard-card { cursor: pointer; }
     .onecard-hand .onecard-card.playable { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent); }
+    .onecard-player-box {
+      background: var(--bg-tertiary); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 10px 12px;
+      display: flex; flex-direction: column; gap: 6px; align-items: center;
+    }
+    .onecard-player-box.my-turn {
+      border-color: var(--accent); box-shadow: 0 0 0 2px rgba(88,166,255,0.3);
+    }
+    .onecard-card-count { font-size: 14px; font-weight: 700; color: var(--gold); }
+    #onecard-attack-banner {
+      display: none; padding: 12px 20px; background: linear-gradient(135deg, #dc2626 0%, #991b1b 100%);
+      color: #fff; font-size: 18px; font-weight: 800; border-radius: 8px;
+      box-shadow: 0 4px 12px rgba(220,38,38,0.5); animation: pulse 1s ease infinite;
+    }
+    #onecard-attack-banner.show { display: block; }
+    #onecard-actions-row { display: flex; gap: 12px; align-items: center; justify-content: center; flex-wrap: wrap; }
+    #btn-onecard-call {
+      padding: 10px 20px; font-size: 16px; font-weight: 800; border-radius: 8px;
+      background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); color: #fff;
+      border: none; cursor: pointer; box-shadow: 0 4px 12px rgba(245,158,11,0.5);
+    }
+    #btn-onecard-call:hover { opacity: 0.9; transform: scale(1.02); }
+    #btn-onecard-call:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+    #onecard-suit-modal {
+      display: none; position: fixed; inset: 0; align-items: center; justify-content: center; z-index: 9100;
+    }
+    #onecard-suit-modal.show { display: flex; }
+    #onecard-suit-backdrop { position: absolute; inset: 0; background: rgba(0,0,0,0.75); }
+    #onecard-suit-box {
+      position: relative; z-index: 1; background: var(--bg-secondary); border: 2px solid var(--accent);
+      border-radius: 14px; padding: 24px; text-align: center;
+    }
+    #onecard-suit-title { font-size: 16px; font-weight: 700; margin-bottom: 16px; }
+    #onecard-suit-btns { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+    #onecard-suit-btns button {
+      width: 64px; height: 64px; font-size: 28px; border-radius: 8px; border: 2px solid var(--border);
+      cursor: pointer; background: var(--bg-primary); transition: all 0.15s;
+    }
+    #onecard-suit-btns button:hover { border-color: var(--accent); transform: scale(1.08); }
 
     /* VS 구분선 */
     .indian-vs-bar {
@@ -885,6 +941,24 @@
     #btn-holdem-check:hover:not(:disabled) { background: #4ade80; }
     #btn-holdem-fold  { background: var(--bg-tertiary); color: var(--text-primary); border: 1px solid var(--border); }
     #btn-holdem-fold:hover:not(:disabled)  { background: var(--danger); color: #fff; border-color: var(--danger); }
+
+    .poker-hand-guide {
+      width: 100%; background: var(--bg-tertiary); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 12px; margin-top: 8px;
+    }
+    .poker-hand-guide-title {
+      font-size: 12px; font-weight: 700; color: var(--gold); margin-bottom: 10px; text-align: center;
+      letter-spacing: 0.5px;
+    }
+    .poker-hand-guide-grid {
+      display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px;
+    }
+    .poker-hand-item {
+      display: flex; flex-direction: column;
+      background: var(--bg-secondary); padding: 6px 8px; border-radius: 4px; border: 1px solid var(--border);
+    }
+    .poker-hand-name { font-size: 11px; font-weight: 700; color: var(--text-primary); margin-bottom: 2px; }
+    .poker-hand-desc { font-size: 10px; color: var(--text-muted); line-height: 1.3; word-break: keep-all; }
 
     /* ══ SEVEN POKER ═════════════════════════════════════════════════════════ */
     #sevenpoker-container {
@@ -1137,7 +1211,8 @@
 
       /* ── 로비 ── */
       #lobby-view { padding: 12px 8px 60px; }
-      #game-cards { grid-template-columns: 1fr; gap: 10px; }
+      #game-cards { gap: 10px; }
+      .category-cards { gap: 10px; }
       .game-card { padding: 14px 12px; }
 
       /* ── 룸 뷰: 그리드 → 세로 스택 ── */
@@ -1337,7 +1412,9 @@
     </div>
 
     <div id="game-cards">
-      <!-- [보드게임] 오목 → 4목 → 틱택토 -->
+      <div class="lobby-category">
+        <h3>보드게임</h3>
+        <div class="category-cards">
       <div class="game-card">
         <div class="card-icon">🀱</div>
         <div class="card-title">오목</div>
@@ -1395,7 +1472,11 @@
           </div>
         </div>
       </div>
-      <!-- [카드게임] 블랙잭 → 홀덤 → 세븐포커 → 인디언포커 -->
+        </div>
+      </div>
+      <div class="lobby-category">
+        <h3>카드게임</h3>
+        <div class="category-cards">
       <div class="game-card">
         <div class="card-icon">🃏</div>
         <div class="card-title">블랙잭</div>
@@ -1510,6 +1591,8 @@
           </div>
         </div>
       </div>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -1524,6 +1607,7 @@
           <button class="header-btn" id="btn-ingame-rules" onclick="showCurrentRules()" title="현재 게임 룰 보기" style="display:none;">📖 룰</button>
           <button class="header-btn" id="btn-hand-rankings" onclick="showHandRankingsModal()" title="포커 족보 순서 보기" style="display:none;">📋 족보 보기</button>
           <button class="header-btn" id="btn-add-bot" onclick="requestAddBot()" title="AI 봇 추가 (오목/4목/틱택토)" style="display:none;">🤖 봇 추가</button>
+          <button id="btn-takeover" class="header-btn" style="background:var(--accent); color:#000; font-weight:bold; display:none;" onclick="sendTakeover()">🪑 난입 / 참여하기</button>
           <button id="room-code-badge" onclick="copyRoomCode()" title="클릭하여 방 코드를 클립보드에 복사">
             방 코드&nbsp;<span id="room-code-text">------</span>&nbsp;📋
           </button>
@@ -1616,6 +1700,21 @@
             <button id="btn-holdem-check" class="holdem-btn" onclick="holdemCheck()" disabled>✅ 체크 (⭐ -1)</button>
             <button id="btn-holdem-fold"  class="holdem-btn" onclick="holdemFold()"  disabled>🏳️ 폴드</button>
           </div>
+          <div class="poker-hand-guide">
+            <div class="poker-hand-guide-title">📋 포커 족보 가이드 (강한 순서)</div>
+            <div class="poker-hand-guide-grid">
+              <div class="poker-hand-item"><span class="poker-hand-name">로얄 스트레이트 플러시</span><span class="poker-hand-desc">같은 무늬 A, K, Q, J, 10</span></div>
+              <div class="poker-hand-item"><span class="poker-hand-name">스트레이트 플러시</span><span class="poker-hand-desc">같은 무늬의 연속된 숫자 5장</span></div>
+              <div class="poker-hand-item"><span class="poker-hand-name">포카드</span><span class="poker-hand-desc">같은 숫자 4장</span></div>
+              <div class="poker-hand-item"><span class="poker-hand-name">풀하우스</span><span class="poker-hand-desc">같은 숫자 3장 + 같은 숫자 2장</span></div>
+              <div class="poker-hand-item"><span class="poker-hand-name">플러시</span><span class="poker-hand-desc">숫자 상관없이 같은 무늬 5장</span></div>
+              <div class="poker-hand-item"><span class="poker-hand-name">스트레이트</span><span class="poker-hand-desc">무늬 상관없이 연속된 숫자 5장</span></div>
+              <div class="poker-hand-item"><span class="poker-hand-name">트리플</span><span class="poker-hand-desc">같은 숫자 3장</span></div>
+              <div class="poker-hand-item"><span class="poker-hand-name">투페어</span><span class="poker-hand-desc">같은 숫자 2장씩 두 쌍</span></div>
+              <div class="poker-hand-item"><span class="poker-hand-name">원페어</span><span class="poker-hand-desc">같은 숫자 2장 한 쌍</span></div>
+              <div class="poker-hand-item"><span class="poker-hand-name">하이카드 (탑)</span><span class="poker-hand-desc">아무 짝도 없을 때 가장 높은 숫자</span></div>
+            </div>
+          </div>
         </div>
 
         <!-- Seven Poker container -->
@@ -1629,6 +1728,21 @@
           <div id="sevenpoker-actions">
             <button id="btn-sevenpoker-check" class="holdem-btn" onclick="sevenpokerCheck()" disabled>✅ 체크 (⭐ -1)</button>
             <button id="btn-sevenpoker-fold"  class="holdem-btn" onclick="sevenpokerFold()"  disabled>🏳️ 폴드</button>
+          </div>
+          <div class="poker-hand-guide">
+            <div class="poker-hand-guide-title">📋 포커 족보 가이드 (강한 순서)</div>
+            <div class="poker-hand-guide-grid">
+              <div class="poker-hand-item"><span class="poker-hand-name">로얄 스트레이트 플러시</span><span class="poker-hand-desc">같은 무늬 A, K, Q, J, 10</span></div>
+              <div class="poker-hand-item"><span class="poker-hand-name">스트레이트 플러시</span><span class="poker-hand-desc">같은 무늬의 연속된 숫자 5장</span></div>
+              <div class="poker-hand-item"><span class="poker-hand-name">포카드</span><span class="poker-hand-desc">같은 숫자 4장</span></div>
+              <div class="poker-hand-item"><span class="poker-hand-name">풀하우스</span><span class="poker-hand-desc">같은 숫자 3장 + 같은 숫자 2장</span></div>
+              <div class="poker-hand-item"><span class="poker-hand-name">플러시</span><span class="poker-hand-desc">숫자 상관없이 같은 무늬 5장</span></div>
+              <div class="poker-hand-item"><span class="poker-hand-name">스트레이트</span><span class="poker-hand-desc">무늬 상관없이 연속된 숫자 5장</span></div>
+              <div class="poker-hand-item"><span class="poker-hand-name">트리플</span><span class="poker-hand-desc">같은 숫자 3장</span></div>
+              <div class="poker-hand-item"><span class="poker-hand-name">투페어</span><span class="poker-hand-desc">같은 숫자 2장씩 두 쌍</span></div>
+              <div class="poker-hand-item"><span class="poker-hand-name">원페어</span><span class="poker-hand-desc">같은 숫자 2장 한 쌍</span></div>
+              <div class="poker-hand-item"><span class="poker-hand-name">하이카드 (탑)</span><span class="poker-hand-desc">아무 짝도 없을 때 가장 높은 숫자</span></div>
+            </div>
           </div>
         </div>
 
@@ -1680,12 +1794,17 @@
             </div>
           </div>
           <div id="thief-escaped" style="font-size:12px;color:var(--text-secondary);margin-bottom:8px;"></div>
-          <button id="btn-thief-draw" class="header-btn" onclick="thiefDraw()" disabled>🃏 상대방 카드 1장 뽑기</button>
+          <div id="thief-target-area" style="flex-direction:column; align-items:center; gap:8px; margin-bottom:12px;">
+            <div id="thief-target-label" style="font-size:13px; color:var(--text-secondary);"></div>
+            <div id="thief-target-cards" class="thief-hand"></div>
+          </div>
+          <div id="thief-my-label" style="font-size:13px; color:var(--text-secondary); margin-bottom:4px;">내 패</div>
           <div id="thief-hand" class="thief-hand"></div>
         </div>
 
         <!-- OneCard container -->
         <div id="onecard-container">
+          <div id="onecard-attack-banner" class="">🔥 공격 누적: <span id="onecard-attack-count">0</span>장!</div>
           <div style="display:flex;align-items:center;justify-content:center;gap:12px;flex-wrap:wrap;">
             <div id="onecard-status">상대방을 기다리는 중...</div>
             <div id="onecard-timer-block" class="game-timer-block">
@@ -1693,10 +1812,14 @@
               <span id="onecard-seconds" class="timer-num">--</span>초
             </div>
           </div>
+          <div id="onecard-players" class="holdem-players-grid" style="margin-bottom: 12px; width: 100%;"></div>
           <div id="onecard-direction" style="font-size:12px;color:var(--text-secondary);margin-bottom:8px;"></div>
           <div id="onecard-center" style="display:flex;align-items:center;justify-content:center;gap:16px;margin:12px 0;">
             <div id="onecard-top-card" class="onecard-card"></div>
             <div id="onecard-deck" class="onecard-deck" onclick="onecardDraw()" title="클릭 시 드로우"></div>
+          </div>
+          <div id="onecard-actions-row">
+            <button id="btn-onecard-call" onclick="onecardCallOneCard()" disabled>🚨 원카드!</button>
           </div>
           <div id="onecard-hand" class="onecard-hand"></div>
         </div>
@@ -1796,6 +1919,20 @@
       <button class="debug-btn" id="btn-send" onclick="sendMessage()" disabled>전송</button>
     </div>
 
+  </div>
+</div>
+
+<!-- ══ OneCard 7 카드 무늬 선택 모달 ═══════════════════════════════════════════ -->
+<div id="onecard-suit-modal">
+  <div id="onecard-suit-backdrop" onclick="closeOneCardSuitModal()"></div>
+  <div id="onecard-suit-box">
+    <div id="onecard-suit-title">7 카드 — 다음 문양 선택</div>
+    <div id="onecard-suit-btns">
+      <button type="button" onclick="onecardPickSuit('♠')">♠</button>
+      <button type="button" onclick="onecardPickSuit('♥')">♥</button>
+      <button type="button" onclick="onecardPickSuit('♦')">♦</button>
+      <button type="button" onclick="onecardPickSuit('♣')">♣</button>
+    </div>
   </div>
 </div>
 
@@ -2239,6 +2376,7 @@
       document.getElementById('room-code-text').textContent = '------';
       document.getElementById('btn-ingame-rules').style.display = 'none';
       document.getElementById('btn-add-bot').style.display = 'none';
+      document.getElementById('btn-takeover').style.display = 'none';
       document.getElementById('chat-input').disabled      = true;
       document.getElementById('btn-send-chat').disabled   = true;
 
@@ -2663,21 +2801,39 @@
       html: `
         <h3>게임 개요</h3>
         <ul>
-          <li>2~4인, 52장 덱에서 각 <strong>7장씩</strong> 분배. 남은 덱 맨 위 1장이 바닥(탑) 카드.</li>
+          <li>2~4인, 54장 덱(52장 + 흑백 조커 + 컬러 조커)에서 각 <strong>7장씩</strong> 분배.</li>
+          <li>덱이 비면 버린 카드를 셔플하여 재활용합니다.</li>
         </ul>
         <h3>턴 진행</h3>
         <ul>
-          <li>바닥 카드와 <strong>문양(Suit)</strong> 또는 <strong>숫자(Value)</strong>가 일치하는 카드만 낼 수 있습니다.</li>
-          <li>낼 카드가 없으면 덱에서 1장 드로우합니다.</li>
+          <li>바닥 카드와 <strong>문양</strong> 또는 <strong>숫자</strong>가 일치하는 카드만 낼 수 있습니다.</li>
+          <li>조커는 언제든 낼 수 있습니다.</li>
+          <li>낼 카드가 없으면 덱에서 드로우합니다.</li>
+        </ul>
+        <h3>공격 카드</h3>
+        <ul>
+          <li><strong>A</strong>: +3장</li>
+          <li><strong>흑백 조커(B)</strong>: +5장</li>
+          <li><strong>컬러 조커(C)</strong>: +7장</li>
+          <li>공격을 받으면 방어 카드로 막거나, 드로우를 선택해 패널티만큼 받습니다.</li>
+          <li>방어: A→A/조커, 흑백 조커→컬러 조커만, 컬러 조커는 방어 불가.</li>
         </ul>
         <h3>특수 카드</h3>
         <ul>
           <li><strong>J</strong>: 다음 사람 턴 스킵</li>
-          <li><strong>Q</strong>: 턴 진행 방향 반전 (시계 ↔ 반시계)</li>
+          <li><strong>Q</strong>: 턴 진행 방향 반전</li>
+          <li><strong>K</strong>: 한 번 더! (내가 다시 카드를 냄)</li>
+          <li><strong>7</strong>: 다음 문양(♠♥♦♣) 강제 변경</li>
         </ul>
-        <h3>승패</h3>
+        <h3>원카드 콜</h3>
         <ul>
-          <li>누군가의 패가 0장이 되면 즉시 그 사람 <strong>승리</strong>, 나머지 <strong>패배</strong>.</li>
+          <li>손패가 1장이 되면 <strong>원카드!</strong> 버튼이 활성화됩니다.</li>
+          <li>본인이 먼저 누르면 안전해지고, 타인이 먼저 누르면 1장인 유저가 벌칙 1장 드로우.</li>
+        </ul>
+        <h3>파산 & 승패</h3>
+        <ul>
+          <li>손패가 <strong>20장 초과</strong> 시 즉시 파산(패배).</li>
+          <li>패가 0장이 되면 <strong>승리</strong>, 나머지 <strong>패배</strong>.</li>
         </ul>`
     }
   };
@@ -2804,7 +2960,7 @@
               // 꽉 찬 방 감지 → 자동으로 로비로 퇴장 (Auto-kick)
               const fullKeywords = ['이미 2명', '1인 전용', '가득 찼습니다', '정원 초과', '인원이 가득', '방이 해산'];
               if (fullKeywords.some(kw => errMsg.includes(kw))) {
-                leaveRoom();
+                leaveRoom(true);
               }
               break;
             }
@@ -2828,12 +2984,33 @@
               break;
             case 'board_update':
               addLog('board-update', JSON.stringify({ type: parsed.type, turn: parsed.data?.turn }));
+              document.getElementById('btn-takeover').style.display = 'none';
+              ['status-turn-user', 'ttt-status', 'c4-status'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) { el.style.color = ''; el.style.fontWeight = ''; }
+              });
               showGomokuBoard();
               renderBoard(parsed.data);
               break;
             case 'timer_tick':
               updateGameTimer(parsed.turnUser, parsed.remaining);
               break;
+            case 'game_paused': {
+              const playerIds = parsed.playerIds || [];
+              const isPlayer = playerIds.includes(currentUserId);
+              const statusEls = ['status-turn-user', 'ttt-status', 'c4-status', 'indian-status', 'holdem-status', 'sevenpoker-status', 'thief-status', 'onecard-status'];
+              statusEls.forEach(id => {
+                const el = document.getElementById(id);
+                if (el) {
+                  el.textContent = '🚨 플레이어 퇴장. 난입 대기 중...';
+                  el.style.color = 'var(--danger, #dc2626)';
+                  el.style.fontWeight = '700';
+                }
+              });
+              const btnTakeover = document.getElementById('btn-takeover');
+              if (btnTakeover) btnTakeover.style.display = isPlayer ? 'none' : '';
+              break;
+            }
             case 'game_result':
               addLog('game-result', raw);
               addChatMessage('game_result', parsed);
@@ -2886,9 +3063,24 @@
               showBlackjackUI();
               renderBlackjackState(parsed.data);
               break;
+            case 'thief_hover':
+              if (parsed.targetId === currentUserId && typeof parsed.index === 'number') {
+                thiefHoverOnMeIndex = parsed.index;
+                if (lastThiefState) renderThief(lastThiefState);
+              }
+              break;
             case 'tictactoe_state': case 'connect4_state': case 'indian_state': case 'holdem_state': case 'sevenpoker_state': case 'thief_state': case 'onecard_state': {
+              document.getElementById('btn-takeover').style.display = 'none';
+              ['status-turn-user', 'ttt-status', 'c4-status', 'indian-status', 'thief-status', 'onecard-status'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) { el.style.color = ''; el.style.fontWeight = ''; }
+              });
+              if (parsed.type === 'thief_state') thiefHoverOnMeIndex = -1;
               const h = GAME_STATE_HANDLERS[parsed.type];
               if (h) { addLog(h.logKey, raw); h.show(); h.render(parsed.data); }
+              if (parsed.data?.canTakeover) {
+                document.getElementById('btn-takeover').style.display = '';
+              }
               break;
             }
             case 'indian_showdown_result':
@@ -3010,7 +3202,8 @@
     });
   }
 
-  function leaveRoom() {
+  function leaveRoom(skipConfirm) {
+    if (!skipConfirm && !confirm('게임 진행 중에 나가면 패배로 기록될 수 있습니다.\n정말 나가시겠습니까?')) return;
     sendRaw(JSON.stringify({ action: 'leave', payload: {} }));
     setRoomState('', '');
   }
@@ -3056,6 +3249,11 @@
     if (!ws || ws.readyState !== WebSocket.OPEN) return;
     sendRaw(JSON.stringify({ action: 'game_action', payload: { cmd: 'rematch' } }));
     document.getElementById('btn-rematch').disabled = true;
+  }
+
+  function sendTakeover() {
+    if (!ws || ws.readyState !== WebSocket.OPEN) return;
+    sendRaw(JSON.stringify({ action: 'game_action', payload: { cmd: 'takeover' } }));
   }
 
   // ── 게임 뷰 전환 (DRY) ─────────────────────────────────────────────────────
@@ -3563,31 +3761,80 @@
 
   // ── Thief (도둑잡기) UI ────────────────────────────────────────────────────
 
+  let thiefHoveredIndex = -1;
+  let thiefHoveredTargetId = '';
+  let thiefHoverOnMeIndex = -1;
+  let lastThiefState = null;
+
   function showThiefUI() {
     switchGameView('thief');
+    thiefHoveredIndex = -1;
+    thiefHoveredTargetId = '';
+    thiefHoverOnMeIndex = -1;
   }
 
-  function renderThiefCard(card) {
+  function renderThiefCard(card, hoverFinger) {
     if (!card) return '';
     const isRed = card.suit === '♥' || card.suit === '♦';
     const suit = card.suit || '🃏';
     const val = card.value || '?';
-    return `<div class="thief-card ${isRed ? 'red-suit' : 'black-suit'}"><span>${val}</span><span>${suit}</span></div>`;
+    const fingerClass = hoverFinger ? ' hover-finger' : '';
+    return `<div class="thief-card ${isRed ? 'red-suit' : 'black-suit'}${fingerClass}"><span>${val}</span><span>${suit}</span></div>`;
   }
 
   function renderThief(data) {
     if (!data) return;
+    lastThiefState = data;
     const isMyTurn = data.turn === currentUserId;
     document.getElementById('thief-status').textContent = isMyTurn
-      ? '🎯 내 차례 — 상대방 카드 1장을 뽑으세요!'
+      ? '🎯 내 차례 — 상대방 카드를 클릭하여 뽑으세요!'
       : `⏳ ${escapeHTML(data.turn || '—')}의 차례`;
     document.getElementById('thief-escaped').textContent = data.escaped && data.escaped.length
       ? `탈출: ${data.escaped.join(', ')}`
       : '';
-    document.getElementById('btn-thief-draw').disabled = !isMyTurn;
+
+    const targetArea = document.getElementById('thief-target-area');
+    const targetCards = document.getElementById('thief-target-cards');
+    const targetLabel = document.getElementById('thief-target-label');
+    if (isMyTurn && data.targetUserId) {
+      const targetPlayer = (data.players || []).find(p => p.userId === data.targetUserId);
+      const cardCount = targetPlayer ? targetPlayer.cardCount : 0;
+      targetArea.classList.add('visible');
+      targetLabel.textContent = `${escapeHTML(data.targetUserId)}의 패 (클릭: 호버 → 한 번 더: 뽑기)`;
+      targetCards.innerHTML = '';
+      for (let i = 0; i < cardCount; i++) {
+        const div = document.createElement('div');
+        div.className = 'thief-target-card' + (thiefHoveredTargetId === data.targetUserId && thiefHoveredIndex === i ? ' hovered' : '');
+        div.textContent = '🃏';
+        div.dataset.targetId = data.targetUserId;
+        div.dataset.index = String(i);
+        div.onclick = () => thiefOnTargetCardClick(data.targetUserId, i, div);
+        targetCards.appendChild(div);
+      }
+    } else {
+      targetArea.classList.remove('visible');
+      thiefHoveredIndex = -1;
+      thiefHoveredTargetId = '';
+    }
+
     const handEl = document.getElementById('thief-hand');
     if (handEl && data.hand) {
-      handEl.innerHTML = data.hand.map(c => renderThiefCard(c)).join('');
+      handEl.innerHTML = data.hand.map((c, i) => renderThiefCard(c, thiefHoverOnMeIndex === i)).join('');
+    }
+  }
+
+  function thiefOnTargetCardClick(targetId, index, el) {
+    if (!ws || ws.readyState !== WebSocket.OPEN) return;
+    if (thiefHoveredTargetId === targetId && thiefHoveredIndex === index) {
+      sendRaw(JSON.stringify({ action: 'game_action', payload: { cmd: 'draw', targetId: targetId, index: index } }));
+      thiefHoveredIndex = -1;
+      thiefHoveredTargetId = '';
+    } else {
+      sendRaw(JSON.stringify({ action: 'game_action', payload: { cmd: 'hover', targetId: targetId, index: index } }));
+      thiefHoveredIndex = index;
+      thiefHoveredTargetId = targetId;
+      document.querySelectorAll('.thief-target-card').forEach(c => c.classList.remove('hovered'));
+      el.classList.add('hovered');
     }
   }
 
@@ -3606,31 +3853,83 @@
     if (!card) return '';
     const isRed = card.suit === '♥' || card.suit === '♦';
     const suit = card.suit || '🃏';
-    const val = card.value || '?';
+    let val = card.value || '?';
+    if (val === 'B_JOKER') val = 'B';
+    if (val === 'C_JOKER') val = 'C';
     return `<div class="onecard-card ${isRed ? 'red-suit' : 'black-suit'} ${playable ? 'playable' : ''}" data-index="${card._index ?? ''}"><span>${val}</span><span>${suit}</span></div>`;
   }
+
+  function onecardCanDefend(attackCard, card) {
+    if (!attackCard || !card) return false;
+    const av = attackCard.value || '';
+    const cv = card.value || '';
+    if (av === 'A') return cv === 'A' || cv === 'B_JOKER' || cv === 'C_JOKER';
+    if (av === 'B_JOKER') return cv === 'C_JOKER';
+    if (av === 'C_JOKER') return false;
+    return false;
+  }
+  function onecardIsPlayable(data, card) {
+    const top = data.topCard || {};
+    const suit = data.targetSuit || top.suit || '';
+    const attackPenalty = data.attackPenalty || 0;
+    if (attackPenalty > 0) return onecardCanDefend(top, card);
+    const cv = card.value || '';
+    if (cv === 'B_JOKER' || cv === 'C_JOKER') return true;
+    return (card.suit === suit || card.value === top.value);
+  }
+
+  let onecardPendingPlayIndex = -1;
 
   function renderOneCard(data) {
     if (!data) return;
     const isMyTurn = data.turn === currentUserId;
     const top = data.topCard || {};
+    const attackPenalty = data.attackPenalty || 0;
+    const oneCardVuln = data.oneCardVulnerable || '';
+
     document.getElementById('onecard-status').textContent = isMyTurn
-      ? '🎯 내 차례 — 카드를 내거나 드로우하세요!'
+      ? (attackPenalty > 0 ? '🛡️ 방어 카드를 내거나 드로우하세요!' : '🎯 내 차례 — 카드를 내거나 드로우하세요!')
       : `⏳ ${escapeHTML(data.turn || '—')}의 차례`;
     document.getElementById('onecard-direction').textContent = (data.direction === -1 ? '↺ 반시계' : '↻ 시계') + ' 방향';
+
+    const attackBanner = document.getElementById('onecard-attack-banner');
+    const attackCount = document.getElementById('onecard-attack-count');
+    if (attackBanner && attackCount) {
+      attackCount.textContent = attackPenalty;
+      attackBanner.classList.toggle('show', attackPenalty > 0);
+    }
+
+    const btnCall = document.getElementById('btn-onecard-call');
+    if (btnCall) {
+      btnCall.disabled = !oneCardVuln || !ws || ws.readyState !== WebSocket.OPEN;
+    }
+
+    const playersEl = document.getElementById('onecard-players');
+    if (playersEl && data.players) {
+      playersEl.innerHTML = data.players.map(p => {
+        const isMe = p.userId === currentUserId;
+        return `
+          <div class="onecard-player-box ${p.isTurn ? 'my-turn' : ''}">
+            <div class="holdem-player-name">${escapeHTML(p.userId)}${isMe ? ' (나)' : ''}</div>
+            <div class="onecard-card-count">🃏 ${p.cardCount}장</div>
+          </div>`;
+      }).join('');
+    }
+
     const topEl = document.getElementById('onecard-top-card');
     if (topEl) topEl.innerHTML = top.suit ? renderOneCardCard(top, false).replace(' data-index=""', '') : '';
     const deckEl = document.getElementById('onecard-deck');
     if (deckEl) {
-      deckEl.textContent = data.deckCount > 0 ? `🃏 ${data.deckCount}` : '';
-      deckEl.style.cursor = isMyTurn && data.deckCount > 0 ? 'pointer' : 'default';
-      deckEl.onclick = (data.deckCount > 0 && isMyTurn) ? onecardDraw : null;
+      const total = (data.deckCount || 0) + (data.discardCount || 0);
+      deckEl.textContent = total > 0 ? `🃏 ${data.deckCount || 0}` : '';
+      deckEl.style.cursor = isMyTurn && total > 0 ? 'pointer' : 'default';
+      deckEl.onclick = (total > 0 && isMyTurn) ? onecardDraw : null;
     }
     const handEl = document.getElementById('onecard-hand');
     if (handEl && data.hand) {
       const canPlay = isMyTurn && top.suit;
       handEl.innerHTML = data.hand.map((c, i) => {
-        const playable = canPlay && (c.suit === top.suit || c.value === top.value);
+        const playable = canPlay && onecardIsPlayable(data, c);
         const cardWithIdx = { ...c, _index: i };
         return renderOneCardCard(cardWithIdx, playable);
       }).join('');
@@ -3638,10 +3937,27 @@
         el.style.cursor = 'pointer';
         el.onclick = () => {
           const idx = parseInt(el.dataset.index, 10);
-          if (!isNaN(idx)) onecardPlay(idx);
+          if (isNaN(idx)) return;
+          const card = data.hand[idx];
+          if (card && card.value === '7') {
+            onecardPendingPlayIndex = idx;
+            document.getElementById('onecard-suit-modal').classList.add('show');
+          } else {
+            onecardPlay(idx);
+          }
         };
       });
     }
+  }
+
+  function closeOneCardSuitModal() {
+    document.getElementById('onecard-suit-modal').classList.remove('show');
+    onecardPendingPlayIndex = -1;
+  }
+  function onecardPickSuit(suit) {
+    if (onecardPendingPlayIndex < 0) return;
+    onecardPlay(onecardPendingPlayIndex, suit);
+    closeOneCardSuitModal();
   }
 
   function onecardDraw() {
@@ -3649,9 +3965,16 @@
     sendRaw(JSON.stringify({ action: 'game_action', payload: { cmd: 'draw' } }));
   }
 
-  function onecardPlay(index) {
+  function onecardPlay(index, targetSuit) {
     if (!ws || ws.readyState !== WebSocket.OPEN) return;
-    sendRaw(JSON.stringify({ action: 'game_action', payload: { cmd: 'play', index } }));
+    const payload = { cmd: 'play', index };
+    if (targetSuit) payload.targetSuit = targetSuit;
+    sendRaw(JSON.stringify({ action: 'game_action', payload }));
+  }
+
+  function onecardCallOneCard() {
+    if (!ws || ws.readyState !== WebSocket.OPEN) return;
+    sendRaw(JSON.stringify({ action: 'game_action', payload: { cmd: 'call_onecard' } }));
   }
 
   // ── Texas Holdem UI ───────────────────────────────────────────────────────
