@@ -15,7 +15,7 @@ const botThinkDelay = 1500 * time.Millisecond
 func SpawnBot(m *RoomManager, room *Room, gamePrefix string) error {
 	prefix := strings.ToLower(strings.TrimSpace(gamePrefix))
 	switch prefix {
-	case "omok", "connect4", "tictactoe", "indian", "holdem", "sevenpoker":
+	case "omok", "connect4", "tictactoe", "indian", "holdem", "sevenpoker", "thief", "onecard":
 		// 지원하는 게임
 	default:
 		log.Printf("[BOT] 지원하지 않는 게임 접두사: %s", gamePrefix)
@@ -33,9 +33,9 @@ func SpawnBot(m *RoomManager, room *Room, gamePrefix string) error {
 	}
 	room.mu.RUnlock()
 
-	// 인원 제한: 1:1 게임은 2명, 다인(holdem, sevenpoker)은 4명
+	// 인원 제한: 1:1 게임은 2명, 다인(holdem, sevenpoker, thief, onecard)은 4명
 	maxPlayers := 2
-	if prefix == "holdem" || prefix == "sevenpoker" {
+	if prefix == "holdem" || prefix == "sevenpoker" || prefix == "thief" || prefix == "onecard" {
 		maxPlayers = 4
 	}
 	if room.count() >= maxPlayers {
@@ -59,6 +59,8 @@ func SpawnBot(m *RoomManager, room *Room, gamePrefix string) error {
 			"indian":     {},
 			"holdem":     {},
 			"sevenpoker": {},
+			"thief":      {},
+			"onecard":    {},
 		},
 	}
 
@@ -84,6 +86,12 @@ func SpawnBot(m *RoomManager, room *Room, gamePrefix string) error {
 
 	if room.Plugin != nil {
 		room.Plugin.OnJoin(bot)
+		// 자동 레디: 1초 후 ready 액션 전송
+		go func() {
+			time.Sleep(1 * time.Second)
+			payload, _ := json.Marshal(map[string]any{"cmd": "ready"})
+			room.Plugin.HandleAction(bot, "game_action", payload)
+		}()
 	}
 
 	return nil
@@ -101,6 +109,18 @@ func makeBotProcess(bot *Client, room *Room, gamePrefix string) func(msg []byte)
 		}
 
 		switch base.Type {
+		case "game_result":
+			var gr struct {
+				RematchEnabled bool `json:"rematchEnabled"`
+			}
+			if json.Unmarshal(msg, &gr) == nil && gr.RematchEnabled {
+				go func() {
+					time.Sleep(2 * time.Second)
+					payload, _ := json.Marshal(map[string]any{"cmd": "rematch"})
+					room.Plugin.HandleAction(bot, "game_action", payload)
+				}()
+			}
+			return
 		case "board_update":
 			if gamePrefix != "omok" {
 				return
@@ -217,6 +237,50 @@ func makeBotProcess(bot *Client, room *Room, gamePrefix string) func(msg []byte)
 			}
 			payload, _ := json.Marshal(map[string]any{"cmd": cmd})
 			room.Plugin.HandleAction(bot, "game_action", payload)
+
+		case "thief_state":
+			if gamePrefix != "thief" {
+				return
+			}
+			var d ThiefData
+			if json.Unmarshal(base.Data, &d) != nil {
+				return
+			}
+			if d.Turn != bot.UserID {
+				return
+			}
+			time.Sleep(botThinkDelay)
+			payload, _ := json.Marshal(map[string]any{"cmd": "draw"})
+			room.Plugin.HandleAction(bot, "game_action", payload)
+
+		case "onecard_state":
+			if gamePrefix != "onecard" {
+				return
+			}
+			var d OneCardData
+			if json.Unmarshal(base.Data, &d) != nil {
+				return
+			}
+			if d.Turn != bot.UserID {
+				return
+			}
+			time.Sleep(botThinkDelay)
+			// Top Card와 (문양 or 숫자) 일치하는 첫 번째 카드 play, 없으면 draw
+			top := d.TopCard
+			playIdx := -1
+			for i, c := range d.Hand {
+				if c.Suit == top.Suit || c.Value == top.Value {
+					playIdx = i
+					break
+				}
+			}
+			if playIdx >= 0 {
+				payload, _ := json.Marshal(map[string]any{"cmd": "play", "index": playIdx})
+				room.Plugin.HandleAction(bot, "game_action", payload)
+			} else {
+				payload, _ := json.Marshal(map[string]any{"cmd": "draw"})
+				room.Plugin.HandleAction(bot, "game_action", payload)
+			}
 		}
 	}
 }

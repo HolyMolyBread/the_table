@@ -40,6 +40,7 @@ type TicTacToeGame struct {
 	currentTurn  int        // 0 또는 1
 	gameStarted  bool
 	stopTick     chan struct{}
+	startReady   [2]bool
 	rematchReady [2]bool
 	mu           sync.Mutex
 }
@@ -64,23 +65,17 @@ func (g *TicTacToeGame) OnJoin(client *Client) {
 			RoomID:  g.room.ID,
 		})
 		g.room.broadcastAll(notice)
+		upd, _ := json.Marshal(ReadyUpdateMessage{
+			Type: "ready_update", RoomID: g.room.ID, ReadyCount: 0, TotalCount: 1,
+		})
+		g.room.broadcastAll(upd)
 
 	case g.players[1] == nil && g.players[0] != client:
 		g.players[1] = client
-		g.gameStarted = true
-		g.currentTurn = 0 // players[0] = O 선공
-
-		notice, _ := json.Marshal(ServerResponse{
-			Type: "game_notice",
-			Message: fmt.Sprintf(
-				"게임 시작! ⭕ O: [%s]  ❌ X: [%s]  — O가 선공입니다.",
-				g.players[0].UserID, g.players[1].UserID,
-			),
-			RoomID: g.room.ID,
+		upd, _ := json.Marshal(ReadyUpdateMessage{
+			Type: "ready_update", RoomID: g.room.ID, ReadyCount: 0, TotalCount: 2,
 		})
-		g.room.broadcastAll(notice)
-		g.broadcastStateLocked()
-		g.startTurnTimerLocked()
+		g.room.broadcastAll(upd)
 
 	default:
 		// 3번째 이후 입장자 → 관전자
@@ -137,6 +132,7 @@ func (g *TicTacToeGame) OnLeave(client *Client) {
 			g.room.ID, winner.UserID, loser.UserID)
 	} else if g.players[0] != nil && g.players[1] != nil {
 		g.rematchReady = [2]bool{}
+		g.startReady = [2]bool{}
 	}
 
 	g.resetLocked()
@@ -166,6 +162,8 @@ func (g *TicTacToeGame) HandleAction(client *Client, action string, payload json
 	switch p.Cmd {
 	case "place":
 		g.handlePlace(client, p.R, p.C)
+	case "ready":
+		g.handleReady(client)
 	case "rematch":
 		g.handleRematch(client)
 	default:
@@ -392,6 +390,56 @@ func (g *TicTacToeGame) resetLocked() {
 	g.currentTurn = 0
 }
 
+// handleReady는 게임 시작 전 준비 요청을 처리합니다.
+func (g *TicTacToeGame) handleReady(client *Client) {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+
+	if g.gameStarted {
+		client.SendJSON(ServerResponse{Type: "error", Message: "게임이 이미 시작되었습니다."})
+		return
+	}
+	idx := -1
+	for i, p := range g.players {
+		if p == client {
+			idx = i
+			break
+		}
+	}
+	if idx < 0 || g.players[0] == nil || g.players[1] == nil {
+		client.SendJSON(ServerResponse{Type: "error", Message: "플레이어가 아닙니다."})
+		return
+	}
+	g.startReady[idx] = true
+	readyCount := 0
+	for _, r := range g.startReady {
+		if r {
+			readyCount++
+		}
+	}
+	upd, _ := json.Marshal(ReadyUpdateMessage{
+		Type: "ready_update", RoomID: g.room.ID, ReadyCount: readyCount, TotalCount: 2,
+	})
+	g.room.broadcastAll(upd)
+	if readyCount < 2 {
+		return
+	}
+	g.startReady = [2]bool{}
+	g.gameStarted = true
+	g.currentTurn = 0
+	notice, _ := json.Marshal(ServerResponse{
+		Type: "game_notice",
+		Message: fmt.Sprintf(
+			"게임 시작! ⭕ O: [%s]  ❌ X: [%s]  — O가 선공입니다.",
+			g.players[0].UserID, g.players[1].UserID,
+		),
+		RoomID: g.room.ID,
+	})
+	g.room.broadcastAll(notice)
+	g.broadcastStateLocked()
+	g.startTurnTimerLocked()
+}
+
 // handleRematch는 리매치 요청을 처리합니다.
 func (g *TicTacToeGame) handleRematch(client *Client) {
 	g.mu.Lock()
@@ -438,7 +486,7 @@ func (g *TicTacToeGame) handleRematch(client *Client) {
 		return
 	}
 
-	// 양쪽 레디 → O/X 교체 후 새 게임 시작
+	// 양쪽 레디 → O/X 교체 후 새 게임 시작 (리매치)
 	g.players[0], g.players[1] = g.players[1], g.players[0]
 	g.board = [3][3]int{}
 	g.rematchReady = [2]bool{}

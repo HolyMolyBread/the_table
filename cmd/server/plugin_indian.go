@@ -88,6 +88,7 @@ type IndianGame struct {
 	round          int
 	gameStarted    bool
 	stopTick       chan struct{}
+	startReady     [2]bool
 	rematchReady   [2]bool
 	mu             sync.Mutex
 }
@@ -113,22 +114,18 @@ func (g *IndianGame) OnJoin(client *Client) {
 			RoomID:  g.room.ID,
 		})
 		g.room.broadcastAll(notice)
+		upd, _ := json.Marshal(ReadyUpdateMessage{
+			Type: "ready_update", RoomID: g.room.ID, ReadyCount: 0, TotalCount: 1,
+		})
+		g.room.broadcastAll(upd)
 
 	case g.players[1] == nil && g.players[0] != client:
 		g.players[1] = client
 		g.hearts[1] = indianStartHearts
-		g.gameStarted = true
-
-		notice, _ := json.Marshal(ServerResponse{
-			Type: "game_notice",
-			Message: fmt.Sprintf(
-				"게임 시작! [%s] vs [%s] — 각각 ❤️×%d 하트로 시작합니다!",
-				g.players[0].UserID, g.players[1].UserID, indianStartHearts,
-			),
-			RoomID: g.room.ID,
+		upd, _ := json.Marshal(ReadyUpdateMessage{
+			Type: "ready_update", RoomID: g.room.ID, ReadyCount: 0, TotalCount: 2,
 		})
-		g.room.broadcastAll(notice)
-		g.startRoundLocked()
+		g.room.broadcastAll(upd)
 
 	default:
 		// 3번째 이후 입장자 → 관전자
@@ -179,6 +176,7 @@ func (g *IndianGame) OnLeave(client *Client) {
 			g.room.ID, winner.UserID, loser.UserID)
 	} else if g.players[0] != nil && g.players[1] != nil {
 		g.rematchReady = [2]bool{}
+		g.startReady = [2]bool{}
 	}
 
 	g.resetLocked()
@@ -207,6 +205,8 @@ func (g *IndianGame) HandleAction(client *Client, action string, payload json.Ra
 		g.handleShowdown(client)
 	case "give_up":
 		g.handleGiveUp(client)
+	case "ready":
+		g.handleReady(client)
 	case "rematch":
 		g.handleRematch(client)
 	default:
@@ -630,6 +630,54 @@ func (g *IndianGame) resetLocked() {
 	g.currentTurn  = 0
 	g.rematchReady = [2]bool{}
 	g.stopTick     = nil
+}
+
+// handleReady는 게임 시작 전 준비 요청을 처리합니다.
+func (g *IndianGame) handleReady(client *Client) {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+
+	if g.gameStarted {
+		client.SendJSON(ServerResponse{Type: "error", Message: "게임이 이미 시작되었습니다."})
+		return
+	}
+	idx := -1
+	for i, p := range g.players {
+		if p == client {
+			idx = i
+			break
+		}
+	}
+	if idx < 0 || g.players[0] == nil || g.players[1] == nil {
+		client.SendJSON(ServerResponse{Type: "error", Message: "플레이어가 아닙니다."})
+		return
+	}
+	g.startReady[idx] = true
+	readyCount := 0
+	for _, r := range g.startReady {
+		if r {
+			readyCount++
+		}
+	}
+	upd, _ := json.Marshal(ReadyUpdateMessage{
+		Type: "ready_update", RoomID: g.room.ID, ReadyCount: readyCount, TotalCount: 2,
+	})
+	g.room.broadcastAll(upd)
+	if readyCount < 2 {
+		return
+	}
+	g.startReady = [2]bool{}
+	g.gameStarted = true
+	notice, _ := json.Marshal(ServerResponse{
+		Type: "game_notice",
+		Message: fmt.Sprintf(
+			"게임 시작! [%s] vs [%s] — 각각 ❤️×%d 하트로 시작합니다!",
+			g.players[0].UserID, g.players[1].UserID, indianStartHearts,
+		),
+		RoomID: g.room.ID,
+	})
+	g.room.broadcastAll(notice)
+	g.startRoundLocked()
 }
 
 // handleRematch는 리매치 요청을 처리합니다.

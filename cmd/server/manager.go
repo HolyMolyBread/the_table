@@ -78,6 +78,10 @@ func newRoom(id string) *Room {
 		room.Plugin = NewHoldemGame(room)
 	case strings.HasPrefix(id, "sevenpoker"):
 		room.Plugin = NewSevenPokerGame(room)
+	case strings.HasPrefix(id, "thief"):
+		room.Plugin = NewThiefGame(room)
+	case strings.HasPrefix(id, "onecard"):
+		room.Plugin = NewOneCardGame(room)
 	default:
 		// nil — 게임 플러그인 없는 순수 채팅방
 	}
@@ -492,11 +496,15 @@ func (m *RoomManager) HandleMessage(client *Client, rawMsg []byte) {
 			prefix = "holdem"
 		} else if strings.HasPrefix(client.RoomID, "sevenpoker") {
 			prefix = "sevenpoker"
+		} else if strings.HasPrefix(client.RoomID, "thief") {
+			prefix = "thief"
+		} else if strings.HasPrefix(client.RoomID, "onecard") {
+			prefix = "onecard"
 		}
 		if prefix == "" {
 			client.SendJSON(ServerResponse{
 				Type:    "error",
-				Message: "이 게임은 AI 봇을 지원하지 않습니다 (오목/4목/틱택토/인디언포커/홀덤/세븐포커만 가능)",
+				Message: "이 게임은 AI 봇을 지원하지 않습니다",
 			})
 			return
 		}

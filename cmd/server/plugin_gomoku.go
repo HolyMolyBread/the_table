@@ -56,7 +56,8 @@ type GomokuGame struct {
 	gameStarted  bool
 	lastMove     [2]int    // 직전 착수 좌표, [-1,-1]=없음
 	stopTick     chan struct{}
-	rematchReady [2]bool // Phase 4.3: 각 플레이어의 리매치 레디 여부
+	startReady   [2]bool   // 게임 시작 전 준비 상태
+	rematchReady [2]bool   // Phase 4.3: 각 플레이어의 리매치 레디 여부
 	mu           sync.Mutex
 }
 
@@ -80,28 +81,20 @@ func (g *GomokuGame) OnJoin(client *Client) {
 			RoomID:  g.room.ID,
 		})
 		g.room.broadcastAll(notice)
+		upd, _ := json.Marshal(ReadyUpdateMessage{
+			Type: "ready_update", RoomID: g.room.ID, ReadyCount: 0, TotalCount: 1,
+		})
+		g.room.broadcastAll(upd)
 
 	case g.players[1] == nil && g.players[0] != client:
 		g.players[1] = client
-
-		// 무작위 흑/백 배정
-		if rand.Intn(2) == 1 {
-			g.players[0], g.players[1] = g.players[1], g.players[0]
-		}
-		g.gameStarted = true
-		g.currentTurn = 0 // players[0] = 흑 선공
-
-		notice, _ := json.Marshal(ServerResponse{
-			Type: "game_notice",
-			Message: fmt.Sprintf(
-				"게임 시작! ⚫ 흑: [%s]  ⚪ 백: [%s]  — 흑이 선공입니다. (렌주룰 적용)",
-				g.players[0].UserID, g.players[1].UserID,
-			),
-			RoomID: g.room.ID,
+		upd, _ := json.Marshal(ReadyUpdateMessage{
+			Type:       "ready_update",
+			RoomID:     g.room.ID,
+			ReadyCount:  0,
+			TotalCount: 2,
 		})
-		g.room.broadcastAll(notice)
-		g.broadcastBoardLocked()
-		g.startTurnTimerLocked()
+		g.room.broadcastAll(upd)
 
 	default:
 		// 3번째 이후 입장자 → 관전자
@@ -168,6 +161,7 @@ func (g *GomokuGame) OnLeave(client *Client) {
 	} else if g.players[0] != nil && g.players[1] != nil {
 		// 리매치 대기 중 퇴장
 		g.rematchReady = [2]bool{}
+		g.startReady = [2]bool{}
 	}
 
 	// 퇴장 시 항상 전체 초기화 (players 포함)
@@ -198,6 +192,8 @@ func (g *GomokuGame) HandleAction(client *Client, action string, payload json.Ra
 	switch p.Cmd {
 	case "place":
 		g.handlePlace(client, p.X, p.Y)
+	case "ready":
+		g.handleReady(client)
 	case "rematch":
 		g.handleRematch(client)
 	default:
@@ -561,6 +557,61 @@ func (g *GomokuGame) resetLocked() {
 	g.endGameLocked()
 	g.players = [2]*Client{}
 	g.currentTurn = 0
+}
+
+// handleReady는 게임 시작 전 준비 요청을 처리합니다.
+// 전원 레디 시 게임을 시작합니다.
+func (g *GomokuGame) handleReady(client *Client) {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+
+	if g.gameStarted {
+		client.SendJSON(ServerResponse{Type: "error", Message: "게임이 이미 시작되었습니다."})
+		return
+	}
+	idx := -1
+	for i, p := range g.players {
+		if p == client {
+			idx = i
+			break
+		}
+	}
+	if idx < 0 || g.players[0] == nil || g.players[1] == nil {
+		client.SendJSON(ServerResponse{Type: "error", Message: "플레이어가 아닙니다."})
+		return
+	}
+	g.startReady[idx] = true
+	readyCount := 0
+	for _, r := range g.startReady {
+		if r {
+			readyCount++
+		}
+	}
+	upd, _ := json.Marshal(ReadyUpdateMessage{
+		Type: "ready_update", RoomID: g.room.ID, ReadyCount: readyCount, TotalCount: 2,
+	})
+	g.room.broadcastAll(upd)
+	if readyCount < 2 {
+		return
+	}
+	// 전원 레디 → 게임 시작
+	g.startReady = [2]bool{}
+	if rand.Intn(2) == 1 {
+		g.players[0], g.players[1] = g.players[1], g.players[0]
+	}
+	g.gameStarted = true
+	g.currentTurn = 0
+	notice, _ := json.Marshal(ServerResponse{
+		Type: "game_notice",
+		Message: fmt.Sprintf(
+			"게임 시작! ⚫ 흑: [%s]  ⚪ 백: [%s]  — 흑이 선공입니다. (렌주룰 적용)",
+			g.players[0].UserID, g.players[1].UserID,
+		),
+		RoomID: g.room.ID,
+	})
+	g.room.broadcastAll(notice)
+	g.broadcastBoardLocked()
+	g.startTurnTimerLocked()
 }
 
 // handleRematch는 리매치 요청을 처리합니다.

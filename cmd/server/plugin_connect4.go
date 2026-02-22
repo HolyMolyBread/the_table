@@ -49,6 +49,7 @@ type Connect4Game struct {
 	lastCol      int            // 마지막 착수 열 (-1=없음)
 	lastRow      int            // 마지막 착수 행 (-1=없음)
 	stopTick     chan struct{}
+	startReady   [2]bool
 	rematchReady [2]bool
 	mu           sync.Mutex
 }
@@ -73,23 +74,17 @@ func (g *Connect4Game) OnJoin(client *Client) {
 			RoomID:  g.room.ID,
 		})
 		g.room.broadcastAll(notice)
+		upd, _ := json.Marshal(ReadyUpdateMessage{
+			Type: "ready_update", RoomID: g.room.ID, ReadyCount: 0, TotalCount: 1,
+		})
+		g.room.broadcastAll(upd)
 
 	case g.players[1] == nil && g.players[0] != client:
 		g.players[1] = client
-		g.gameStarted = true
-		g.currentTurn = 0 // players[0] = 빨강 선공
-
-		notice, _ := json.Marshal(ServerResponse{
-			Type: "game_notice",
-			Message: fmt.Sprintf(
-				"게임 시작! 🔴 빨강: [%s]  🟡 노랑: [%s]  — 빨강이 선공입니다.",
-				g.players[0].UserID, g.players[1].UserID,
-			),
-			RoomID: g.room.ID,
+		upd, _ := json.Marshal(ReadyUpdateMessage{
+			Type: "ready_update", RoomID: g.room.ID, ReadyCount: 0, TotalCount: 2,
 		})
-		g.room.broadcastAll(notice)
-		g.broadcastStateLocked()
-		g.startTurnTimerLocked()
+		g.room.broadcastAll(upd)
 
 	default:
 		// 3번째 이후 입장자 → 관전자
@@ -146,6 +141,7 @@ func (g *Connect4Game) OnLeave(client *Client) {
 			g.room.ID, winner.UserID, loser.UserID)
 	} else if g.players[0] != nil && g.players[1] != nil {
 		g.rematchReady = [2]bool{}
+		g.startReady = [2]bool{}
 	}
 
 	g.resetLocked()
@@ -174,6 +170,8 @@ func (g *Connect4Game) HandleAction(client *Client, action string, payload json.
 	switch p.Cmd {
 	case "place":
 		g.handlePlace(client, p.Col)
+	case "ready":
+		g.handleReady(client)
 	case "rematch":
 		g.handleRematch(client)
 	default:
@@ -420,6 +418,56 @@ func (g *Connect4Game) resetLocked() {
 	g.endGameLocked()
 	g.players     = [2]*Client{}
 	g.currentTurn = 0
+}
+
+// handleReady는 게임 시작 전 준비 요청을 처리합니다.
+func (g *Connect4Game) handleReady(client *Client) {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+
+	if g.gameStarted {
+		client.SendJSON(ServerResponse{Type: "error", Message: "게임이 이미 시작되었습니다."})
+		return
+	}
+	idx := -1
+	for i, p := range g.players {
+		if p == client {
+			idx = i
+			break
+		}
+	}
+	if idx < 0 || g.players[0] == nil || g.players[1] == nil {
+		client.SendJSON(ServerResponse{Type: "error", Message: "플레이어가 아닙니다."})
+		return
+	}
+	g.startReady[idx] = true
+	readyCount := 0
+	for _, r := range g.startReady {
+		if r {
+			readyCount++
+		}
+	}
+	upd, _ := json.Marshal(ReadyUpdateMessage{
+		Type: "ready_update", RoomID: g.room.ID, ReadyCount: readyCount, TotalCount: 2,
+	})
+	g.room.broadcastAll(upd)
+	if readyCount < 2 {
+		return
+	}
+	g.startReady = [2]bool{}
+	g.gameStarted = true
+	g.currentTurn = 0
+	notice, _ := json.Marshal(ServerResponse{
+		Type: "game_notice",
+		Message: fmt.Sprintf(
+			"게임 시작! 🔴 빨강: [%s]  🟡 노랑: [%s]  — 빨강이 선공입니다.",
+			g.players[0].UserID, g.players[1].UserID,
+		),
+		RoomID: g.room.ID,
+	})
+	g.room.broadcastAll(notice)
+	g.broadcastStateLocked()
+	g.startTurnTimerLocked()
 }
 
 // handleRematch는 리매치 요청을 처리합니다.

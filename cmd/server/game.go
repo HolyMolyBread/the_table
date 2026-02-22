@@ -42,6 +42,14 @@ type RematchUpdateMessage struct {
 	TotalCount int    `json:"totalCount"` // 방 전체 인원 수 (다인용)
 }
 
+// ReadyUpdateMessage는 게임 시작 전 준비(Ready) 상태를 방 전체에 알릴 때 사용합니다.
+type ReadyUpdateMessage struct {
+	Type       string `json:"type"`       // "ready_update"
+	RoomID     string `json:"roomId"`
+	ReadyCount int    `json:"readyCount"` // 현재 레디한 플레이어 수
+	TotalCount int    `json:"totalCount"` // 방 전체 인원 수
+}
+
 // TimerTickMessage는 매 초마다 방 전체에 전송되는 타이머 틱 메시지입니다.
 type TimerTickMessage struct {
 	Type      string `json:"type"`

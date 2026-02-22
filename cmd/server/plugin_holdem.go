@@ -64,6 +64,7 @@ type HoldemGame struct {
 	currentPlayerIdx int
 	gameStarted      bool
 	playerCount      int
+	startReady       map[*Client]bool
 	rematchReady     map[*Client]bool
 	stopTick         chan struct{}
 	mu               sync.Mutex
@@ -71,7 +72,7 @@ type HoldemGame struct {
 
 // NewHoldemGame creates a new Holdem game plugin.
 func NewHoldemGame(room *Room) *HoldemGame {
-	return &HoldemGame{room: room, phase: "waiting", rematchReady: make(map[*Client]bool)}
+	return &HoldemGame{room: room, phase: "waiting", startReady: make(map[*Client]bool), rematchReady: make(map[*Client]bool)}
 }
 
 func (g *HoldemGame) Name() string { return "holdem" }
@@ -120,9 +121,13 @@ func (g *HoldemGame) OnJoin(client *Client) {
 	})
 	g.room.broadcastAll(notice)
 
-	if g.playerCount >= 2 && !g.gameStarted {
-		g.gameStarted = true
-		g.startRoundLocked()
+	if !g.gameStarted {
+		total := g.playerCount
+		upd, _ := json.Marshal(ReadyUpdateMessage{
+			Type: "ready_update", RoomID: g.room.ID, ReadyCount: 0, TotalCount: total,
+		})
+		g.room.broadcastAll(upd)
+		g.sendStateToAllLocked()
 	} else {
 		g.sendStateToAllLocked()
 	}
@@ -143,6 +148,7 @@ func (g *HoldemGame) OnLeave(client *Client) {
 	if idx < 0 {
 		return
 	}
+	delete(g.startReady, client)
 	delete(g.rematchReady, client)
 
 	// 슬롯 비우기
@@ -151,6 +157,16 @@ func (g *HoldemGame) OnLeave(client *Client) {
 	g.playerCount--
 
 	if !g.gameStarted {
+		readyCount := 0
+		for i := 0; i < holdemMaxPlayers; i++ {
+			if g.players[i] != nil && g.startReady[g.players[i]] {
+				readyCount++
+			}
+		}
+		upd, _ := json.Marshal(ReadyUpdateMessage{
+			Type: "ready_update", RoomID: g.room.ID, ReadyCount: readyCount, TotalCount: g.playerCount,
+		})
+		g.room.broadcastAll(upd)
 		g.sendStateToAllLocked()
 		return
 	}
@@ -237,6 +253,8 @@ func (g *HoldemGame) HandleAction(client *Client, action string, payload json.Ra
 		g.handleCheck(client)
 	case "fold":
 		g.handleFold(client)
+	case "ready":
+		g.handleReady(client)
 	case "rematch":
 		g.handleRematch(client)
 	default:
@@ -770,7 +788,6 @@ func (g *HoldemGame) handleRematch(client *Client) {
 		for i := 0; i < holdemMaxPlayers; i++ {
 			if g.players[i] != nil {
 				g.stars[i] = holdemStartStars
-				g.rematchReady[g.players[i]] = false
 			}
 		}
 		g.pot = 0
@@ -781,6 +798,42 @@ func (g *HoldemGame) handleRematch(client *Client) {
 			g.foldedThisRound[i] = false
 			g.actedThisPhase[i] = false
 		}
+		g.gameStarted = true
+		g.startRoundLocked()
+	}
+}
+
+// handleReady는 게임 시작 전 준비 요청을 처리합니다.
+func (g *HoldemGame) handleReady(client *Client) {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+
+	if g.gameStarted {
+		client.SendJSON(ServerResponse{Type: "error", Message: "게임이 이미 시작되었습니다."})
+		return
+	}
+	idx := g.playerIndex(client)
+	if idx < 0 {
+		client.SendJSON(ServerResponse{Type: "error", Message: "플레이어가 아닙니다."})
+		return
+	}
+	g.startReady[client] = true
+	total := 0
+	ready := 0
+	for i := 0; i < holdemMaxPlayers; i++ {
+		if g.players[i] != nil {
+			total++
+			if g.startReady[g.players[i]] {
+				ready++
+			}
+		}
+	}
+	upd, _ := json.Marshal(ReadyUpdateMessage{
+		Type: "ready_update", RoomID: g.room.ID, ReadyCount: ready, TotalCount: total,
+	})
+	g.room.broadcastAll(upd)
+	if ready == total && total >= 2 {
+		g.startReady = make(map[*Client]bool)
 		g.gameStarted = true
 		g.startRoundLocked()
 	}

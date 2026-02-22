@@ -738,6 +738,53 @@
       from { opacity: 0; transform: rotateY(90deg) scale(0.8); }
       to   { opacity: 1; transform: none; }
     }
+
+    /* ══ THIEF (도둑잡기) ═══════════════════════════════════════════════════════ */
+    #thief-container {
+      display: none; flex-direction: column; align-items: center; gap: 12px;
+      width: 100%; max-width: 420px;
+    }
+    #thief-status { font-size: 15px; font-weight: 700; text-align: center; }
+    .thief-hand {
+      display: flex; flex-wrap: wrap; gap: 8px; justify-content: center;
+      min-height: 90px;
+    }
+    .thief-card {
+      width: 48px; height: 70px; background: #fff; border: 1px solid #ccc;
+      border-radius: 6px; padding: 4px 5px; font-weight: 700; font-size: 11px;
+      display: flex; flex-direction: column; justify-content: space-between;
+      box-shadow: 2px 2px 6px rgba(0,0,0,0.3);
+    }
+    .thief-card.red-suit { color: #dc2626; }
+    .thief-card.black-suit { color: #111; }
+
+    /* ══ ONECARD (원카드) ═══════════════════════════════════════════════════════ */
+    #onecard-container {
+      display: none; flex-direction: column; align-items: center; gap: 12px;
+      width: 100%; max-width: 420px;
+    }
+    #onecard-status { font-size: 15px; font-weight: 700; text-align: center; }
+    .onecard-card {
+      width: 56px; height: 80px; background: #fff; border: 1px solid #ccc;
+      border-radius: 8px; padding: 5px 6px; font-weight: 800; font-size: 12px;
+      display: flex; flex-direction: column; justify-content: space-between;
+      box-shadow: 2px 3px 10px rgba(0,0,0,0.4);
+    }
+    .onecard-card.red-suit { color: #dc2626; }
+    .onecard-card.black-suit { color: #111; }
+    .onecard-deck {
+      width: 56px; height: 80px; border-radius: 8px;
+      background: repeating-linear-gradient(-45deg, #1e3a8a 0, #1e3a8a 6px, #2563eb 6px, #2563eb 12px);
+      border: 1px solid #1e40af; cursor: pointer;
+      display: flex; align-items: center; justify-content: center; font-size: 24px;
+    }
+    .onecard-hand {
+      display: flex; flex-wrap: wrap; gap: 6px; justify-content: center;
+      min-height: 88px;
+    }
+    .onecard-hand .onecard-card { cursor: pointer; }
+    .onecard-hand .onecard-card.playable { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent); }
+
     /* VS 구분선 */
     .indian-vs-bar {
       width: 100%; display: flex; align-items: center; gap: 10px;
@@ -1108,7 +1155,7 @@
       }
 
       /* ── 게임 컨테이너: 압착 방지 및 유연한 중앙 정렬 ── */
-      #gomoku-container, #blackjack-container, #tictactoe-container, #connect4-container, #indian-container, #holdem-container, #sevenpoker-container {
+      #gomoku-container, #blackjack-container, #tictactoe-container, #connect4-container, #indian-container, #holdem-container, #sevenpoker-container, #thief-container, #onecard-container {
         flex-shrink: 0;
         margin: auto 0;
         width: 100%;
@@ -1212,6 +1259,14 @@
         <div class="record-popup-row">
           <span class="record-game-label">🃏 세븐 포커</span>
           <span id="record-sevenpoker" class="record-val">0승 0패 0무</span>
+        </div>
+        <div class="record-popup-row">
+          <span class="record-game-label">🃏 도둑잡기</span>
+          <span id="record-thief" class="record-val">0승 0패 0무</span>
+        </div>
+        <div class="record-popup-row">
+          <span class="record-game-label">🃏 원카드</span>
+          <span id="record-onecard" class="record-val">0승 0패 0무</span>
         </div>
       </div>
     </div>
@@ -1407,6 +1462,44 @@
           </div>
         </div>
       </div>
+      <div class="game-card">
+        <div class="card-icon">🃏</div>
+        <div class="card-title">도둑잡기 (Thief)</div>
+        <div class="card-desc">53장(52+조커) 분배 후 페어 제거. 다음 플레이어 패에서 카드 1장 뽑기. 패 0장이면 탈출! 조커만 남으면 패배.</div>
+        <div class="card-badge pvp">PVP</div>
+        <div class="card-actions-bottom">
+          <div class="card-top-actions">
+            <button class="card-btn-rule"   onclick="showRules('thief')">📖 룰</button>
+            <button class="card-btn-create" onclick="createRoom('thief')">➕ 방 만들기</button>
+          </div>
+          <div class="card-join-row">
+            <input type="text" class="card-code-input" id="code-input-thief"
+                   maxlength="6" placeholder="코드 6자리"
+                   autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false"
+                   onkeydown="if(event.key==='Enter') joinWithCode('thief','code-input-thief')" />
+            <button class="card-btn-join-code" onclick="joinWithCode('thief','code-input-thief')">입장</button>
+          </div>
+        </div>
+      </div>
+      <div class="game-card">
+        <div class="card-icon">🃏</div>
+        <div class="card-title">원카드 (One Card)</div>
+        <div class="card-desc">바닥 카드와 문양/숫자 일치 카드만 낼 수 있음. J=스킵, Q=방향반전. 패 0장이면 승리!</div>
+        <div class="card-badge pvp">PVP</div>
+        <div class="card-actions-bottom">
+          <div class="card-top-actions">
+            <button class="card-btn-rule"   onclick="showRules('onecard')">📖 룰</button>
+            <button class="card-btn-create" onclick="createRoom('onecard')">➕ 방 만들기</button>
+          </div>
+          <div class="card-join-row">
+            <input type="text" class="card-code-input" id="code-input-onecard"
+                   maxlength="6" placeholder="코드 6자리"
+                   autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false"
+                   onkeydown="if(event.key==='Enter') joinWithCode('onecard','code-input-onecard')" />
+            <button class="card-btn-join-code" onclick="joinWithCode('onecard','code-input-onecard')">입장</button>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -1567,6 +1660,37 @@
           </div>
         </div>
 
+        <!-- Thief container -->
+        <div id="thief-container">
+          <div style="display:flex;align-items:center;justify-content:center;gap:12px;flex-wrap:wrap;">
+            <div id="thief-status">상대방을 기다리는 중...</div>
+            <div id="thief-timer-block" class="game-timer-block">
+              <span class="status-label">남은 시간</span>
+              <span id="thief-seconds" class="timer-num">--</span>초
+            </div>
+          </div>
+          <div id="thief-escaped" style="font-size:12px;color:var(--text-secondary);margin-bottom:8px;"></div>
+          <button id="btn-thief-draw" class="header-btn" onclick="thiefDraw()" disabled>🃏 상대방 카드 1장 뽑기</button>
+          <div id="thief-hand" class="thief-hand"></div>
+        </div>
+
+        <!-- OneCard container -->
+        <div id="onecard-container">
+          <div style="display:flex;align-items:center;justify-content:center;gap:12px;flex-wrap:wrap;">
+            <div id="onecard-status">상대방을 기다리는 중...</div>
+            <div id="onecard-timer-block" class="game-timer-block">
+              <span class="status-label">남은 시간</span>
+              <span id="onecard-seconds" class="timer-num">--</span>초
+            </div>
+          </div>
+          <div id="onecard-direction" style="font-size:12px;color:var(--text-secondary);margin-bottom:8px;"></div>
+          <div id="onecard-center" style="display:flex;align-items:center;justify-content:center;gap:16px;margin:12px 0;">
+            <div id="onecard-top-card" class="onecard-card"></div>
+            <div id="onecard-deck" class="onecard-deck" onclick="onecardDraw()" title="클릭 시 드로우"></div>
+          </div>
+          <div id="onecard-hand" class="onecard-hand"></div>
+        </div>
+
         <!-- Connect4 container -->
         <div id="connect4-container">
           <div style="display:flex;align-items:center;justify-content:center;gap:16px;flex-wrap:wrap;">
@@ -1583,6 +1707,11 @@
           </div>
         </div>
 
+        <!-- 게임 시작 전 준비(Ready) 영역 (공통 PVP) -->
+        <div id="ready-area" style="display:none; flex-direction:column; align-items:center; gap:8px; margin-top:16px;">
+          <button id="btn-ready" class="indian-btn" style="background:var(--success); color:#000;" onclick="sendReady()">✅ 준비 완료 (<span id="ready-count">0/0</span>)</button>
+          <div style="font-size:12px; color:var(--text-muted);">전원이 준비해야 게임이 시작됩니다</div>
+        </div>
         <!-- 리매치 영역 (공통 PVP) -->
         <div id="rematch-area">
           <button id="btn-rematch" onclick="sendRematch()">
@@ -2055,6 +2184,8 @@
       else if (roomId.startsWith('tictactoe')) titleEl.textContent = '⭕❌ 틱택토';
       else if (roomId.startsWith('connect4'))  titleEl.textContent = '🔴🟡 4목';
       else if (roomId.startsWith('indian'))    titleEl.textContent = '🃏 인디언 포커';
+      else if (roomId.startsWith('thief'))     titleEl.textContent = '🃏 도둑잡기';
+      else if (roomId.startsWith('onecard'))   titleEl.textContent = '🃏 원카드';
       else                                     titleEl.textContent = roomId;
 
       // Room code badge: extract last segment after last underscore
@@ -2063,19 +2194,31 @@
       document.getElementById('room-code-text').textContent = roomCode;
       document.getElementById('room-code-badge').classList.add('visible');
 
-      // 인게임 룰 버튼: omok / blackjack / tictactoe / connect4 / indian / holdem / sevenpoker 방에서 표시
+      // 인게임 룰 버튼: omok / blackjack / tictactoe / connect4 / indian / holdem / sevenpoker / thief / onecard 방에서 표시
       const rulesBtn = document.getElementById('btn-ingame-rules');
-      rulesBtn.style.display = (roomId.startsWith('omok') || roomId.startsWith('blackjack') || roomId.startsWith('tictactoe') || roomId.startsWith('connect4') || roomId.startsWith('indian') || roomId.startsWith('holdem') || roomId.startsWith('sevenpoker')) ? '' : 'none';
+      rulesBtn.style.display = (roomId.startsWith('omok') || roomId.startsWith('blackjack') || roomId.startsWith('tictactoe') || roomId.startsWith('connect4') || roomId.startsWith('indian') || roomId.startsWith('holdem') || roomId.startsWith('sevenpoker') || roomId.startsWith('thief') || roomId.startsWith('onecard')) ? '' : 'none';
       // 족보 보기 버튼: holdem / sevenpoker 방에서만 표시
       const handRankingsBtn = document.getElementById('btn-hand-rankings');
       handRankingsBtn.style.display = (roomId.startsWith('holdem') || roomId.startsWith('sevenpoker')) ? '' : 'none';
-      // 봇 추가 버튼: 오목, 4목, 틱택토, 인디언 포커, 홀덤, 세븐 포커 방에서 표시 (blackjack 제외)
+      // 봇 추가 버튼: 오목, 4목, 틱택토, 인디언 포커, 홀덤, 세븐 포커, 도둑잡기, 원카드 방에서 표시 (blackjack 제외)
       const addBotBtn = document.getElementById('btn-add-bot');
-      addBotBtn.style.display = (roomId.startsWith('omok') || roomId.startsWith('connect4') || roomId.startsWith('tictactoe') || roomId.startsWith('indian') || roomId.startsWith('holdem') || roomId.startsWith('sevenpoker')) ? '' : 'none';
+      addBotBtn.style.display = (roomId.startsWith('omok') || roomId.startsWith('connect4') || roomId.startsWith('tictactoe') || roomId.startsWith('indian') || roomId.startsWith('holdem') || roomId.startsWith('sevenpoker') || roomId.startsWith('thief') || roomId.startsWith('onecard')) ? '' : 'none';
 
       // Sync debug inputs
       if (inputUserId) inputUserId.value = userId;
       if (inputRoomId) inputRoomId.value = roomId;
+
+      // Ready 영역: blackjack이 아닌 PVP 게임에서는 표시
+      const readyArea = document.getElementById('ready-area');
+      const btnReady = document.getElementById('btn-ready');
+      const readyCountEl = document.getElementById('ready-count');
+      if (!roomId.startsWith('blackjack')) {
+        readyArea.style.display = 'flex';
+        if (btnReady) btnReady.disabled = false;
+        if (readyCountEl) readyCountEl.textContent = '0/0';
+      } else {
+        readyArea.style.display = 'none';
+      }
 
     } else {
       // ── Leave room / show lobby ──
@@ -2103,11 +2246,17 @@
       document.getElementById('indian-container').style.display    = 'none';
       document.getElementById('holdem-container').style.display    = 'none';
       document.getElementById('sevenpoker-container').style.display = 'none';
+      document.getElementById('thief-container').style.display    = 'none';
+      document.getElementById('onecard-container').style.display   = 'none';
       document.getElementById('board-placeholder').style.display   = 'flex';
       // Reset rematch UI
       document.getElementById('rematch-area').classList.remove('visible');
       document.getElementById('rematch-count').textContent = '0/0';
       document.getElementById('btn-rematch').disabled = false;
+      // Reset ready UI
+      document.getElementById('ready-area').style.display = 'none';
+      document.getElementById('ready-count').textContent = '0/0';
+      document.getElementById('btn-ready').disabled = false;
 
       // Clear chat
       document.getElementById('chat-messages').innerHTML = '';
@@ -2126,6 +2275,8 @@
     if (records.indian)     document.getElementById('record-indian').textContent     = fmt(records.indian);
     if (records.holdem)     document.getElementById('record-holdem').textContent     = fmt(records.holdem);
     if (records.sevenpoker) document.getElementById('record-sevenpoker').textContent = fmt(records.sevenpoker);
+    if (records.thief)      document.getElementById('record-thief').textContent      = fmt(records.thief);
+    if (records.onecard)   document.getElementById('record-onecard').textContent    = fmt(records.onecard);
   }
 
   /** 채팅창 접기/펼치기 토글 */
@@ -2477,6 +2628,47 @@
           <li>무승부: <strong>1무</strong> 기록</li>
           <li>패배 시: <strong>1패</strong> 기록</li>
         </ul>`
+    },
+    thief: {
+      title: '🃏 도둑잡기 (Thief) 룰',
+      html: `
+        <h3>게임 개요</h3>
+        <ul>
+          <li>2~4인, 52장+조커 1장 총 <strong>53장</strong>을 분배합니다.</li>
+          <li>분배 직후 같은 숫자의 카드(페어)를 자동으로 제거합니다.</li>
+        </ul>
+        <h3>턴 진행</h3>
+        <ul>
+          <li>내 차례일 때 <strong>다음 생존 플레이어</strong>의 패에서 카드 1장을 무작위로 뽑아 옵니다.</li>
+          <li>뽑은 직후 내 패에 같은 숫자가 생기면 즉시 페어로 버립니다.</li>
+        </ul>
+        <h3>승패</h3>
+        <ul>
+          <li>패가 0장이 되면 <strong>탈출(Win)</strong> — 턴에서 제외됩니다.</li>
+          <li>최종적으로 <strong>조커 1장만 들고 남은 1명</strong>이 패배(Lose)하며 게임 종료.</li>
+        </ul>`
+    },
+    onecard: {
+      title: '🃏 원카드 (One Card) 룰',
+      html: `
+        <h3>게임 개요</h3>
+        <ul>
+          <li>2~4인, 52장 덱에서 각 <strong>7장씩</strong> 분배. 남은 덱 맨 위 1장이 바닥(탑) 카드.</li>
+        </ul>
+        <h3>턴 진행</h3>
+        <ul>
+          <li>바닥 카드와 <strong>문양(Suit)</strong> 또는 <strong>숫자(Value)</strong>가 일치하는 카드만 낼 수 있습니다.</li>
+          <li>낼 카드가 없으면 덱에서 1장 드로우합니다.</li>
+        </ul>
+        <h3>특수 카드</h3>
+        <ul>
+          <li><strong>J</strong>: 다음 사람 턴 스킵</li>
+          <li><strong>Q</strong>: 턴 진행 방향 반전 (시계 ↔ 반시계)</li>
+        </ul>
+        <h3>승패</h3>
+        <ul>
+          <li>누군가의 패가 0장이 되면 즉시 그 사람 <strong>승리</strong>, 나머지 <strong>패배</strong>.</li>
+        </ul>`
     }
   };
 
@@ -2654,6 +2846,16 @@
               addLog('game-notice', raw);
               addChatMessage('game_notice', parsed);
               break;
+            case 'ready_update': {
+              const ready = parsed.readyCount ?? 0;
+              const total = parsed.totalCount ?? 0;
+              document.getElementById('ready-count').textContent = `${ready}/${total}`;
+              if (ready >= total && total > 1) {
+                document.getElementById('ready-area').style.display = 'none';
+                document.getElementById('btn-ready').disabled = false;
+              }
+              break;
+            }
             case 'rematch_update': {
               const ready = parsed.readyCount ?? 0;
               const total = parsed.totalCount ?? 2;
@@ -2674,7 +2876,7 @@
               showBlackjackUI();
               renderBlackjackState(parsed.data);
               break;
-            case 'tictactoe_state': case 'connect4_state': case 'indian_state': case 'holdem_state': case 'sevenpoker_state': {
+            case 'tictactoe_state': case 'connect4_state': case 'indian_state': case 'holdem_state': case 'sevenpoker_state': case 'thief_state': case 'onecard_state': {
               const h = GAME_STATE_HANDLERS[parsed.type];
               if (h) { addLog(h.logKey, raw); h.show(); h.render(parsed.data); }
               break;
@@ -2834,6 +3036,12 @@
   // ── 오목 리매치 ────────────────────────────────────────────────────────────
 
   /** 오목 리매치 요청 */
+  function sendReady() {
+    if (!ws || ws.readyState !== WebSocket.OPEN) return;
+    sendRaw(JSON.stringify({ action: 'game_action', payload: { cmd: 'ready' } }));
+    document.getElementById('btn-ready').disabled = true;
+  }
+
   function sendRematch() {
     if (!ws || ws.readyState !== WebSocket.OPEN) return;
     sendRaw(JSON.stringify({ action: 'game_action', payload: { cmd: 'rematch' } }));
@@ -2841,8 +3049,8 @@
   }
 
   // ── 게임 뷰 전환 (DRY) ─────────────────────────────────────────────────────
-  const GAME_VIEW_IDS = ['board-placeholder', 'gomoku-container', 'blackjack-container', 'tictactoe-container', 'connect4-container', 'indian-container', 'holdem-container', 'sevenpoker-container'];
-  const PREFIX_TO_CONTAINER = { omok: 'gomoku-container', blackjack: 'blackjack-container', tictactoe: 'tictactoe-container', connect4: 'connect4-container', indian: 'indian-container', holdem: 'holdem-container', sevenpoker: 'sevenpoker-container' };
+  const GAME_VIEW_IDS = ['board-placeholder', 'gomoku-container', 'blackjack-container', 'tictactoe-container', 'connect4-container', 'indian-container', 'holdem-container', 'sevenpoker-container', 'thief-container', 'onecard-container'];
+  const PREFIX_TO_CONTAINER = { omok: 'gomoku-container', blackjack: 'blackjack-container', tictactoe: 'tictactoe-container', connect4: 'connect4-container', indian: 'indian-container', holdem: 'holdem-container', sevenpoker: 'sevenpoker-container', thief: 'thief-container', onecard: 'onecard-container' };
 
   const GAME_STATE_HANDLERS = {
     tictactoe_state:  { logKey: 'ttt-state',       show: showTicTacToeUI,  render: renderTicTacToe },
@@ -2850,6 +3058,8 @@
     indian_state:     { logKey: 'indian-state',   show: showIndianUI,     render: renderIndian },
     holdem_state:     { logKey: 'holdem-state',   show: showHoldemUI,     render: renderHoldem },
     sevenpoker_state: { logKey: 'sevenpoker-state', show: showSevenPokerUI, render: renderSevenPoker },
+    thief_state:      { logKey: 'thief-state',    show: showThiefUI,      render: renderThief },
+    onecard_state:    { logKey: 'onecard-state',  show: showOneCardUI,     render: renderOneCard },
   };
 
   function switchGameView(prefix) {
@@ -2969,7 +3179,7 @@
   }
 
   /** currentRoomId 접두사에 맞는 타이머 요소를 찾아 업데이트 (5초 이하 시 urgent 클래스) */
-  const PREFIX_TO_TIMER = { omok: ['status-seconds', 'status-timer-block'], tictactoe: ['ttt-seconds', 'ttt-timer-block'], connect4: ['c4-seconds', 'c4-timer-block'], indian: ['indian-seconds', 'indian-timer-block'], holdem: ['holdem-seconds', 'holdem-timer-block'], sevenpoker: ['sevenpoker-seconds', 'sevenpoker-timer-block'] };
+  const PREFIX_TO_TIMER = { omok: ['status-seconds', 'status-timer-block'], tictactoe: ['ttt-seconds', 'ttt-timer-block'], connect4: ['c4-seconds', 'c4-timer-block'], indian: ['indian-seconds', 'indian-timer-block'], holdem: ['holdem-seconds', 'holdem-timer-block'], sevenpoker: ['sevenpoker-seconds', 'sevenpoker-timer-block'], thief: ['thief-seconds', 'thief-timer-block'], onecard: ['onecard-seconds', 'onecard-timer-block'] };
 
   function updateGameTimer(turnUser, remaining) {
     const prefix = currentRoomId.startsWith('omok') ? 'omok'
@@ -2978,6 +3188,8 @@
                  : currentRoomId.startsWith('indian') ? 'indian'
                  : currentRoomId.startsWith('holdem') ? 'holdem'
                  : currentRoomId.startsWith('sevenpoker') ? 'sevenpoker'
+                 : currentRoomId.startsWith('thief') ? 'thief'
+                 : currentRoomId.startsWith('onecard') ? 'onecard'
                  : null;
     if (!prefix || !PREFIX_TO_TIMER[prefix]) return;
     const [secsId, blockId] = PREFIX_TO_TIMER[prefix];
@@ -3333,6 +3545,99 @@
   function indianGiveUp() {
     if (!ws || ws.readyState !== WebSocket.OPEN) return;
     sendRaw(JSON.stringify({ action: 'game_action', payload: { cmd: 'give_up' } }));
+  }
+
+  // ── Thief (도둑잡기) UI ────────────────────────────────────────────────────
+
+  function showThiefUI() {
+    switchGameView('thief');
+  }
+
+  function renderThiefCard(card) {
+    if (!card) return '';
+    const isRed = card.suit === '♥' || card.suit === '♦';
+    const suit = card.suit || '🃏';
+    const val = card.value || '?';
+    return `<div class="thief-card ${isRed ? 'red-suit' : 'black-suit'}"><span>${val}</span><span>${suit}</span></div>`;
+  }
+
+  function renderThief(data) {
+    if (!data) return;
+    const isMyTurn = data.turn === currentUserId;
+    document.getElementById('thief-status').textContent = isMyTurn
+      ? '🎯 내 차례 — 상대방 카드 1장을 뽑으세요!'
+      : `⏳ ${escapeHTML(data.turn || '—')}의 차례`;
+    document.getElementById('thief-escaped').textContent = data.escaped && data.escaped.length
+      ? `탈출: ${data.escaped.join(', ')}`
+      : '';
+    document.getElementById('btn-thief-draw').disabled = !isMyTurn;
+    const handEl = document.getElementById('thief-hand');
+    if (handEl && data.hand) {
+      handEl.innerHTML = data.hand.map(c => renderThiefCard(c)).join('');
+    }
+  }
+
+  function thiefDraw() {
+    if (!ws || ws.readyState !== WebSocket.OPEN) return;
+    sendRaw(JSON.stringify({ action: 'game_action', payload: { cmd: 'draw' } }));
+  }
+
+  // ── OneCard (원카드) UI ────────────────────────────────────────────────────
+
+  function showOneCardUI() {
+    switchGameView('onecard');
+  }
+
+  function renderOneCardCard(card, playable) {
+    if (!card) return '';
+    const isRed = card.suit === '♥' || card.suit === '♦';
+    const suit = card.suit || '🃏';
+    const val = card.value || '?';
+    return `<div class="onecard-card ${isRed ? 'red-suit' : 'black-suit'} ${playable ? 'playable' : ''}" data-index="${card._index ?? ''}"><span>${val}</span><span>${suit}</span></div>`;
+  }
+
+  function renderOneCard(data) {
+    if (!data) return;
+    const isMyTurn = data.turn === currentUserId;
+    const top = data.topCard || {};
+    document.getElementById('onecard-status').textContent = isMyTurn
+      ? '🎯 내 차례 — 카드를 내거나 드로우하세요!'
+      : `⏳ ${escapeHTML(data.turn || '—')}의 차례`;
+    document.getElementById('onecard-direction').textContent = (data.direction === -1 ? '↺ 반시계' : '↻ 시계') + ' 방향';
+    const topEl = document.getElementById('onecard-top-card');
+    if (topEl) topEl.innerHTML = top.suit ? renderOneCardCard(top, false).replace(' data-index=""', '') : '';
+    const deckEl = document.getElementById('onecard-deck');
+    if (deckEl) {
+      deckEl.textContent = data.deckCount > 0 ? `🃏 ${data.deckCount}` : '';
+      deckEl.style.cursor = isMyTurn && data.deckCount > 0 ? 'pointer' : 'default';
+      deckEl.onclick = (data.deckCount > 0 && isMyTurn) ? onecardDraw : null;
+    }
+    const handEl = document.getElementById('onecard-hand');
+    if (handEl && data.hand) {
+      const canPlay = isMyTurn && top.suit;
+      handEl.innerHTML = data.hand.map((c, i) => {
+        const playable = canPlay && (c.suit === top.suit || c.value === top.value);
+        const cardWithIdx = { ...c, _index: i };
+        return renderOneCardCard(cardWithIdx, playable);
+      }).join('');
+      handEl.querySelectorAll('.onecard-card.playable').forEach(el => {
+        el.style.cursor = 'pointer';
+        el.onclick = () => {
+          const idx = parseInt(el.dataset.index, 10);
+          if (!isNaN(idx)) onecardPlay(idx);
+        };
+      });
+    }
+  }
+
+  function onecardDraw() {
+    if (!ws || ws.readyState !== WebSocket.OPEN) return;
+    sendRaw(JSON.stringify({ action: 'game_action', payload: { cmd: 'draw' } }));
+  }
+
+  function onecardPlay(index) {
+    if (!ws || ws.readyState !== WebSocket.OPEN) return;
+    sendRaw(JSON.stringify({ action: 'game_action', payload: { cmd: 'play', index } }));
   }
 
   // ── Texas Holdem UI ───────────────────────────────────────────────────────
