@@ -228,11 +228,10 @@ func (g *IndianGame) handleShowdown(client *Client) {
 	defer g.mu.Unlock()
 
 	if !g.gameStarted {
-		client.SendJSON(ServerResponse{Type: "error", Message: "게임이 아직 시작되지 않았습니다."})
 		return
 	}
-	if g.players[g.currentTurn] != client {
-		client.SendJSON(ServerResponse{Type: "error", Message: "상대방의 차례입니다."})
+	// 턴 검증 최우선: 찰나의 순간에 턴이 넘어갔다면 상태 변경 없이 즉시 return
+	if g.players[g.currentTurn] == nil || g.players[g.currentTurn].UserID != client.UserID {
 		return
 	}
 
@@ -275,11 +274,10 @@ func (g *IndianGame) handleGiveUp(client *Client) {
 	defer g.mu.Unlock()
 
 	if !g.gameStarted {
-		client.SendJSON(ServerResponse{Type: "error", Message: "게임이 아직 시작되지 않았습니다."})
 		return
 	}
-	if g.players[g.currentTurn] != client {
-		client.SendJSON(ServerResponse{Type: "error", Message: "상대방의 차례입니다."})
+	// 턴 검증 최우선: 찰나의 순간에 턴이 넘어갔다면 상태 변경 없이 즉시 return
+	if g.players[g.currentTurn] == nil || g.players[g.currentTurn].UserID != client.UserID {
 		return
 	}
 

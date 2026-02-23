@@ -277,25 +277,21 @@ func (g *SevenPokerGame) handleCheck(client *Client) {
 	defer g.mu.Unlock()
 
 	if !g.gameStarted {
-		client.SendJSON(ServerResponse{Type: "error", Message: "게임이 아직 시작되지 않았습니다."})
 		return
 	}
 	if g.phase == "choice" {
-		client.SendJSON(ServerResponse{Type: "error", Message: "초이스 단계에서는 체크할 수 없습니다."})
+		return
+	}
+	// 턴 검증 최우선: 찰나의 순간에 턴이 넘어갔다면 상태 변경 없이 즉시 return
+	if g.players[g.currentPlayerIdx] == nil || g.players[g.currentPlayerIdx].UserID != client.UserID {
 		return
 	}
 
 	idx := g.playerIndex(client)
 	if idx < 0 {
-		client.SendJSON(ServerResponse{Type: "error", Message: "플레이어가 아닙니다."})
-		return
-	}
-	if g.players[g.currentPlayerIdx] != client {
-		client.SendJSON(ServerResponse{Type: "error", Message: "내 차례가 아닙니다."})
 		return
 	}
 	if g.foldedThisRound[idx] {
-		client.SendJSON(ServerResponse{Type: "error", Message: "이미 폴드했습니다."})
 		return
 	}
 
@@ -407,21 +403,18 @@ func (g *SevenPokerGame) handleFold(client *Client) {
 	defer g.mu.Unlock()
 
 	if !g.gameStarted {
-		client.SendJSON(ServerResponse{Type: "error", Message: "게임이 아직 시작되지 않았습니다."})
 		return
 	}
 	if g.phase == "choice" {
-		client.SendJSON(ServerResponse{Type: "error", Message: "초이스 단계에서는 폴드할 수 없습니다."})
+		return
+	}
+	// 턴 검증 최우선: 찰나의 순간에 턴이 넘어갔다면 상태 변경 없이 즉시 return
+	if g.players[g.currentPlayerIdx] == nil || g.players[g.currentPlayerIdx].UserID != client.UserID {
 		return
 	}
 
 	idx := g.playerIndex(client)
 	if idx < 0 {
-		client.SendJSON(ServerResponse{Type: "error", Message: "플레이어가 아닙니다."})
-		return
-	}
-	if g.players[g.currentPlayerIdx] != client {
-		client.SendJSON(ServerResponse{Type: "error", Message: "내 차례가 아닙니다."})
 		return
 	}
 	if g.foldedThisRound[idx] {

@@ -2240,6 +2240,7 @@
   const supabaseClient = supabase.createClient(_SB_URL, _SB_KEY);
 
   // ── State ──────────────────────────────────────────────────────────────────
+  let actionCooldown = false;  // 게임 액션 광클 방지 (0.4초 쿨다운)
   let ws            = null;
   let currentRoomId = '';
   let currentUserId = '';  // 인증 후 표시명 (닉네임 또는 이메일)
@@ -3540,6 +3541,15 @@
     addLog('sent', text);
   }
 
+  /** 게임 액션 전송 (광클 방지: 0.4초 쿨다운 적용) */
+  function sendGameAction(payload) {
+    if (!ws || ws.readyState !== WebSocket.OPEN) return;
+    if (actionCooldown) return;
+    actionCooldown = true;
+    setTimeout(() => { actionCooldown = false; }, 400);
+    sendRaw(JSON.stringify({ action: 'game_action', payload }));
+  }
+
   function sendMessage() {
     const text = msgInput.value.trim();
     if (!text) return;
@@ -3556,19 +3566,19 @@
   /** 오목 리매치 요청 */
   function sendReady() {
     if (!ws || ws.readyState !== WebSocket.OPEN) return;
-    sendRaw(JSON.stringify({ action: 'game_action', payload: { cmd: 'ready' } }));
+    sendGameAction({ cmd: 'ready' });
     document.getElementById('btn-ready').disabled = true;
   }
 
   function sendRematch() {
     if (!ws || ws.readyState !== WebSocket.OPEN) return;
-    sendRaw(JSON.stringify({ action: 'game_action', payload: { cmd: 'rematch' } }));
+    sendGameAction({ cmd: 'rematch' });
     document.getElementById('btn-rematch').disabled = true;
   }
 
   function sendTakeover() {
     if (!ws || ws.readyState !== WebSocket.OPEN) return;
-    sendRaw(JSON.stringify({ action: 'game_action', payload: { cmd: 'takeover' } }));
+    sendGameAction({ cmd: 'takeover' });
   }
 
   // ── 게임 뷰 전환 (DRY) ─────────────────────────────────────────────────────
@@ -3755,7 +3765,7 @@
   function onGomokuCellClick(r, c) {
     if (!currentRoomId || !ws || ws.readyState !== WebSocket.OPEN) return;
     if (gomokuTurnUserId !== currentUserId) return;
-    sendRaw(JSON.stringify({ action: 'game_action', payload: { cmd: 'place', x: r, y: c } }));
+    sendGameAction({ cmd: 'place', x: r, y: c });
   }
 
   // ── Blackjack UI ───────────────────────────────────────────────────────────
@@ -3827,15 +3837,15 @@
 
   function bjStart() {
     if (!ws || ws.readyState !== WebSocket.OPEN || !currentRoomId) return;
-    sendRaw(JSON.stringify({ action: 'game_action', payload: { cmd: 'start' } }));
+    sendGameAction({ cmd: 'start' });
   }
   function bjHit() {
     if (!ws || ws.readyState !== WebSocket.OPEN) return;
-    sendRaw(JSON.stringify({ action: 'game_action', payload: { cmd: 'hit' } }));
+    sendGameAction({ cmd: 'hit' });
   }
   function bjStand() {
     if (!ws || ws.readyState !== WebSocket.OPEN) return;
-    sendRaw(JSON.stringify({ action: 'game_action', payload: { cmd: 'stand' } }));
+    sendGameAction({ cmd: 'stand' });
   }
 
   // ── Tictactoe UI ───────────────────────────────────────────────────────────
@@ -3930,7 +3940,7 @@
   function onTttCellClick(r, c) {
     if (!ws || ws.readyState !== WebSocket.OPEN) return;
     if (tttTurnId !== currentUserId) return;
-    sendRaw(JSON.stringify({ action: 'game_action', payload: { cmd: 'place', r, c } }));
+    sendGameAction({ cmd: 'place', r, c });
   }
 
   // ── Connect 4 UI ───────────────────────────────────────────────────────────
@@ -4032,7 +4042,7 @@
   function onC4ColClick(col) {
     if (!ws || ws.readyState !== WebSocket.OPEN) return;
     if (c4TurnId !== currentUserId) return;
-    sendRaw(JSON.stringify({ action: 'game_action', payload: { cmd: 'place', col } }));
+    sendGameAction({ cmd: 'place', col });
   }
 
   // ── Indian Poker UI ────────────────────────────────────────────────────────
@@ -4130,12 +4140,12 @@
 
   function indianShowdown() {
     if (!ws || ws.readyState !== WebSocket.OPEN) return;
-    sendRaw(JSON.stringify({ action: 'game_action', payload: { cmd: 'showdown' } }));
+    sendGameAction({ cmd: 'showdown' });
   }
 
   function indianGiveUp() {
     if (!ws || ws.readyState !== WebSocket.OPEN) return;
-    sendRaw(JSON.stringify({ action: 'game_action', payload: { cmd: 'give_up' } }));
+    sendGameAction({ cmd: 'give_up' });
   }
 
   // ── Thief (도둑잡기) UI ────────────────────────────────────────────────────
@@ -4240,11 +4250,11 @@
       if (window.isDrawing) return;
       window.isDrawing = true;
       setTimeout(() => { window.isDrawing = false; }, 500);
-      sendRaw(JSON.stringify({ action: 'game_action', payload: { cmd: 'draw', targetId: targetId, index: index } }));
+      sendGameAction({ cmd: 'draw', targetId: targetId, index: index });
       thiefHoveredIndex = -1;
       thiefHoveredTargetId = '';
     } else {
-      sendRaw(JSON.stringify({ action: 'game_action', payload: { cmd: 'hover', targetId: targetId, index: index } }));
+      sendGameAction({ cmd: 'hover', targetId: targetId, index: index });
       thiefHoveredIndex = index;
       thiefHoveredTargetId = targetId;
       document.querySelectorAll('#thief-players .thief-target-card').forEach(c => c.classList.remove('hovered'));
@@ -4254,7 +4264,7 @@
 
   function thiefDraw() {
     if (!ws || ws.readyState !== WebSocket.OPEN) return;
-    sendRaw(JSON.stringify({ action: 'game_action', payload: { cmd: 'draw' } }));
+    sendGameAction({ cmd: 'draw' });
   }
 
   // ── OneCard (원카드) UI ────────────────────────────────────────────────────
@@ -4380,19 +4390,19 @@
 
   function onecardDraw() {
     if (!ws || ws.readyState !== WebSocket.OPEN) return;
-    sendRaw(JSON.stringify({ action: 'game_action', payload: { cmd: 'draw' } }));
+    sendGameAction({ cmd: 'draw' });
   }
 
   function onecardPlay(index, targetSuit) {
     if (!ws || ws.readyState !== WebSocket.OPEN) return;
     const payload = { cmd: 'play', index };
     if (targetSuit) payload.targetSuit = targetSuit;
-    sendRaw(JSON.stringify({ action: 'game_action', payload }));
+    sendGameAction(payload);
   }
 
   function onecardCallOneCard() {
     if (!ws || ws.readyState !== WebSocket.OPEN) return;
-    sendRaw(JSON.stringify({ action: 'game_action', payload: { cmd: 'call_onecard' } }));
+    sendGameAction({ cmd: 'call_onecard' });
   }
 
   // ── Mahjong (마작) UI ───────────────────────────────────────────────────────
@@ -4483,7 +4493,7 @@
 
   function mahjongDiscard(index) {
     if (!ws || ws.readyState !== WebSocket.OPEN) return;
-    sendRaw(JSON.stringify({ action: 'game_action', payload: { cmd: 'discard', index } }));
+    sendGameAction({ cmd: 'discard', index });
   }
 
   // ── Alkkagi UI (Matter.js 물리 보드) ────────────────────────────────────────
@@ -4666,12 +4676,12 @@
 
   function holdemCheck() {
     if (!ws || ws.readyState !== WebSocket.OPEN) return;
-    sendRaw(JSON.stringify({ action: 'game_action', payload: { cmd: 'check' } }));
+    sendGameAction({ cmd: 'check' });
   }
 
   function holdemFold() {
     if (!ws || ws.readyState !== WebSocket.OPEN) return;
-    sendRaw(JSON.stringify({ action: 'game_action', payload: { cmd: 'fold' } }));
+    sendGameAction({ cmd: 'fold' });
   }
 
   // ── Seven Poker UI ────────────────────────────────────────────────────────
@@ -4746,12 +4756,12 @@
 
   function sevenpokerCheck() {
     if (!ws || ws.readyState !== WebSocket.OPEN) return;
-    sendRaw(JSON.stringify({ action: 'game_action', payload: { cmd: 'check' } }));
+    sendGameAction({ cmd: 'check' });
   }
 
   function sevenpokerFold() {
     if (!ws || ws.readyState !== WebSocket.OPEN) return;
-    sendRaw(JSON.stringify({ action: 'game_action', payload: { cmd: 'fold' } }));
+    sendGameAction({ cmd: 'fold' });
   }
 
   window.setSpChoice = function(type, idx) {
@@ -4784,7 +4794,7 @@
   window.sendSevenPokerChoice = function() {
     if (!ws || ws.readyState !== WebSocket.OPEN) return;
     if (spChoiceDiscard === -1 || spChoiceOpen === -1) return;
-    sendRaw(JSON.stringify({ action: 'game_action', payload: { cmd: 'choice', discardIdx: spChoiceDiscard, openIdx: spChoiceOpen } }));
+    sendGameAction({ cmd: 'choice', discardIdx: spChoiceDiscard, openIdx: spChoiceOpen });
     spChoiceDiscard = -1; spChoiceOpen = -1;
   };
 
