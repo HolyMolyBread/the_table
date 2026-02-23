@@ -877,7 +877,12 @@
       width: 100%; max-width: 520px;
     }
     .table-center-area { display: flex; align-items: center; justify-content: center; gap: 16px; }
-    /* 중앙 보드와 내 패 사이 여백 확보 */
+    /* 중앙 보드와 내 패 사이 물리적 여백 강제 확보 */
+    .onecard-table {
+      margin-bottom: 250px !important;
+      transform: translateY(-30px) !important;
+      z-index: 1 !important;
+    }
     #onecard-me-slot { margin-top: 120px !important; }
     #onecard-status { font-size: 15px; font-weight: 700; text-align: center; }
     .onecard-card {
@@ -903,6 +908,9 @@
       padding-bottom: 20px !important;
       max-width: 95vw !important;
       margin: 0 auto !important;
+      position: relative !important;
+      z-index: 10 !important;
+      max-height: 150px !important;
     }
     .onecard-hand::-webkit-scrollbar { height: 6px; }
     .onecard-hand::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
@@ -2061,7 +2069,7 @@
             </div>
           </div>
           <div id="onecard-direction" style="font-size:12px;color:var(--text-secondary);margin-bottom:4px;"></div>
-          <div id="onecard-table-wrap" class="table-layout-wrap">
+          <div id="onecard-table-wrap" class="table-layout-wrap onecard-table">
             <div id="onecard-players"></div>
             <div id="onecard-center" class="table-center-area" style="position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);">
               <div id="onecard-top-card" class="onecard-card"></div>
