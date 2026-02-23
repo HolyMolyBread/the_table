@@ -2228,6 +2228,10 @@
   let gomokuBoardReady = false;
   let gomokuEnded      = false; // 게임 종료 후 리매치 버튼 표시 여부
   let gomokuPrevBoard  = null;  // diffing용 이전 보드 (15x15)
+  let tttBoardReady    = false;
+  let tttPrevBoard     = null;  // diffing용 이전 보드 (3x3)
+  let c4BoardReady     = false;
+  let c4PrevBoard      = null;  // diffing용 이전 보드 (6x7)
 
   const STAR_POINTS = new Set(
     [3,7,11].flatMap(r => [3,7,11].map(c => `${r},${c}`))
@@ -3783,8 +3787,6 @@
 
   let tttMyColor = 0;    // 1=O, 2=X (0=미정)
   let tttTurnId  = '';   // 현재 차례인 유저 ID
-  let tttBoardReady = false;
-  let tttPrevBoard  = null;  // diffing용 이전 보드 (3x3)
 
   function showTicTacToeUI() {
     switchGameView('tictactoe');
@@ -3880,8 +3882,6 @@
 
   let c4MyColor = 0;  // 1=빨강, 2=노랑 (0=미정)
   let c4TurnId  = ''; // 현재 차례인 유저 ID
-  let c4BoardReady = false;
-  let c4PrevBoard  = null;  // diffing용 이전 보드 (6x7)
 
   function showConnect4UI() {
     switchGameView('connect4');
