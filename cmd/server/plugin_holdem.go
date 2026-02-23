@@ -63,6 +63,7 @@ type HoldemGame struct {
 	round            int
 	foldedThisRound  [holdemMaxPlayers]bool
 	actedThisPhase   [holdemMaxPlayers]bool
+	dealerIdx        int
 	currentPlayerIdx int
 	gameStarted      bool
 	playerCount      int
@@ -461,9 +462,10 @@ func (g *HoldemGame) resetActedLocked() {
 }
 
 func (g *HoldemGame) setFirstActivePlayerLocked() {
-	for i := 0; i < holdemMaxPlayers; i++ {
-		if g.players[i] != nil && !g.foldedThisRound[i] {
-			g.currentPlayerIdx = i
+	for i := 1; i <= holdemMaxPlayers; i++ {
+		idx := (g.dealerIdx + i) % holdemMaxPlayers
+		if g.players[idx] != nil && !g.foldedThisRound[idx] {
+			g.currentPlayerIdx = idx
 			return
 		}
 	}
@@ -684,6 +686,15 @@ func (g *HoldemGame) startRoundLocked() {
 		g.actedThisPhase[i] = false
 	}
 
+	// 딜러 버튼 이동 (다음 생존 플레이어)
+	for i := 1; i <= holdemMaxPlayers; i++ {
+		idx := (g.dealerIdx + i) % holdemMaxPlayers
+		if g.players[idx] != nil && g.stars[idx] > 0 {
+			g.dealerIdx = idx
+			break
+		}
+	}
+
 	// 덱 셔플 및 카드 배분
 	g.deck = NewShuffledDeck()
 	cardIdx := 0
@@ -867,6 +878,7 @@ func (g *HoldemGame) resetForLeaveLocked() {
 	g.pot = 0
 	g.potCarryOver = 0
 	g.deck = nil
+	g.dealerIdx = 0
 	for i := 0; i < holdemMaxPlayers; i++ {
 		g.holeCards[i] = [2]Card{}
 		g.foldedThisRound[i] = false

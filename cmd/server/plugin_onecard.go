@@ -388,17 +388,18 @@ func (g *OneCardGame) handlePlay(client *Client, index int, targetSuit string) {
 	g.topCard = card
 	g.targetSuit = ""
 
-	// 공격 상태에서 방어 카드를 냈으면 패널티 초기화 (방어 시 새 공격 누적 안 함)
 	wasDefense := g.attackPenalty > 0 && canDefend(oldTop, card)
-	if wasDefense {
-		g.attackPenalty = 0
-	}
-
-	notice := ""
 	penalty := isAttackCard(card)
-	if penalty > 0 && !wasDefense {
+	notice := ""
+
+	if wasDefense {
+		// 방어 성공: 기존 패널티에 내 공격 카드의 패널티를 더해서 다음 사람에게 넘김
 		g.attackPenalty += penalty
-		notice = fmt.Sprintf("[%s]가 %s%s를 내서 공격 +%d! (누적 %d장)", client.UserID, card.Suit, card.Value, penalty, g.attackPenalty)
+		notice = fmt.Sprintf("[%s]가 %s%s로 방어! 공격 누적 +%d! (총 %d장)", client.UserID, card.Suit, card.Value, penalty, g.attackPenalty)
+	} else if penalty > 0 {
+		// 새로운 공격 시작
+		g.attackPenalty += penalty
+		notice = fmt.Sprintf("[%s]가 %s%s를 내서 공격 +%d! (총 %d장)", client.UserID, card.Suit, card.Value, penalty, g.attackPenalty)
 	} else if card.Value == "7" {
 		g.targetSuit = targetSuit
 		notice = fmt.Sprintf("[%s]가 7을 내서 다음 문양을 %s로 변경!", client.UserID, targetSuit)

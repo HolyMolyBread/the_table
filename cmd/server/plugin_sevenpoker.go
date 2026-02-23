@@ -548,11 +548,21 @@ func (g *SevenPokerGame) resetActedAndAdvanceLocked(msg string) {
 }
 
 func (g *SevenPokerGame) setFirstActivePlayerLocked() {
+	bestScore := -1
+	bestIdx := -1
 	for i := 0; i < sevenPokerMaxPlayers; i++ {
 		if g.players[i] != nil && !g.foldedThisRound[i] {
-			g.currentPlayerIdx = i
-			return
+			score := g.evaluateOpenCards(i)
+			if score > bestScore {
+				bestScore = score
+				bestIdx = i
+			}
 		}
+	}
+	if bestIdx >= 0 {
+		g.currentPlayerIdx = bestIdx
+	} else {
+		g.currentPlayerIdx = 0
 	}
 }
 
@@ -1212,4 +1222,45 @@ func (g *SevenPokerGame) handleTakeover(client *Client) {
 	g.room.broadcastAll(upd)
 	g.sendStateToAllLocked()
 	log.Printf("[SEVENPOKER] room:[%s] [%s] 빈자리 참여 (슬롯 %d)", g.room.ID, client.UserID, slot)
+}
+
+// evaluateOpenCards는 플레이어의 오픈(앞면) 카드들만으로 족보 점수를 계산합니다.
+// 액면가 보스 룰: 가장 높은 점수의 플레이어가 선(Boss)이 됩니다.
+func (g *SevenPokerGame) evaluateOpenCards(playerIdx int) int {
+	counts := make(map[int]int)
+	var cards []Card
+	for j := 0; j < sevenPokerCards; j++ {
+		c := g.cards[playerIdx][j]
+		if c.Value != "" && !c.Hidden {
+			cards = append(cards, c)
+			counts[cardRank(c)]++
+		}
+	}
+	if len(cards) == 0 {
+		return 0
+	}
+	maxFreq, freqRank, highRank, highSuit := 0, 0, 0, 0
+	for r, count := range counts {
+		if count > maxFreq || (count == maxFreq && r > freqRank) {
+			maxFreq = count
+			freqRank = r
+		}
+	}
+	for _, c := range cards {
+		r, s := cardRank(c), suitRank(c)
+		if r > highRank || (r == highRank && s > highSuit) {
+			highRank = r
+			highSuit = s
+		}
+	}
+	if maxFreq == 4 {
+		return 40000 + freqRank*100
+	}
+	if maxFreq == 3 {
+		return 30000 + freqRank*100
+	}
+	if maxFreq == 2 {
+		return 20000 + freqRank*100 + highSuit
+	}
+	return 10000 + highRank*10 + highSuit
 }

@@ -89,6 +89,7 @@ func SpawnBot(m *RoomManager, room *Room, gamePrefix string) error {
 }
 
 func makeBotProcess(bot *Client, room *Room, gamePrefix string) func(msg []byte) {
+	var thiefActionDone bool // 도둑잡기 이번 턴 행동 여부 기억
 	return func(msg []byte) {
 		var base struct {
 			Type   string          `json:"type"`
@@ -257,9 +258,17 @@ func makeBotProcess(bot *Client, room *Room, gamePrefix string) func(msg []byte)
 			if json.Unmarshal(base.Data, &d) != nil {
 				return
 			}
+			// 내 턴이 아니면 행동 플래그 초기화
 			if d.Turn != bot.UserID {
+				thiefActionDone = false
 				return
 			}
+			// 이번 턴에 이미 행동을 예약했다면 무시 (1.5초 딜레이 중복 실행 방지)
+			if thiefActionDone {
+				return
+			}
+			thiefActionDone = true
+
 			targetID := d.TargetUserID
 			cardCount := 0
 			for _, p := range d.Players {
