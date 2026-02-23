@@ -338,10 +338,6 @@ func (g *SevenPokerGame) handleChoice(client *Client, payload json.RawMessage) {
 		client.SendJSON(ServerResponse{Type: "error", Message: "이미 초이스를 완료했습니다."})
 		return
 	}
-	if g.players[g.currentPlayerIdx] != client {
-		client.SendJSON(ServerResponse{Type: "error", Message: "아직 내 차례가 아닙니다."})
-		return
-	}
 
 	var p struct {
 		DiscardIdx int `json:"discardIdx"`
@@ -384,7 +380,6 @@ func (g *SevenPokerGame) handleChoice(client *Client, payload json.RawMessage) {
 	}
 
 	g.choiceDone[idx] = true
-	g.stopTurnTimerLocked()
 
 	notice, _ := json.Marshal(ServerResponse{
 		Type:    "game_notice",
@@ -401,10 +396,12 @@ func (g *SevenPokerGame) handleChoice(client *Client, payload json.RawMessage) {
 		}
 	}
 	if allDone {
+		g.stopTurnTimerLocked()
 		g.phase = "bet3"
 		g.resetActedAndAdvanceLocked("── 3구 베팅 ──")
+		g.sendStateToAllLocked()
 	} else {
-		g.advanceTurnLocked()
+		g.sendStateToAllLocked()
 	}
 }
 
@@ -458,26 +455,6 @@ func (g *SevenPokerGame) playerIndex(c *Client) int {
 }
 
 func (g *SevenPokerGame) advanceTurnLocked() {
-	if g.phase == "choice" {
-		nextIdx := -1
-		for i := 1; i <= sevenPokerMaxPlayers; i++ {
-			idx := (g.currentPlayerIdx + i) % sevenPokerMaxPlayers
-			if g.players[idx] == nil || g.foldedThisRound[idx] {
-				continue
-			}
-			if !g.choiceDone[idx] {
-				nextIdx = idx
-				break
-			}
-		}
-		if nextIdx >= 0 {
-			g.currentPlayerIdx = nextIdx
-			g.startTurnTimerLocked()
-			g.sendStateToAllLocked()
-		}
-		return
-	}
-
 	// 단독 생존자 체크 (나머지 모두 폴드)
 	activeCount := 0
 	for i := 0; i < sevenPokerMaxPlayers; i++ {
@@ -887,7 +864,57 @@ func (g *SevenPokerGame) stopTurnTimerLocked() {
 func (g *SevenPokerGame) handleTimeOver(timedOutPlayer *Client) {
 	g.mu.Lock()
 	defer g.mu.Unlock()
-	if !g.gameStarted || g.players[g.currentPlayerIdx] != timedOutPlayer {
+	if !g.gameStarted {
+		return
+	}
+
+	// 초이스 페이즈 타임아웃: 전원 동시 진행이므로 currentPlayerIdx 검사 없이 전역 처리
+	if g.phase == "choice" {
+		g.stopTurnTimerLocked()
+		for idx := 0; idx < sevenPokerMaxPlayers; idx++ {
+			if g.players[idx] != nil && !g.foldedThisRound[idx] && !g.choiceDone[idx] {
+				// 강제 초이스: 3번 버림, 2번 오픈
+				discardIdx, openIdx := 3, 2
+				kept := make([]Card, 0, 3)
+				for j := 0; j < 4; j++ {
+					if j != discardIdx {
+						kept = append(kept, g.cards[idx][j])
+					}
+				}
+				relOpenIdx := 0
+				for j := 0; j < 4; j++ {
+					if j == discardIdx {
+						continue
+					}
+					if j == openIdx {
+						break
+					}
+					relOpenIdx++
+				}
+				for j := 0; j < 3; j++ {
+					g.cards[idx][j] = kept[j]
+					g.cards[idx][j].Hidden = (j != relOpenIdx)
+				}
+				for j := 3; j < sevenPokerCards; j++ {
+					g.cards[idx][j] = Card{}
+				}
+				g.choiceDone[idx] = true
+			}
+		}
+		notice, _ := json.Marshal(ServerResponse{
+			Type:    "game_notice",
+			Message: "⏰ 초이스 시간 초과! 미완료 플레이어 자동 선택 진행",
+			RoomID:  g.room.ID,
+		})
+		g.room.broadcastAll(notice)
+
+		g.phase = "bet3"
+		g.resetActedAndAdvanceLocked("── 3구 베팅 ──")
+		g.sendStateToAllLocked()
+		return
+	}
+
+	if g.players[g.currentPlayerIdx] != timedOutPlayer {
 		return
 	}
 	idx := g.playerIndex(timedOutPlayer)
@@ -895,56 +922,6 @@ func (g *SevenPokerGame) handleTimeOver(timedOutPlayer *Client) {
 		return
 	}
 	g.stopTurnTimerLocked()
-
-	if g.phase == "choice" && !g.choiceDone[idx] {
-		// choice phase: only current player can choose
-		// 강제: 3번 인덱스 버리기 + 2번 인덱스 오픈
-		discardIdx, openIdx := 3, 2
-		kept := make([]Card, 0, 3)
-		for j := 0; j < 4; j++ {
-			if j != discardIdx {
-				kept = append(kept, g.cards[idx][j])
-			}
-		}
-		relOpenIdx := 0
-		for j := 0; j < 4; j++ {
-			if j == discardIdx {
-				continue
-			}
-			if j == openIdx {
-				break
-			}
-			relOpenIdx++
-		}
-		for j := 0; j < 3; j++ {
-			g.cards[idx][j] = kept[j]
-			g.cards[idx][j].Hidden = (j != relOpenIdx)
-		}
-		for j := 3; j < sevenPokerCards; j++ {
-			g.cards[idx][j] = Card{}
-		}
-		g.choiceDone[idx] = true
-		notice, _ := json.Marshal(ServerResponse{
-			Type:    "game_notice",
-			Message: fmt.Sprintf("⏰ [%s] 시간 초과! 자동 초이스 (3번 버림, 2번 공개)", timedOutPlayer.UserID),
-			RoomID:  g.room.ID,
-		})
-		g.room.broadcastAll(notice)
-		allDone := true
-		for i := 0; i < sevenPokerMaxPlayers; i++ {
-			if g.players[i] != nil && !g.foldedThisRound[i] && !g.choiceDone[i] {
-				allDone = false
-				break
-			}
-		}
-		if allDone {
-			g.phase = "bet3"
-			g.resetActedAndAdvanceLocked("── 3구 베팅 ──")
-		} else {
-			g.advanceTurnLocked()
-		}
-		return
-	}
 
 	g.foldedThisRound[idx] = true
 	g.actedThisPhase[idx] = true
