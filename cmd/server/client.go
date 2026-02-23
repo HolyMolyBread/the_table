@@ -47,9 +47,10 @@ type Client struct {
 
 	limiter *rate.Limiter // 메시지 속도 제한 (10msg/s, 버스트 10)
 
-	once   sync.Once  // send 채널을 단 한 번만 닫기 위한 가드
-	sendMu sync.Mutex // send 채널에 대한 쓰기 경쟁 방지
-	closed bool
+	mu      sync.Mutex // Records 갱신 시 경쟁 방지
+	once    sync.Once  // send 채널을 단 한 번만 닫기 위한 가드
+	sendMu  sync.Mutex // send 채널에 대한 쓰기 경쟁 방지
+	closed  bool
 }
 
 func newClient(conn *websocket.Conn, manager *RoomManager) *Client {
@@ -99,46 +100,56 @@ func (c *Client) SendJSON(v any) {
 	c.SafeSend(data)
 }
 
+// updateRecord는 GameRecord에 result를 반영합니다.
+func updateRecord(r *GameRecord, result string) {
+	switch result {
+	case "win":
+		r.Wins++
+	case "lose":
+		r.Losses++
+	case "draw":
+		r.Draws++
+	}
+}
+
 // RecordResult는 플러그인이 결과를 보고할 때 코어에 위임하는 메서드입니다.
 // game: "omok" | "blackjack" 등 게임 키 / result: "win" | "lose" | "draw"
 // 게임별 전적과 "total" 전적을 동시에 갱신하고 record_update JSON을 해당 클라이언트에 전송합니다.
 // 변동이 있으면 DB에도 비동기로 upsert합니다.
-func (c *Client) RecordResult(game string, result string) {
-	// 게임별 레코드가 없으면 생성
-	if _, ok := c.Records[game]; !ok {
-		c.Records[game] = &GameRecord{}
-	}
-	rec := c.Records[game]
-	total := c.Records["total"]
+func (c *Client) RecordResult(gamePrefix, result string) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
 
-	switch result {
-	case "win":
-		rec.Wins++
-		total.Wins++
-	case "lose":
-		rec.Losses++
-		total.Losses++
-	case "draw":
-		rec.Draws++
-		total.Draws++
-	default:
+	if result != "win" && result != "lose" && result != "draw" {
 		log.Printf("[WARN] RecordResult: 알 수 없는 result 값 [%s]", result)
 		return
 	}
 
+	// total 갱신
+	if c.Records["total"] == nil {
+		c.Records["total"] = &GameRecord{}
+	}
+	updateRecord(c.Records["total"], result)
+	// 개별 게임 갱신
+	if c.Records[gamePrefix] == nil {
+		c.Records[gamePrefix] = &GameRecord{}
+	}
+	updateRecord(c.Records[gamePrefix], result)
+
+	total := c.Records["total"]
 	c.SendJSON(RecordUpdateResponse{
 		Type:    "record_update",
 		Records: c.Records,
 	})
 	log.Printf("[RECORD] [%s] %s → %s (총 %dW/%dL/%dD)",
-		c.UserID, game, result, total.Wins, total.Losses, total.Draws)
+		c.UserID, gamePrefix, result, total.Wins, total.Losses, total.Draws)
 
-	// DB 비동기 upsert — UserUUID가 설정된 경우에만 실행
+	// DB 비동기 upsert — UserUUID가 설정된 경우에만 실행 (개별 게임만, total은 LoadUserRecords에서 합산)
 	if db != nil && c.UserUUID != "" {
-		dbName, isPVE := gameDBName(game)
-		wins, losses, draws := rec.Wins, rec.Losses, rec.Draws
 		uuid := c.UserUUID
-		go db.UpsertGameRecord(uuid, dbName, isPVE, wins, losses, draws)
+		gameRec := *c.Records[gamePrefix]
+		dbName, isPVE := gameDBName(gamePrefix)
+		go db.UpsertGameRecord(uuid, dbName, isPVE, gameRec.Wins, gameRec.Losses, gameRec.Draws)
 	}
 }
 

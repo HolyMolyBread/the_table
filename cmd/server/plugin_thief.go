@@ -52,6 +52,7 @@ type ThiefGame struct {
 	hands        [thiefMaxPlayers][]Card
 	escaped      [thiefMaxPlayers]bool
 	currentTurn  int
+	targetIdx    int // 시계방향 다음 플레이어 (카드를 뺏길 대상)
 	playerCount  int
 	gameStarted  bool
 	stopTick     chan struct{}
@@ -254,17 +255,10 @@ func (g *ThiefGame) handleHover(client *Client, targetID string, index int) {
 	if idx < 0 || g.players[g.currentTurn] != client {
 		return
 	}
-	targetIdx := -1
-	for i := 0; i < thiefMaxPlayers; i++ {
-		if g.players[i] != nil && g.players[i].UserID == targetID {
-			targetIdx = i
-			break
-		}
-	}
-	if targetIdx < 0 || g.escaped[targetIdx] || len(g.hands[targetIdx]) == 0 {
+	if g.targetIdx < 0 || g.players[g.targetIdx] == nil || g.players[g.targetIdx].UserID != targetID {
 		return
 	}
-	if index < 0 || index >= len(g.hands[targetIdx]) {
+	if index < 0 || index >= len(g.hands[g.targetIdx]) {
 		return
 	}
 	msg, _ := json.Marshal(map[string]any{
@@ -300,25 +294,17 @@ func (g *ThiefGame) handleDraw(client *Client, targetID string, drawIndex int) {
 		return
 	}
 
-	// 다음 생존 플레이어 찾기
-	targetIdx := -1
-	for i := 1; i <= thiefMaxPlayers; i++ {
-		next := (g.currentTurn + i) % thiefMaxPlayers
-		if g.players[next] != nil && !g.escaped[next] && len(g.hands[next]) > 0 {
-			targetIdx = next
-			break
-		}
-	}
-	if targetIdx < 0 {
+	// 시계방향 강제: g.targetIdx만 유효한 대상
+	if g.targetIdx < 0 {
 		client.SendJSON(ServerResponse{Type: "error", Message: "뽑을 상대가 없습니다."})
 		return
 	}
-	if targetID != "" && g.players[targetIdx].UserID != targetID {
-		client.SendJSON(ServerResponse{Type: "error", Message: "잘못된 대상입니다."})
+	if targetID != "" && g.players[g.targetIdx].UserID != targetID {
+		client.SendJSON(ServerResponse{Type: "error", Message: "잘못된 대상입니다. 시계방향 다음 플레이어만 선택할 수 있습니다."})
 		return
 	}
 
-	targetHand := g.hands[targetIdx]
+	targetHand := g.hands[g.targetIdx]
 	var drawIdx int
 	if targetID != "" && drawIndex >= 0 && drawIndex < len(targetHand) {
 		drawIdx = drawIndex
@@ -326,12 +312,12 @@ func (g *ThiefGame) handleDraw(client *Client, targetID string, drawIndex int) {
 		drawIdx = rand.Intn(len(targetHand))
 	}
 	drawn := targetHand[drawIdx]
-	g.hands[targetIdx] = append(targetHand[:drawIdx], targetHand[drawIdx+1:]...)
+	g.hands[g.targetIdx] = append(targetHand[:drawIdx], targetHand[drawIdx+1:]...)
 	g.hands[idx] = append(g.hands[idx], drawn)
 
 	notice, _ := json.Marshal(ServerResponse{
 		Type:    "game_notice",
-		Message: fmt.Sprintf("[%s]이 [%s]의 패에서 카드 1장을 뽑았습니다.", client.UserID, g.players[targetIdx].UserID),
+		Message: fmt.Sprintf("[%s]이 [%s]의 패에서 카드 1장을 뽑았습니다.", client.UserID, g.players[g.targetIdx].UserID),
 		RoomID:  g.room.ID,
 	})
 	g.room.broadcastAll(notice)
@@ -436,11 +422,21 @@ func (g *ThiefGame) removePairsLocked(playerIdx int) {
 }
 
 func (g *ThiefGame) advanceTurnLocked() {
+	// 1. 다음 턴 유저 찾기 (시계방향으로 살아있는 다음 사람)
 	for i := 1; i <= thiefMaxPlayers; i++ {
-		next := (g.currentTurn + i) % thiefMaxPlayers
-		if g.players[next] != nil && !g.escaped[next] && len(g.hands[next]) > 0 {
-			g.currentTurn = next
-			return
+		idx := (g.currentTurn + i) % thiefMaxPlayers
+		if g.players[idx] != nil && len(g.hands[idx]) > 0 {
+			g.currentTurn = idx
+			break
+		}
+	}
+	// 2. 타겟(카드를 뺏길 사람) 찾기 (턴 유저의 시계방향 살아있는 다음 사람)
+	g.targetIdx = -1
+	for i := 1; i <= thiefMaxPlayers; i++ {
+		tIdx := (g.currentTurn + i) % thiefMaxPlayers
+		if g.players[tIdx] != nil && len(g.hands[tIdx]) > 0 {
+			g.targetIdx = tIdx
+			break
 		}
 	}
 }
@@ -500,6 +496,15 @@ func (g *ThiefGame) startGameLocked() {
 		for i := 0; i < thiefMaxPlayers; i++ {
 			if g.players[i] != nil && !g.escaped[i] && len(g.hands[i]) > 0 {
 				g.currentTurn = i
+				break
+			}
+		}
+		// 타겟(시계방향 다음 플레이어) 설정
+		g.targetIdx = -1
+		for i := 1; i <= thiefMaxPlayers; i++ {
+			tIdx := (g.currentTurn + i) % thiefMaxPlayers
+			if g.players[tIdx] != nil && len(g.hands[tIdx]) > 0 {
+				g.targetIdx = tIdx
 				break
 			}
 		}
@@ -776,12 +781,8 @@ func (g *ThiefGame) sendStateToClientLocked(client *Client) {
 	}
 
 	targetUserID := ""
-	for i := 1; i <= thiefMaxPlayers; i++ {
-		next := (g.currentTurn + i) % thiefMaxPlayers
-		if g.players[next] != nil && !g.escaped[next] && len(g.hands[next]) > 0 {
-			targetUserID = g.players[next].UserID
-			break
-		}
+	if g.targetIdx >= 0 && g.players[g.targetIdx] != nil {
+		targetUserID = g.players[g.targetIdx].UserID
 	}
 
 	myHand := make([]Card, len(g.hands[idx]))
@@ -822,12 +823,8 @@ func (g *ThiefGame) sendStateToSpectatorLocked(client *Client) {
 		if g.players[g.currentTurn] != nil {
 			turnUser = g.players[g.currentTurn].UserID
 		}
-		for i := 1; i <= thiefMaxPlayers; i++ {
-			next := (g.currentTurn + i) % thiefMaxPlayers
-			if g.players[next] != nil && !g.escaped[next] && len(g.hands[next]) > 0 {
-				targetUserID = g.players[next].UserID
-				break
-			}
+		if g.targetIdx >= 0 && g.players[g.targetIdx] != nil {
+			targetUserID = g.players[g.targetIdx].UserID
 		}
 	} else {
 		for i := 0; i < thiefMaxPlayers; i++ {

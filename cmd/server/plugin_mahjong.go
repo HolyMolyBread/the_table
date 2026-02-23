@@ -264,6 +264,7 @@ func (g *MahjongGame) handleDiscard(client *Client, index int) {
 	// 타패: index 위치의 패를 제거하여 discards에 추가
 	discarded := hand[index]
 	g.hands[idx] = append(hand[:index], hand[index+1:]...)
+	sortMahjongHand(g.hands[idx])
 	g.discards[idx] = append(g.discards[idx], discarded)
 
 	tileStr := g.tileDisplayName(discarded)
@@ -321,6 +322,7 @@ func (g *MahjongGame) advanceTurnLocked() {
 	drawn := g.wall[0]
 	g.wall = g.wall[1:]
 	g.hands[g.currentPlayerIdx] = append(g.hands[g.currentPlayerIdx], drawn)
+	sortMahjongHand(g.hands[g.currentPlayerIdx])
 
 	g.startTurnTimerLocked()
 	g.sendStateToAllLocked()
@@ -391,6 +393,7 @@ func (g *MahjongGame) handleTimeOver(timedOutPlayer *Client) {
 	hand := g.hands[idx]
 	discarded := hand[discardIdx]
 	g.hands[idx] = append(hand[:discardIdx], hand[discardIdx+1:]...)
+	sortMahjongHand(g.hands[idx])
 	g.discards[idx] = append(g.discards[idx], discarded)
 
 	tileStr := g.tileDisplayName(discarded)
@@ -448,6 +451,7 @@ func (g *MahjongGame) startRoundLocked() {
 			g.hands[i] = append(g.hands[i], g.wall[cardIdx])
 			cardIdx++
 		}
+		sortMahjongHand(g.hands[i])
 	}
 	g.wall = g.wall[cardIdx:]
 
@@ -463,6 +467,7 @@ func (g *MahjongGame) startRoundLocked() {
 		drawn := g.wall[0]
 		g.wall = g.wall[1:]
 		g.hands[g.currentPlayerIdx] = append(g.hands[g.currentPlayerIdx], drawn)
+		sortMahjongHand(g.hands[g.currentPlayerIdx])
 	}
 
 	notice, _ := json.Marshal(ServerResponse{
@@ -558,4 +563,24 @@ func (g *MahjongGame) sendStateToSpectatorLocked(client *Client) {
 		RoomID: g.room.ID,
 		Data:   data,
 	})
+}
+
+// sortMahjongHand는 리치 마작 순서(만→삭→통→자패)로 손패를 정렬합니다.
+func sortMahjongHand(hand []MahjongTile) {
+	suitOrder := map[string]int{"man": 1, "pin": 2, "sou": 3, "honor": 4}
+	for i := 0; i < len(hand)-1; i++ {
+		for j := i + 1; j < len(hand); j++ {
+			t1, t2 := hand[i], hand[j]
+			s1, s2 := suitOrder[t1.Type], suitOrder[t2.Type]
+			if s1 == 0 {
+				s1 = 4
+			}
+			if s2 == 0 {
+				s2 = 4
+			}
+			if s1 > s2 || (s1 == s2 && t1.Value > t2.Value) {
+				hand[i], hand[j] = hand[j], hand[i]
+			}
+		}
+	}
 }

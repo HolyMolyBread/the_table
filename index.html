@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>The Table — 보드게임 플랫폼</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -486,11 +487,6 @@
       position: absolute; width: 84%; height: 84%;
       top: 50%; left: 50%; transform: translate(-50%,-50%);
       border-radius: 50%; z-index: 2; pointer-events: none;
-      animation: stonePlace 0.15s ease;
-    }
-    @keyframes stonePlace {
-      from { transform: translate(-50%,-50%) scale(0.5); opacity: 0.6; }
-      to   { transform: translate(-50%,-50%) scale(1);   opacity: 1; }
     }
     .gomoku-stone.black { background: radial-gradient(circle at 38% 35%, #777, #111); box-shadow: 2px 3px 7px rgba(0,0,0,0.65); }
     .gomoku-stone.white { background: radial-gradient(circle at 38% 35%, #fff, #c8c8c8); box-shadow: 2px 3px 7px rgba(0,0,0,0.3); border: 1px solid #999; }
@@ -593,13 +589,7 @@
     .ttt-cell:hover.ttt-can-place { background: var(--bg-tertiary); }
     .ttt-cell.ttt-o { cursor: default; color: #58a6ff; }
     .ttt-cell.ttt-x { cursor: default; color: #f78166; }
-    .ttt-cell-inner {
-      animation: tttPop 0.18s cubic-bezier(0.22,1,0.36,1);
-    }
-    @keyframes tttPop {
-      from { transform: scale(0.3); opacity: 0.4; }
-      to   { transform: scale(1);   opacity: 1; }
-    }
+    .ttt-cell-inner { display: inline-block; }
     #ttt-color-info {
       font-size: 13px; color: var(--text-secondary); text-align: center; line-height: 1.8;
     }
@@ -655,16 +645,19 @@
       background: #0f172a; /* 빈 구멍 — 어두운 색으로 깊이감 */
       box-shadow: inset 0 3px 8px rgba(0,0,0,0.6);
       transition: background 0.1s;
+      overflow: hidden;
     }
-    .c4-cell.c4-red {
+    .c4-piece {
+      position: absolute; inset: 2px; border-radius: 50%;
+      pointer-events: none; z-index: 1;
+    }
+    .c4-piece.c4-red {
       background: radial-gradient(circle at 38% 35%, #ff6b6b, #dc2626);
       box-shadow: inset 0 -3px 8px rgba(0,0,0,0.4), 0 2px 6px rgba(220,38,38,0.5);
-      animation: c4Drop 0.22s cubic-bezier(0.22,1,0.36,1);
     }
-    .c4-cell.c4-yellow {
+    .c4-piece.c4-yellow {
       background: radial-gradient(circle at 38% 35%, #fde68a, #f59e0b);
       box-shadow: inset 0 -3px 8px rgba(0,0,0,0.3), 0 2px 6px rgba(245,158,11,0.5);
-      animation: c4Drop 0.22s cubic-bezier(0.22,1,0.36,1);
     }
     .c4-cell.c4-last::after {
       content: '';
@@ -680,6 +673,28 @@
       from { transform: scaleY(0.4) translateY(-30%); opacity: 0.6; }
       to   { transform: none; opacity: 1; }
     }
+
+    /* 타일/그리드 게임 전용 모션 */
+    @keyframes stonePop {
+      0% { transform: scale(0.3); opacity: 0; }
+      70% { transform: scale(1.15); }
+      100% { transform: scale(1); opacity: 1; }
+    }
+    @keyframes pieceDrop {
+      0% { transform: translateY(-200px); opacity: 0; }
+      60% { transform: translateY(15px); opacity: 1; }
+      80% { transform: translateY(-5px); }
+      100% { transform: translateY(0); opacity: 1; }
+    }
+    .animate-pop { animation: stonePop 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; }
+    .animate-drop { animation: pieceDrop 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards; }
+    /* 오목 돌은 translate(-50%,-50%) 유지 */
+    @keyframes stonePopGomoku {
+      0% { transform: translate(-50%,-50%) scale(0.3); opacity: 0; }
+      70% { transform: translate(-50%,-50%) scale(1.15); }
+      100% { transform: translate(-50%,-50%) scale(1); opacity: 1; }
+    }
+    .gomoku-stone.animate-pop { animation: stonePopGomoku 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; }
 
     /* ══ INDIAN POKER ════════════════════════════════════════════════════════ */
     #indian-container {
@@ -786,6 +801,11 @@
     }
     .thief-card:first-child, .onecard-card:first-child { margin-left: 0; }
     .thief-card:hover, .onecard-card:hover { transform: translateY(-15px); z-index: 100; margin-right: 15px; }
+    .bj-card:hover, .indian-card-face:hover, .indian-card-back:hover, .holdem-card:hover {
+      transform: translateY(-10px) scale(1.05);
+      z-index: 10;
+      box-shadow: 0 10px 20px rgba(0,0,0,0.3);
+    }
     .thief-card {
       width: 48px; height: 70px; background: #fff; border: 1px solid #ccc;
       border-radius: 6px; padding: 4px 5px; font-weight: 700; font-size: 11px;
@@ -808,6 +828,29 @@
     .thief-card.hover-finger::after {
       content: '👆'; position: absolute; top: -8px; left: 50%; transform: translateX(-50%);
       font-size: 18px; animation: timerPulse 0.5s ease infinite;
+    }
+
+    /* 카드 딜링 팝인 애니메이션 (공통) */
+    @keyframes cardDeal {
+      0% { opacity: 0; transform: translateY(30px) scale(0.8) rotate(-5deg); }
+      100% { opacity: 1; transform: translateY(0) scale(1) rotate(0deg); }
+    }
+    .thief-card, .thief-target-card, .onecard-card, .holdem-card, .mahjong-tile,
+    .bj-card, .indian-card-face, .indian-card-back {
+      animation: cardDeal 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275) backwards;
+      transition: transform 0.2s ease, box-shadow 0.2s ease, margin 0.2s ease;
+    }
+
+    /* 타겟 유저 영역 붉은색 강조 */
+    @keyframes targetBlink {
+      0%, 100% { box-shadow: 0 0 0px var(--danger); }
+      50% { box-shadow: 0 0 15px var(--danger); }
+    }
+    .target-seat {
+      border: 2px dashed var(--danger) !important;
+      animation: targetBlink 1.5s infinite;
+      background: rgba(255, 85, 85, 0.1) !important;
+      transition: all 0.3s ease;
     }
 
     /* ══ ONECARD (원카드) ═══════════════════════════════════════════════════════ */
@@ -880,16 +923,26 @@
     }
     #mahjong-status { font-size: 15px; font-weight: 700; text-align: center; }
     .mahjong-tile {
-      width: 44px; height: 58px; background: #f5f0e6; border: 1px solid #8b7355;
-      border-radius: 6px; padding: 4px 6px; font-weight: 700; font-size: 14px;
-      display: flex; flex-direction: column; align-items: center; justify-content: center;
-      box-shadow: 2px 2px 6px rgba(0,0,0,0.25);
+      display: inline-flex; align-items: center; justify-content: center;
+      font-size: 38px; width: 34px; height: 48px;
+      background: linear-gradient(to bottom, #fff, #f0f0f0);
+      border: 1px solid #ccc; border-radius: 4px;
+      box-shadow: 2px 2px 4px rgba(0,0,0,0.3), inset -1px -1px 2px rgba(0,0,0,0.1);
+      cursor: pointer; user-select: none; transition: transform 0.1s;
+      line-height: 1; margin: 1px; color: #222;
     }
-    .mahjong-tile.hidden { background: #2d4a3e; color: #2d4a3e; }
+    .mahjong-tile:hover { transform: translateY(-8px); border-color: var(--accent); }
+    .mahjong-tile.hidden { background: #e09f3e; color: #b5651d; }
     .mahjong-tile.discardable { cursor: pointer; border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent); }
-    .mahjong-tile.discardable:hover { transform: translateY(-4px); }
-    .mahjong-hand { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; min-height: 70px; }
-    .mahjong-discards-row { display: flex; flex-wrap: wrap; gap: 4px; justify-content: center; min-height: 36px; margin-bottom: 8px; }
+    .mahjong-tile.discardable:hover { transform: translateY(-8px); }
+    .mahjong-hand { display: flex; flex-wrap: nowrap; padding: 10px; justify-content: center; }
+    .mahjong-discards {
+      display: grid; grid-template-columns: repeat(6, 36px); gap: 2px;
+      background: rgba(0,0,0,0.2); padding: 8px; border-radius: 8px;
+    }
+    .mahjong-discards .mahjong-tile { width: 32px; height: 44px; font-size: 32px; cursor: default; }
+    .mahjong-discards .mahjong-tile:hover { transform: none; border-color: #ccc; }
+    .mahjong-discards-row { min-height: 36px; margin-bottom: 8px; }
     .mahjong-player-box {
       background: var(--bg-tertiary); border: 1px solid var(--border);
       border-radius: var(--radius); padding: 8px 10px;
@@ -1301,7 +1354,7 @@
       }
 
       /* ── 게임 컨테이너: 압착 방지 및 유연한 중앙 정렬 ── */
-      #gomoku-container, #blackjack-container, #tictactoe-container, #connect4-container, #indian-container, #holdem-container, #sevenpoker-container, #thief-container, #onecard-container, #mahjong-container {
+      #gomoku-container, #blackjack-container, #tictactoe-container, #connect4-container, #indian-container, #holdem-container, #sevenpoker-container, #thief-container, #onecard-container, #mahjong-container, #alkkagi-container {
         flex-shrink: 0;
         margin: auto 0;
         width: 100%;
@@ -1671,6 +1724,25 @@
           </div>
         </div>
       </div>
+      <div class="game-card">
+        <div class="card-icon">⚫</div>
+        <div class="card-title">알까기 (Alkkagi)</div>
+        <div class="card-desc">흑돌과 백돌을 튕겨 상대 알을 밀어내세요! Matter.js 물리 엔진 기반 2인 대전.</div>
+        <div class="card-badge pvp">PVP</div>
+        <div class="card-actions-bottom">
+          <div class="card-top-actions">
+            <button class="card-btn-rule"   onclick="showRules('alkkagi')">📖 룰</button>
+            <button class="card-btn-create" onclick="createRoom('alkkagi')">➕ 방 만들기</button>
+          </div>
+          <div class="card-join-row">
+            <input type="text" class="card-code-input" id="code-input-alkkagi"
+                   maxlength="6" placeholder="코드 6자리"
+                   autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false"
+                   onkeydown="if(event.key==='Enter') joinWithCode('alkkagi','code-input-alkkagi')" />
+            <button class="card-btn-join-code" onclick="joinWithCode('alkkagi','code-input-alkkagi')">입장</button>
+          </div>
+        </div>
+      </div>
         </div>
       </div>
     </div>
@@ -1943,7 +2015,7 @@
             </div>
             <div id="mahjong-me-slot" class="table-seat seat-bottom">
               <span class="table-seat-name">나</span>
-              <div id="mahjong-discards-me" class="mahjong-discards-row"></div>
+              <div id="mahjong-discards-me" class="mahjong-discards mahjong-discards-row"></div>
               <div id="mahjong-hand" class="mahjong-hand"></div>
             </div>
           </div>
@@ -1963,6 +2035,12 @@
           <div id="c4-board-wrap">
             <div id="c4-board"></div>
           </div>
+        </div>
+
+        <!-- Alkkagi container (Matter.js 물리 보드) -->
+        <div id="alkkagi-container" style="display:none; flex-direction:column; align-items:center; gap:12px; width:100%;">
+          <div id="alkkagi-status" style="font-size:15px; font-weight:600;">알까기 — 상대방을 기다리는 중...</div>
+          <div id="alkkagi-board-wrap" style="position:relative; background:#c8a45a; border:3px solid #7a5010; border-radius:8px; overflow:hidden; box-shadow:0 6px 24px rgba(0,0,0,0.5);"></div>
         </div>
 
       </div><!-- /game-area-content -->
@@ -2140,6 +2218,8 @@
   let _profileNicknameChecked = false;  // 마이페이지 시 중복확인 통과 여부
   let _onNicknameCheckDone = null;
   let reconnectTimer = null;
+  let isIntentionalLeave = false;
+  let currentMode = 'lobby'; // 'lobby' | 'room'
 
   // Gomoku
   let gomokuMyColor    = 0;
@@ -2147,6 +2227,7 @@
   let gomokuColorMap   = {};
   let gomokuBoardReady = false;
   let gomokuEnded      = false; // 게임 종료 후 리매치 버튼 표시 여부
+  let gomokuPrevBoard  = null;  // diffing용 이전 보드 (15x15)
 
   const STAR_POINTS = new Set(
     [3,7,11].flatMap(r => [3,7,11].map(c => `${r},${c}`))
@@ -2159,12 +2240,21 @@
   const inputUserId= document.getElementById('input-user-id');
   const inputRoomId= document.getElementById('input-room-id');
 
+  window.onbeforeunload = function(e) {
+    if (currentMode === 'room' && !isIntentionalLeave) {
+      e.preventDefault();
+      e.returnValue = '';
+      return '';
+    }
+  };
+
   // ── 백그라운드 탭 복귀 시 연결 끊김 처리 ─────────────────────────────────────
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'visible') {
-      if (!ws || ws.readyState !== WebSocket.OPEN) {
-        if (currentToken) connect(); // 토큰이 있으면 조용히 재연결 시도
-        else window.location.reload(); // 비로그인 상태면 안전하게 새로고침
+      // 로비 화면(room이 아닐 때)에서만 자동 재연결 허용
+      if (currentMode !== 'room' && (!ws || ws.readyState !== WebSocket.OPEN)) {
+        if (currentToken) connect();
+        else window.location.reload();
       }
     }
   });
@@ -2433,6 +2523,7 @@
     // currentUserId는 auth 시 설정됨. 방 퇴장 시에도 유지.
     if (userId) currentUserId = userId;
     currentRoomId = roomId;
+    currentMode = roomId ? 'room' : 'lobby';
 
     if (roomId) {
       // ── Enter room ──
@@ -2453,6 +2544,7 @@
       else if (roomId.startsWith('thief'))     titleEl.textContent = '🃏 도둑잡기';
       else if (roomId.startsWith('onecard'))   titleEl.textContent = '🃏 원카드';
       else if (roomId.startsWith('mahjong'))   titleEl.textContent = '🀄 마작';
+      else if (roomId.startsWith('alkkagi'))   titleEl.textContent = '⚫ 알까기';
       else                                     titleEl.textContent = roomId;
 
       // Room code badge: extract last segment after last underscore
@@ -2463,10 +2555,10 @@
 
       // 인게임 룰 버튼: omok / blackjack / tictactoe / connect4 / indian / holdem / sevenpoker / thief / onecard 방에서 표시
       const rulesBtn = document.getElementById('btn-ingame-rules');
-      rulesBtn.style.display = (roomId.startsWith('omok') || roomId.startsWith('blackjack') || roomId.startsWith('tictactoe') || roomId.startsWith('connect4') || roomId.startsWith('indian') || roomId.startsWith('holdem') || roomId.startsWith('sevenpoker') || roomId.startsWith('thief') || roomId.startsWith('onecard') || roomId.startsWith('mahjong')) ? '' : 'none';
+      rulesBtn.style.display = (roomId.startsWith('omok') || roomId.startsWith('blackjack') || roomId.startsWith('tictactoe') || roomId.startsWith('connect4') || roomId.startsWith('indian') || roomId.startsWith('holdem') || roomId.startsWith('sevenpoker') || roomId.startsWith('thief') || roomId.startsWith('onecard') || roomId.startsWith('mahjong') || roomId.startsWith('alkkagi')) ? '' : 'none';
       // 봇 추가 버튼: 오목, 4목, 틱택토, 인디언 포커, 홀덤, 세븐 포커, 도둑잡기, 원카드 방에서 표시 (blackjack 제외)
       const addBotBtn = document.getElementById('btn-add-bot');
-      addBotBtn.style.display = (roomId.startsWith('omok') || roomId.startsWith('connect4') || roomId.startsWith('tictactoe') || roomId.startsWith('indian') || roomId.startsWith('holdem') || roomId.startsWith('sevenpoker') || roomId.startsWith('thief') || roomId.startsWith('onecard') || roomId.startsWith('mahjong')) ? '' : 'none';
+      addBotBtn.style.display = (roomId.startsWith('omok') || roomId.startsWith('connect4') || roomId.startsWith('tictactoe') || roomId.startsWith('indian') || roomId.startsWith('holdem') || roomId.startsWith('sevenpoker') || roomId.startsWith('thief') || roomId.startsWith('onecard') || roomId.startsWith('mahjong') || roomId.startsWith('alkkagi')) ? '' : 'none';
 
       // Sync debug inputs
       if (inputUserId) inputUserId.value = userId;
@@ -2503,6 +2595,11 @@
       gomokuColorMap   = {};
       gomokuBoardReady = false;
       gomokuEnded      = false;
+      gomokuPrevBoard  = null;
+      tttBoardReady    = false;
+      tttPrevBoard     = null;
+      c4BoardReady     = false;
+      c4PrevBoard      = null;
       setGomokuEnded();
       document.getElementById('gomoku-container').style.display    = 'none';
       document.getElementById('blackjack-container').style.display = 'none';
@@ -2514,6 +2611,7 @@
       document.getElementById('thief-container').style.display    = 'none';
       document.getElementById('onecard-container').style.display   = 'none';
       document.getElementById('mahjong-container').style.display   = 'none';
+      document.getElementById('alkkagi-container').style.display   = 'none';
       document.getElementById('board-placeholder').style.display   = 'flex';
       // Reset rematch UI
       document.getElementById('rematch-area').classList.remove('visible');
@@ -2674,6 +2772,7 @@
                  : currentRoomId.startsWith('thief')    ? 'thief'
                  : currentRoomId.startsWith('onecard')  ? 'onecard'
                  : currentRoomId.startsWith('mahjong')   ? 'mahjong'
+                 : currentRoomId.startsWith('alkkagi')   ? 'alkkagi'
                  : null;
     if (prefix) showRules(prefix);
   }
@@ -2980,6 +3079,24 @@
         <ul>
           <li>치/퐁/깡 및 역 계산은 아직 구현되지 않았습니다.</li>
         </ul>`
+    },
+    alkkagi: {
+      title: '⚫ 알까기 (Alkkagi) 룰',
+      html: `
+        <h3>게임 개요</h3>
+        <ul>
+          <li><strong>2인 대전</strong>. 흑돌 4개 vs 백돌 4개.</li>
+          <li>돌을 튕겨 상대 알을 밀어내세요!</li>
+        </ul>
+        <h3>조작</h3>
+        <ul>
+          <li>내 차례에 돌을 드래그하여 당긴 뒤 놓으면 쏘아집니다. (향후 구현)</li>
+          <li>클라이언트 주도권: 각자의 브라우저가 물리 연산을 수행합니다.</li>
+        </ul>
+        <h3>승리 조건</h3>
+        <ul>
+          <li>상대 알을 모두 보드 밖으로 밀어내면 승리!</li>
+        </ul>`
     }
   };
 
@@ -3057,6 +3174,7 @@
     try {
       ws = new WebSocket(url);
       ws.onopen = () => {
+        isIntentionalLeave = false; // 연결 성공 시 플래그 초기화
         setConnectionState(true);
         addLog('info', `연결 성공 → ${url}`);
         // 연결 직후 JWT를 서버로 전송하여 인증 (auth guard 통과 조건)
@@ -3210,9 +3328,9 @@
                 if (lastThiefState) renderThief(lastThiefState);
               }
               break;
-            case 'tictactoe_state': case 'connect4_state': case 'indian_state': case 'holdem_state': case 'sevenpoker_state': case 'thief_state': case 'onecard_state': case 'mahjong_state': {
+            case 'tictactoe_state': case 'connect4_state': case 'indian_state': case 'holdem_state': case 'sevenpoker_state': case 'thief_state': case 'onecard_state': case 'mahjong_state': case 'alkkagi_state': {
               document.getElementById('btn-takeover').style.display = 'none';
-              ['status-turn-user', 'ttt-status', 'c4-status', 'indian-status', 'thief-status', 'onecard-status', 'mahjong-status'].forEach(id => {
+              ['status-turn-user', 'ttt-status', 'c4-status', 'indian-status', 'thief-status', 'onecard-status', 'mahjong-status', 'alkkagi-status'].forEach(id => {
                 const el = document.getElementById(id);
                 if (el) { el.style.color = ''; el.style.fontWeight = ''; }
               });
@@ -3257,8 +3375,8 @@
         setConnectionState(false);
         addLog('info', `연결 종료 (code: ${event.code})`);
         ws = null;
-        // 3초 후 자동 재연결 시도
-        if (currentToken) {
+        // 로비에서 의도적 퇴장이 아닐 때만 3초 후 자동 재연결
+        if (currentToken && currentMode !== 'room' && !isIntentionalLeave) {
           reconnectTimer = setTimeout(() => {
             addLog('info', '서버에 재연결을 시도합니다...');
             connect();
@@ -3351,7 +3469,11 @@
   }
 
   function leaveRoom(skipConfirm) {
-    if (!skipConfirm && !confirm('게임 진행 중에 나가면 패배로 기록될 수 있습니다.\n정말 나가시겠습니까?')) return;
+    isIntentionalLeave = true;
+    if (!skipConfirm && !confirm('게임 진행 중에 나가면 패배로 기록될 수 있습니다.\n정말 나가시겠습니까?')) {
+      isIntentionalLeave = false;
+      return;
+    }
     sendRaw(JSON.stringify({ action: 'leave', payload: {} }));
     setRoomState('', '');
   }
@@ -3405,8 +3527,8 @@
   }
 
   // ── 게임 뷰 전환 (DRY) ─────────────────────────────────────────────────────
-  const GAME_VIEW_IDS = ['board-placeholder', 'gomoku-container', 'blackjack-container', 'tictactoe-container', 'connect4-container', 'indian-container', 'holdem-container', 'sevenpoker-container', 'thief-container', 'onecard-container', 'mahjong-container'];
-  const PREFIX_TO_CONTAINER = { omok: 'gomoku-container', blackjack: 'blackjack-container', tictactoe: 'tictactoe-container', connect4: 'connect4-container', indian: 'indian-container', holdem: 'holdem-container', sevenpoker: 'sevenpoker-container', thief: 'thief-container', onecard: 'onecard-container', mahjong: 'mahjong-container' };
+  const GAME_VIEW_IDS = ['board-placeholder', 'gomoku-container', 'blackjack-container', 'tictactoe-container', 'connect4-container', 'indian-container', 'holdem-container', 'sevenpoker-container', 'thief-container', 'onecard-container', 'mahjong-container', 'alkkagi-container'];
+  const PREFIX_TO_CONTAINER = { omok: 'gomoku-container', blackjack: 'blackjack-container', tictactoe: 'tictactoe-container', connect4: 'connect4-container', indian: 'indian-container', holdem: 'holdem-container', sevenpoker: 'sevenpoker-container', thief: 'thief-container', onecard: 'onecard-container', mahjong: 'mahjong-container', alkkagi: 'alkkagi-container' };
 
   const GAME_STATE_HANDLERS = {
     tictactoe_state:  { logKey: 'ttt-state',       show: showTicTacToeUI,  render: renderTicTacToe },
@@ -3417,6 +3539,7 @@
     thief_state:      { logKey: 'thief-state',    show: showThiefUI,      render: renderThief },
     onecard_state:    { logKey: 'onecard-state',  show: showOneCardUI,     render: renderOneCard },
     mahjong_state:    { logKey: 'mahjong-state',  show: showMahjongUI,     render: renderMahjong },
+    alkkagi_state:    { logKey: 'alkkagi-state',  show: showAlkkagiUI,     render: renderAlkkagi },
   };
 
   function switchGameView(prefix) {
@@ -3477,18 +3600,23 @@
 
   function renderBoard(data) {
     if (!gomokuBoardReady) return;
+    const board = data.board;
+    const prev = gomokuPrevBoard;
     const cells = document.querySelectorAll('.gomoku-cell');
     cells.forEach(cell => {
       const r = +cell.dataset.r, c = +cell.dataset.c;
-      const stone = data.board[r][c];
+      const stone = board[r][c];
+      const wasEmpty = prev && prev[r][c] === 0;
+      const isNew = wasEmpty && (stone === 1 || stone === 2);
       cell.querySelector('.gomoku-stone')?.remove();
       cell.classList.remove('can-place');
       if (stone === 1 || stone === 2) {
         const s = document.createElement('div');
-        s.className = `gomoku-stone ${stone === 1 ? 'black' : 'white'}`;
+        s.className = `gomoku-stone ${stone === 1 ? 'black' : 'white'}${isNew ? ' animate-pop' : ''}`;
         cell.appendChild(s);
       }
     });
+    gomokuPrevBoard = board.map(row => [...row]);
     const lm = data.lastMove;
     if (lm && lm[0] >= 0) {
       document.querySelector(`.gomoku-cell[data-r="${lm[0]}"][data-c="${lm[1]}"]`)
@@ -3655,6 +3783,8 @@
 
   let tttMyColor = 0;    // 1=O, 2=X (0=미정)
   let tttTurnId  = '';   // 현재 차례인 유저 ID
+  let tttBoardReady = false;
+  let tttPrevBoard  = null;  // diffing용 이전 보드 (3x3)
 
   function showTicTacToeUI() {
     switchGameView('tictactoe');
@@ -3690,32 +3820,54 @@
         .join('  |  ');
     }
 
-    // 3×3 보드 렌더링
+    // 3×3 보드 렌더링 (그리드 유지 + diffing)
     const boardEl = document.getElementById('ttt-board');
     if (!boardEl || !data.board) return;
-    boardEl.innerHTML = '';
+    const board = data.board;
+    const prev = tttPrevBoard;
     const isMyTurn = tttTurnId === currentUserId;
 
-    for (let r = 0; r < 3; r++) {
-      for (let c = 0; c < 3; c++) {
-        const val  = data.board[r][c]; // 0, 1, 2
-        const cell = document.createElement('div');
-        cell.className = 'ttt-cell';
-
-        if (val === 1) {
-          cell.classList.add('ttt-o');
-          cell.innerHTML = '<span class="ttt-cell-inner">⭕</span>';
-        } else if (val === 2) {
-          cell.classList.add('ttt-x');
-          cell.innerHTML = '<span class="ttt-cell-inner">❌</span>';
-        } else if (isMyTurn) {
-          cell.classList.add('ttt-can-place');
-          cell.addEventListener('click', () => onTttCellClick(r, c));
+    if (!tttBoardReady) {
+      tttBoardReady = true;
+      boardEl.innerHTML = '';
+      for (let r = 0; r < 3; r++) {
+        for (let c = 0; c < 3; c++) {
+          const cell = document.createElement('div');
+          cell.className = 'ttt-cell';
+          cell.dataset.r = r;
+          cell.dataset.c = c;
+          boardEl.appendChild(cell);
         }
-
-        boardEl.appendChild(cell);
       }
     }
+
+    const cells = boardEl.querySelectorAll('.ttt-cell');
+    cells.forEach(cell => {
+      const r = +cell.dataset.r, c = +cell.dataset.c;
+      const val = board[r][c];
+      const wasEmpty = prev && prev[r][c] === 0;
+      const isNew = wasEmpty && (val === 1 || val === 2);
+      cell.classList.remove('ttt-o', 'ttt-x', 'ttt-can-place');
+      cell.innerHTML = '';
+      cell.onclick = null;
+      if (val === 1) {
+        cell.classList.add('ttt-o');
+        const inner = document.createElement('span');
+        inner.className = 'ttt-cell-inner' + (isNew ? ' animate-pop' : '');
+        inner.textContent = '⭕';
+        cell.appendChild(inner);
+      } else if (val === 2) {
+        cell.classList.add('ttt-x');
+        const inner = document.createElement('span');
+        inner.className = 'ttt-cell-inner' + (isNew ? ' animate-pop' : '');
+        inner.textContent = '❌';
+        cell.appendChild(inner);
+      } else if (isMyTurn) {
+        cell.classList.add('ttt-can-place');
+      }
+      cell.onclick = (val === 0 && isMyTurn) ? () => onTttCellClick(r, c) : null;
+    });
+    tttPrevBoard = board.map(row => [...row]);
   }
 
   function onTttCellClick(r, c) {
@@ -3728,6 +3880,8 @@
 
   let c4MyColor = 0;  // 1=빨강, 2=노랑 (0=미정)
   let c4TurnId  = ''; // 현재 차례인 유저 ID
+  let c4BoardReady = false;
+  let c4PrevBoard  = null;  // diffing용 이전 보드 (6x7)
 
   function showConnect4UI() {
     switchGameView('connect4');
@@ -3781,29 +3935,43 @@
       }
     }
 
-    // 6×7 보드 렌더링
+    // 6×7 보드 렌더링 (그리드 유지 + diffing)
     const boardEl = document.getElementById('c4-board');
     if (!boardEl || !data.board) return;
-    boardEl.innerHTML = '';
+    const board = data.board;
+    const prev = c4PrevBoard;
 
-    for (let r = 0; r < 6; r++) {
-      for (let c = 0; c < 7; c++) {
-        const val  = data.board[r][c];
-        const cell = document.createElement('div');
-        cell.className = 'c4-cell';
-
-        if (val === 1) {
-          cell.classList.add('c4-red');
-          // 마지막 착수 강조
-          if (r === data.lastRow && c === data.lastCol) cell.classList.add('c4-last');
-        } else if (val === 2) {
-          cell.classList.add('c4-yellow');
-          if (r === data.lastRow && c === data.lastCol) cell.classList.add('c4-last');
+    if (!c4BoardReady) {
+      c4BoardReady = true;
+      boardEl.innerHTML = '';
+      for (let r = 0; r < 6; r++) {
+        for (let c = 0; c < 7; c++) {
+          const cell = document.createElement('div');
+          cell.className = 'c4-cell';
+          cell.dataset.r = r;
+          cell.dataset.c = c;
+          boardEl.appendChild(cell);
         }
-
-        boardEl.appendChild(cell);
       }
     }
+
+    const cells = boardEl.querySelectorAll('.c4-cell');
+    cells.forEach(cell => {
+      const r = +cell.dataset.r, c = +cell.dataset.c;
+      const val = board[r][c];
+      const wasEmpty = prev && prev[r][c] === 0;
+      const isNew = wasEmpty && (val === 1 || val === 2);
+      const isLast = r === data.lastRow && c === data.lastCol;
+      cell.querySelector('.c4-piece')?.remove();
+      cell.classList.remove('c4-last');
+      if (val === 1 || val === 2) {
+        const piece = document.createElement('div');
+        piece.className = `c4-piece ${val === 1 ? 'c4-red' : 'c4-yellow'}${isNew ? ' animate-drop' : ''}`;
+        cell.appendChild(piece);
+        if (isLast) cell.classList.add('c4-last');
+      }
+    });
+    c4PrevBoard = board.map(row => [...row]);
   }
 
   function onC4ColClick(col) {
@@ -3979,6 +4147,17 @@
       const hoverOnMyCard = thiefHoveredTargetId === currentUserId;
       handEl.innerHTML = data.hand.map((c, i) => renderThiefCard(c, hoverOnMyCard && thiefHoveredIndex === i)).join('');
     }
+
+    setTimeout(() => {
+      document.querySelectorAll('.table-seat').forEach(el => el.classList.remove('target-seat'));
+      if (data.targetUserId) {
+        document.querySelectorAll('.table-seat').forEach(el => {
+          if (el.getAttribute('data-user-id') === data.targetUserId) {
+            el.classList.add('target-seat');
+          }
+        });
+      }
+    }, 50);
   }
 
   function thiefOnTargetCardClick(targetId, index, el) {
@@ -4145,6 +4324,18 @@
     switchGameView('mahjong');
   }
 
+  function getMahjongTileHTML(type, value, isHidden = false) {
+    if (isHidden) return '<div class="mahjong-tile hidden">🀫</div>';
+    const dict = {
+      'man': ['','🀇','🀈','🀉','🀊','🀋','🀌','🀍','🀎','🀏'],
+      'pin': ['','🀙','🀚','🀛','🀜','🀝','🀞','🀟','🀠','🀡'],
+      'sou': ['','🀐','🀑','🀒','🀓','🀔','🀕','🀖','🀗','🀘'],
+      'honor': ['','🀀','🀁','🀂','🀃','🀆','🀅','🀄']
+    };
+    const char = dict[type] ? dict[type][value] : '🀫';
+    return `<div class="mahjong-tile">${char}</div>`;
+  }
+
   function mahjongTileChar(tile) {
     if (!tile || !tile.type) return '🀫';
     const man = ['', '🀇','🀈','🀉','🀊','🀋','🀌','🀍','🀎','🀏'];
@@ -4177,11 +4368,11 @@
       const opponents = opponentIndices.map(i => data.players[i]).filter(p => p && p.userId);
       playersEl.innerHTML = opponents.map((p, idx) => {
         const seatClass = TABLE_SEAT_ORDER[idx] || 'seat-top';
-        const discardsHtml = (p.discards || []).map(t => `<span class="mahjong-tile">${mahjongTileChar(t)}</span>`).join('');
-        const handHtml = Array(p.handCount || 0).fill(0).map(() => '<span class="mahjong-tile hidden">🀫</span>').join('');
+        const discardsHtml = (p.discards || []).map(t => getMahjongTileHTML(t.type || t.Type, t.value ?? t.Value ?? 0, false)).join('');
+        const handHtml = Array(p.handCount || 0).fill(0).map(() => getMahjongTileHTML('', 0, true)).join('');
         return `<div class="table-seat mahjong-player-box ${seatClass} ${p.isTurn ? 'my-turn' : ''}" data-user-id="${escapeHTML(p.userId)}">
           <span class="table-seat-name">${escapeHTML(p.userId)}</span>
-          <div class="mahjong-discards-row">${discardsHtml}</div>
+          <div class="mahjong-discards mahjong-discards-row">${discardsHtml}</div>
           <div class="mahjong-hand">${handHtml}</div>
         </div>`;
       }).join('');
@@ -4190,14 +4381,16 @@
     const discardsMeEl = document.getElementById('mahjong-discards-me');
     const mePlayer = data.players?.find(p => p.userId === currentUserId);
     if (discardsMeEl && mePlayer) {
-      discardsMeEl.innerHTML = (mePlayer.discards || []).map(t => `<span class="mahjong-tile">${mahjongTileChar(t)}</span>`).join('');
+      discardsMeEl.innerHTML = (mePlayer.discards || []).map(t => getMahjongTileHTML(t.type || t.Type, t.value ?? t.Value ?? 0, false)).join('');
     }
 
     const handEl = document.getElementById('mahjong-hand');
     if (handEl && myHand) {
       handEl.innerHTML = myHand.map((t, i) => {
         const discardable = canDiscard ? ' discardable' : '';
-        return `<span class="mahjong-tile${discardable}" data-index="${i}">${mahjongTileChar(t)}</span>`;
+        const type = t.type || t.Type;
+        const value = t.value ?? t.Value ?? 0;
+        return `<div class="mahjong-tile${discardable}" data-index="${i}">${getMahjongTileHTML(type, value, false).replace(/^<div[^>]*>|<\/div>$/g, '')}</div>`;
       }).join('');
       if (canDiscard) {
         handEl.querySelectorAll('.mahjong-tile.discardable').forEach(el => {
@@ -4214,6 +4407,109 @@
   function mahjongDiscard(index) {
     if (!ws || ws.readyState !== WebSocket.OPEN) return;
     sendRaw(JSON.stringify({ action: 'game_action', payload: { cmd: 'discard', index } }));
+  }
+
+  // ── Alkkagi UI (Matter.js 물리 보드) ────────────────────────────────────────
+
+  let alkkagiEngine = null;
+  let alkkagiRender = null;
+  let alkkagiRunner = null;
+  let alkkagiWorld = null;
+  let alkkagiBodies = {};  // id -> Matter.Body
+  let alkkagiInitialized = false;
+
+  function showAlkkagiUI() {
+    switchGameView('alkkagi');
+  }
+
+  function renderAlkkagi(data) {
+    if (!data) return;
+    const statusEl = document.getElementById('alkkagi-status');
+    if (statusEl) {
+      const turn = data.currentTurn || '';
+      statusEl.textContent = turn === currentUserId
+        ? '🎯 내 차례 — 돌을 튕겨 상대 알을 밀어내세요!'
+        : turn ? `⏳ ${escapeHTML(turn)}의 차례` : '알까기 — 상대방을 기다리는 중...';
+    }
+
+    const wrap = document.getElementById('alkkagi-board-wrap');
+    if (!wrap || typeof Matter === 'undefined') return;
+
+    if (!alkkagiInitialized) {
+      alkkagiInitialized = true;
+      initAlkkagiPhysics(wrap, data);
+    } else {
+      syncAlkkagiStones(data.stones || []);
+    }
+  }
+
+  function initAlkkagiPhysics(container, data) {
+    const M = Matter;
+    const W = 420, H = 420;
+    const wallThick = 15;
+
+    const engine = M.Engine.create();
+    engine.gravity.x = 0;
+    engine.gravity.y = 0;
+
+    const world = engine.world;
+
+    // 4면 벽 (정적 바디)
+    const walls = [
+      M.Bodies.rectangle(W/2, -wallThick/2, W + wallThick*2, wallThick, { isStatic: true, render: { fillStyle: '#7a5010' } }),
+      M.Bodies.rectangle(W/2, H + wallThick/2, W + wallThick*2, wallThick, { isStatic: true, render: { fillStyle: '#7a5010' } }),
+      M.Bodies.rectangle(-wallThick/2, H/2, wallThick, H + wallThick*2, { isStatic: true, render: { fillStyle: '#7a5010' } }),
+      M.Bodies.rectangle(W + wallThick/2, H/2, wallThick, H + wallThick*2, { isStatic: true, render: { fillStyle: '#7a5010' } }),
+    ];
+    M.World.add(world, walls);
+
+    const stoneRadius = 18;
+    const stoneOpts = { friction: 0.01, frictionAir: 0.008, restitution: 0.6, density: 0.001 };
+
+    const stones = data.stones || [];
+    stones.forEach(s => {
+      const fill = s.color === 1 ? '#111' : '#f5f5f5';
+      const stroke = s.color === 1 ? '#333' : '#ccc';
+      const body = M.Bodies.circle(s.x || 100, s.y || 100, stoneRadius, {
+        ...stoneOpts,
+        render: { fillStyle: fill, strokeStyle: stroke, lineWidth: 2 },
+      });
+      body.alkkagiId = s.id;
+      body.alkkagiColor = s.color;
+      alkkagiBodies[s.id] = body;
+      M.World.add(world, body);
+    });
+
+    const render = M.Render.create({
+      element: container,
+      engine: engine,
+      options: {
+        width: W + wallThick*2,
+        height: H + wallThick*2,
+        wireframes: false,
+        background: '#c8a45a',
+      },
+    });
+    M.Render.run(render);
+
+    const runner = M.Runner.create();
+    M.Runner.run(runner, engine);
+
+    alkkagiEngine = engine;
+    alkkagiRender = render;
+    alkkagiRunner = runner;
+    alkkagiWorld = world;
+  }
+
+  function syncAlkkagiStones(stones) {
+    if (!alkkagiWorld || !alkkagiBodies) return;
+    stones.forEach(s => {
+      const body = alkkagiBodies[s.id];
+      if (body) {
+        Matter.Body.setPosition(body, { x: s.x, y: s.y });
+        Matter.Body.setVelocity(body, { x: s.velX || 0, y: s.velY || 0 });
+      }
+    });
   }
 
   // ── Texas Holdem UI ───────────────────────────────────────────────────────
