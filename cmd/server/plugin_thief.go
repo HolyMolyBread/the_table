@@ -20,13 +20,14 @@ var thiefJoker = Card{Suit: "🃏", Value: "JOKER"}
 
 // ThiefData는 thief_state 응답의 data 필드입니다.
 type ThiefData struct {
-	Hand         []Card `json:"hand"`         // 내 패 (앞면)
-	Turn         string `json:"turn"`         // 현재 차례 유저 ID
-	TargetUserID string `json:"targetUserId"` // 내 차례일 때 뽑을 대상 유저 ID (비어 있으면 해당 없음)
-	Players      []ThiefPlayerInfo `json:"players"`      // 전체 플레이어 (패 수 등)
-	Escaped      []string `json:"escaped"`    // 탈출한 유저 ID 목록
-	Message      string   `json:"message,omitempty"`
-	CanTakeover  bool     `json:"canTakeover,omitempty"`
+	Hand           []Card `json:"hand"`           // 내 패 (앞면)
+	Turn           string `json:"turn"`            // 현재 차례 유저 ID
+	TargetUserID   string `json:"targetUserId"`   // 내 차례일 때 뽑을 대상 유저 ID (비어 있으면 해당 없음)
+	Players        []ThiefPlayerInfo `json:"players"`        // 전체 플레이어 (패 수 등)
+	Escaped        []string `json:"escaped"`      // 탈출한 유저 ID 목록
+	DiscardingPairs []int   `json:"discardingPairs,omitempty"` // 하이라이트용: 버릴 카드 인덱스 (내 패 기준)
+	Message        string  `json:"message,omitempty"`
+	CanTakeover    bool    `json:"canTakeover,omitempty"`
 }
 
 // ThiefPlayerInfo는 한 플레이어의 공개 정보입니다.
@@ -47,22 +48,28 @@ type ThiefStateResponse struct {
 // ThiefGame은 2~4인 도둑잡기 게임 플러그인입니다.
 // 53장(52+조커) 분배 후 페어 제거. 턴마다 다음 생존자 패에서 1장 뽑기. 패 0장이면 탈출(Win). 조커만 남은 1명이 패배(Lose).
 type ThiefGame struct {
-	room         *Room
-	players      [thiefMaxPlayers]*Client
-	hands        [thiefMaxPlayers][]Card
-	escaped      [thiefMaxPlayers]bool
-	currentTurn  int
-	targetIdx    int // 시계방향 다음 플레이어 (카드를 뺏길 대상)
-	playerCount  int
-	gameStarted  bool
-	stopTick     chan struct{}
-	startReady   map[*Client]bool
-	rematchReady map[*Client]bool
-	mu           sync.Mutex
+	room              *Room
+	players           [thiefMaxPlayers]*Client
+	hands             [thiefMaxPlayers][]Card
+	escaped           [thiefMaxPlayers]bool
+	currentTurn       int
+	targetIdx         int // 시계방향 다음 플레이어 (카드를 뺏길 대상)
+	playerCount       int
+	gameStarted       bool
+	stopTick          chan struct{}
+	startReady        map[*Client]bool
+	rematchReady      map[*Client]bool
+	discardingIndices map[int][]int // playerIdx -> 버릴 카드 인덱스 (하이라이트용)
+	mu                sync.Mutex
 }
 
 func NewThiefGame(room *Room) *ThiefGame {
-	return &ThiefGame{room: room, startReady: make(map[*Client]bool), rematchReady: make(map[*Client]bool)}
+	return &ThiefGame{
+		room:              room,
+		startReady:        make(map[*Client]bool),
+		rematchReady:      make(map[*Client]bool),
+		discardingIndices: make(map[int][]int),
+	}
 }
 
 func init() { RegisterPlugin("thief", func(room *Room) GamePlugin { return NewThiefGame(room) }) }
@@ -325,14 +332,29 @@ func (g *ThiefGame) handleDraw(client *Client, targetID string, drawIndex int) {
 	// 카드 추가된 상태로 먼저 전송 (페어 제거 전)
 	g.sendStateToAllLocked()
 
-	// 1.5초 후 페어 제거 및 턴 진행
+	// DiscardingPairs 하이라이트 브로드캐스트 → 1초 대기 → 실제 삭제
 	room := g.room
-	time.AfterFunc(1500*time.Millisecond, func() {
+	time.AfterFunc(100*time.Millisecond, func() {
+		g.mu.Lock()
+		if !g.gameStarted {
+			g.mu.Unlock()
+			return
+		}
+		indices := findPairIndicesToRemove(g.hands[idx])
+		if len(indices) > 0 {
+			g.discardingIndices[idx] = indices
+			g.sendStateToAllLocked()
+		}
+		g.mu.Unlock()
+
+		time.Sleep(1 * time.Second)
+
 		g.mu.Lock()
 		defer g.mu.Unlock()
 		if !g.gameStarted {
 			return
 		}
+		g.discardingIndices = make(map[int][]int)
 		lenBefore := len(g.hands[idx])
 		g.removePairsLocked(idx)
 		lenAfter := len(g.hands[idx])
@@ -413,6 +435,25 @@ func (g *ThiefGame) handleDraw(client *Client, targetID string, drawIndex int) {
 	})
 }
 
+// findPairIndicesToRemove는 패에서 제거할 페어의 인덱스들을 반환합니다 (하이라이트용).
+func findPairIndicesToRemove(hand []Card) []int {
+	indices := make([]int, 0)
+	used := make([]bool, len(hand))
+	for i := 0; i < len(hand); i++ {
+		if used[i] {
+			continue
+		}
+		for j := i + 1; j < len(hand); j++ {
+			if !used[j] && hand[i].Value == hand[j].Value {
+				indices = append(indices, i, j)
+				used[i], used[j] = true, true
+				break
+			}
+		}
+	}
+	return indices
+}
+
 func (g *ThiefGame) removePairsLocked(playerIdx int) {
 	hand := g.hands[playerIdx]
 	for {
@@ -434,19 +475,22 @@ func (g *ThiefGame) removePairsLocked(playerIdx int) {
 	g.hands[playerIdx] = hand
 }
 
+// advanceTurnLocked는 (currentTurn + i) % maxPlayers 방식으로 시계방향 다음 생존자를 찾습니다.
+// 타겟은 무조건 현재 턴에서 시계방향으로 가장 가까운 살아있는 다음 플레이어로 고정됩니다.
 func (g *ThiefGame) advanceTurnLocked() {
-	// 1. 다음 턴 유저 찾기 (시계방향으로 살아있는 다음 사람)
-	for i := 1; i <= thiefMaxPlayers; i++ {
-		idx := (g.currentTurn + i) % thiefMaxPlayers
+	maxPlayers := thiefMaxPlayers
+	// 1. 다음 턴 유저: (currentTurn + i) % maxPlayers 로 시계방향 첫 생존자
+	for i := 1; i <= maxPlayers; i++ {
+		idx := (g.currentTurn + i) % maxPlayers
 		if g.players[idx] != nil && len(g.hands[idx]) > 0 {
 			g.currentTurn = idx
 			break
 		}
 	}
-	// 2. 타겟(카드를 뺏길 사람) 찾기 (턴 유저의 시계방향 살아있는 다음 사람)
+	// 2. 타겟: 현재 턴의 시계방향 가장 가까운 살아있는 다음 플레이어
 	g.targetIdx = -1
-	for i := 1; i <= thiefMaxPlayers; i++ {
-		tIdx := (g.currentTurn + i) % thiefMaxPlayers
+	for i := 1; i <= maxPlayers; i++ {
+		tIdx := (g.currentTurn + i) % maxPlayers
 		if g.players[tIdx] != nil && len(g.hands[tIdx]) > 0 {
 			g.targetIdx = tIdx
 			break
@@ -480,7 +524,14 @@ func (g *ThiefGame) startGameLocked() {
 		g.hands[pi] = append(g.hands[pi], c)
 	}
 
-	// 페어 제거 전: 온전한 상태로 먼저 전송하고 안내 메시지
+	// 페어 제거 전: DiscardingPairs로 하이라이트 브로드캐스트
+	g.discardingIndices = make(map[int][]int)
+	for _, pi := range playerIndices {
+		indices := findPairIndicesToRemove(g.hands[pi])
+		if len(indices) > 0 {
+			g.discardingIndices[pi] = indices
+		}
+	}
 	g.sendStateToAllLocked()
 	notice, _ := json.Marshal(ServerResponse{
 		Type:    "game_notice",
@@ -497,6 +548,7 @@ func (g *ThiefGame) startGameLocked() {
 		if !g.gameStarted {
 			return
 		}
+		g.discardingIndices = make(map[int][]int)
 		for _, pi := range playerIndices {
 			g.removePairsLocked(pi)
 			if len(g.hands[pi]) == 0 {
@@ -819,11 +871,12 @@ func (g *ThiefGame) sendStateToClientLocked(client *Client) {
 	}
 
 	data := ThiefData{
-		Hand:         myHand,
-		Turn:         turnUser,
-		TargetUserID: targetUserID,
-		Players:      players,
-		Escaped:      escaped,
+		Hand:            myHand,
+		Turn:            turnUser,
+		TargetUserID:    targetUserID,
+		Players:         players,
+		Escaped:         escaped,
+		DiscardingPairs: g.discardingIndices[idx],
 	}
 	client.SendJSON(ThiefStateResponse{
 		Type:   "thief_state",

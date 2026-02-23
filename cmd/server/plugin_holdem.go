@@ -550,13 +550,13 @@ func (g *HoldemGame) resolveShowdownLocked() {
 	}
 	g.potCarryOver = remainder
 
-	winningHandName := HandRankName(bestScore)
+	winningHandName := HandRankWithDetail(bestScore)
 	winReason := HandWinReason(bestScore)
 	participants := make([]PokerShowdownParticipant, len(survivors))
 	for i, idx := range survivors {
 		p := PokerShowdownParticipant{
 			UserID:   g.players[idx].UserID,
-			HandName: HandRankName(scores[i]),
+			HandName: HandRankWithDetail(scores[i]),
 			WinReason: HandWinReason(scores[i]),
 		}
 		participants[i] = p

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"math/rand"
 	"sort"
 )
@@ -221,6 +222,41 @@ func HandRankName(score int64) string {
 		return n
 	}
 	return "하이카드"
+}
+
+// getHandPrimaryRank는 족보 점수에서 승패를 가른 가장 높은 숫자/문양(Kicker)을 반환합니다.
+func getHandPrimaryRank(score int64) string {
+	rank := int(score >> 20)
+	switch rank {
+	case 10:
+		return "A"
+	case 9:
+		return rankToStr(int(score & 0xFFFF))
+	case 8:
+		return rankToStr(int((score >> 8) & 0xFF))
+	case 7:
+		return rankToStr(int((score >> 8) & 0xFF))
+	case 6:
+		return rankToStr(int((score >> 16) & 0xF))
+	case 5:
+		return rankToStr(int(score & 0xFFFF))
+	case 4:
+		return rankToStr(int((score >> 12) & 0xFF))
+	case 3:
+		return rankToStr(int((score >> 12) & 0xFF))
+	case 2:
+		return rankToStr(int((score >> 12) & 0xFF))
+	case 1:
+		return rankToStr(int((score >> 16) & 0xF))
+	}
+	return "?"
+}
+
+// HandRankWithDetail는 족보명에 승리 카드를 덧붙인 상세 문자열을 반환합니다. (예: "One Pair (A)")
+func HandRankWithDetail(score int64) string {
+	rankName := HandRankName(score)
+	primary := getHandPrimaryRank(score)
+	return fmt.Sprintf("%s (%s)", rankName, primary)
 }
 
 // PokerHandDisplayName은 HandRankName 결과를 UI 표시용 이름으로 변환합니다.
