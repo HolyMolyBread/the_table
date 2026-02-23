@@ -776,6 +776,7 @@ func (g *SevenPokerGame) startRoundLocked() {
 	g.potCarryOver = 0
 
 	for i := 0; i < sevenPokerMaxPlayers; i++ {
+		g.cards[i] = [sevenPokerCards]Card{} // 핵심: 지난 라운드의 남은 카드 완벽히 초기화
 		g.foldedThisRound[i] = g.players[i] == nil || g.stars[i] <= 0
 		g.actedThisPhase[i] = false
 		g.choiceDone[i] = false

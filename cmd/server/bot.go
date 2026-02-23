@@ -202,9 +202,9 @@ func makeBotProcess(bot *Client, room *Room, gamePrefix string) func(msg []byte)
 				return
 			}
 			time.Sleep(botThinkDelay)
-			// Level 1: 85% check, 15% fold
+			// Level 1: 95% check, 5% fold (테스트 용이성)
 			cmd := "check"
-			if rand.Intn(100) < 15 {
+			if rand.Intn(100) < 5 {
 				cmd = "fold"
 			}
 			payload, _ := json.Marshal(map[string]any{"cmd": cmd})
@@ -243,7 +243,7 @@ func makeBotProcess(bot *Client, room *Room, gamePrefix string) func(msg []byte)
 			}
 			time.Sleep(botThinkDelay)
 			cmd := "check"
-			if rand.Intn(100) < 15 {
+			if rand.Intn(100) < 5 {
 				cmd = "fold"
 			}
 			payload, _ := json.Marshal(map[string]any{"cmd": cmd})
