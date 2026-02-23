@@ -99,7 +99,8 @@ func makeBotProcess(bot *Client, room *Room, gamePrefix string) func(msg []byte)
 			return
 		}
 
-		switch base.Type {
+		go func() {
+			switch base.Type {
 		case "game_result":
 			var gr struct {
 				RematchEnabled bool `json:"rematchEnabled"`
@@ -344,6 +345,7 @@ func makeBotProcess(bot *Client, room *Room, gamePrefix string) func(msg []byte)
 				room.Plugin.HandleAction(bot, "game_action", payload)
 			}
 		}
+		}()
 	}
 }
 

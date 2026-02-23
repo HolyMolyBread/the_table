@@ -156,15 +156,6 @@
     #auth-status.error { color: var(--danger); }
     #auth-status.loading { color: var(--text-secondary); }
 
-    /* 로그인 완료 후 표시되는 배지 */
-    #auth-logged-in {
-      display: none; align-items: center; gap: 10px;
-      background: var(--bg-secondary); border: 1px solid var(--border);
-      border-radius: 24px; padding: 7px 7px 7px 16px;
-    }
-    #auth-logged-in.visible { display: inline-flex; }
-    #auth-welcome-text { font-size: 14px; font-weight: 600; color: var(--text-primary); }
-
     /* 경고 배너 */
     .auth-warning {
       background: rgba(210,153,34,0.1); border: 1px solid var(--warning);
@@ -779,7 +770,10 @@
     .table-seat.seat-bottom .thief-hand, .table-seat.seat-bottom .onecard-hand, .table-seat.seat-bottom .mahjong-hand { gap: 10px; }
     .table-seat-name { font-size: 12px; font-weight: 700; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
     .table-seat-count { font-size: 14px; font-weight: 700; color: var(--gold); margin-top: 4px; }
-    .table-seat-target-cards { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; margin-top: 8px; }
+    .table-seat-target-cards {
+      display: flex; flex-wrap: wrap; justify-content: center;
+      padding-top: 15px; margin-top: 4px;
+    }
     .thief-hand, .onecard-hand {
       display: flex; flex-wrap: nowrap; overflow-x: auto;
       width: 100%; max-width: 90vw; padding: 10px 10px 20px 10px;
@@ -801,12 +795,15 @@
     .thief-card.red-suit { color: #dc2626; }
     .thief-card.black-suit { color: #111; }
     .thief-target-card {
-      width: 48px; height: 70px; background: var(--bg-tertiary); border: 1px solid var(--border);
+      width: 40px; height: 58px; background: var(--bg-tertiary); border: 1px solid var(--border);
       border-radius: 6px; display: flex; align-items: center; justify-content: center;
-      font-size: 24px; cursor: pointer; transition: transform 0.15s ease; user-select: none;
+      font-size: 20px; cursor: pointer; transition: all 0.15s ease; user-select: none;
+      margin-left: -20px; position: relative; box-shadow: 2px 2px 6px rgba(0,0,0,0.4);
     }
-    .thief-target-card:hover { border-color: var(--accent); }
-    .thief-target-card.hovered { transform: translateY(-10px); border-color: var(--accent); }
+    .thief-target-card:first-child { margin-left: 0; }
+    .thief-target-card:hover, .thief-target-card.hovered {
+      border-color: var(--accent); transform: translateY(-15px); z-index: 100; margin-right: 12px;
+    }
     .thief-card.hover-finger { position: relative; }
     .thief-card.hover-finger::after {
       content: '👆'; position: absolute; top: -8px; left: 50%; transform: translateX(-50%);
@@ -1473,10 +1470,6 @@
         </div>
         <div id="auth-status"></div>
       </div>
-      <!-- 로그인 후: 환영 문구 -->
-      <div id="auth-logged-in">
-        <span id="auth-welcome-text"></span>
-      </div>
     </div>
 
     <div id="game-cards">
@@ -1692,7 +1685,6 @@
         <span id="game-area-title">게임</span>
         <div style="display:flex;gap:8px;align-items:center;">
           <button class="header-btn" id="btn-ingame-rules" onclick="showCurrentRules()" title="현재 게임 룰 보기" style="display:none;">📖 룰</button>
-          <button class="header-btn" id="btn-hand-rankings" onclick="showHandRankingsModal()" title="포커 족보 순서 보기" style="display:none;">📋 족보 보기</button>
           <button class="header-btn" id="btn-add-bot" onclick="requestAddBot()" title="AI 봇 추가 (오목/4목/틱택토)" style="display:none;">🤖 봇 추가</button>
           <button id="btn-takeover" class="header-btn" style="background:var(--accent); color:#000; font-weight:bold; display:none;" onclick="sendTakeover()">🪑 난입 / 참여하기</button>
           <button id="room-code-badge" onclick="copyRoomCode()" title="클릭하여 방 코드를 클립보드에 복사">
@@ -1706,6 +1698,18 @@
         <div id="board-placeholder">
           <div style="font-size:32px;">🀱</div>
           <div>상대방을 기다리는 중...</div>
+        </div>
+        <!-- 게임 시작 전 준비(Ready) 영역 (공통 PVP) -->
+        <div id="ready-area" style="display:none; flex-direction:column; align-items:center; gap:8px; margin-top:16px;">
+          <button id="btn-ready" class="indian-btn" style="background:var(--success); color:#000;" onclick="sendReady()">✅ 준비 완료 (<span id="ready-count">0/0</span>)</button>
+          <div style="font-size:12px; color:var(--text-muted);">전원이 준비해야 게임이 시작됩니다</div>
+        </div>
+        <!-- 리매치 영역 (공통 PVP) -->
+        <div id="rematch-area">
+          <button id="btn-rematch" onclick="sendRematch()">
+            🔄 한 판 더 (<span id="rematch-count">0/0</span>)
+          </button>
+          <div id="rematch-hint">상대방도 버튼을 누르면 새 게임이 시작됩니다</div>
         </div>
 
         <!-- Gomoku container -->
@@ -1961,30 +1965,17 @@
           </div>
         </div>
 
-        <!-- 게임 시작 전 준비(Ready) 영역 (공통 PVP) -->
-        <div id="ready-area" style="display:none; flex-direction:column; align-items:center; gap:8px; margin-top:16px;">
-          <button id="btn-ready" class="indian-btn" style="background:var(--success); color:#000;" onclick="sendReady()">✅ 준비 완료 (<span id="ready-count">0/0</span>)</button>
-          <div style="font-size:12px; color:var(--text-muted);">전원이 준비해야 게임이 시작됩니다</div>
-        </div>
-        <!-- 리매치 영역 (공통 PVP) -->
-        <div id="rematch-area">
-          <button id="btn-rematch" onclick="sendRematch()">
-            🔄 한 판 더 (<span id="rematch-count">0/0</span>)
-          </button>
-          <div id="rematch-hint">상대방도 버튼을 누르면 새 게임이 시작됩니다</div>
-        </div>
-
       </div><!-- /game-area-content -->
     </div><!-- /game-area -->
 
     <!-- Chat Panel -->
-    <div id="chat-panel">
+    <div id="chat-panel" class="collapsed">
       <div id="chat-header">
         <span>💬 채팅</span>
         <div style="display:flex;align-items:center;gap:8px;flex:1;min-width:0;">
           <div id="chat-preview"></div>
           <span id="chat-room-badge"></span>
-          <button id="btn-chat-toggle" onclick="toggleChatCollapse()" title="채팅창 접기/펼치기">💬 ▼</button>
+          <button id="btn-chat-toggle" onclick="toggleChatCollapse()" title="채팅창 펼치기">💬 ▲</button>
         </div>
       </div>
       <div id="chat-messages"></div>
@@ -2167,6 +2158,13 @@
   const inputUserId= document.getElementById('input-user-id');
   const inputRoomId= document.getElementById('input-room-id');
 
+  // ── 백그라운드 탭 복귀 시 연결 끊김 자동 새로고침 ─────────────────────────────
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') {
+      if (!ws || ws.readyState !== WebSocket.OPEN) window.location.reload();
+    }
+  });
+
   // ── Init ──────────────────────────────────────────────────────────────────
   (function init() {
     setConnectionState(false);
@@ -2304,7 +2302,6 @@
     if (!ws || ws.readyState !== WebSocket.OPEN) { showToast('연결이 끊어졌습니다.', 'error'); return; }
     sendRaw(JSON.stringify({ action: 'set_nickname', payload: { nickname } }));
     currentUserId = nickname;
-    document.getElementById('auth-welcome-text').textContent = `환영합니다, ${nickname}님!`;
     closeProfileModal();
     showToast('닉네임이 변경되었습니다.', 'info');
   }
@@ -2391,22 +2388,15 @@
 
   function showLoggedIn(email, nickname) {
     document.getElementById('auth-panel').style.display      = 'none';
-    document.getElementById('auth-logged-in').classList.add('visible');
     if (email) currentUserEmail = email;
     if (nickname) currentUserId = nickname;
-    document.getElementById('auth-welcome-text').textContent = '환영합니다, ' + (currentUserId || currentUserEmail || '') + '님!';
     document.getElementById('game-cards').style.display      = 'flex';
     document.getElementById('btn-profile').style.display     = '';
     setAuthStatus('');
   }
-  function updateWelcomeText() {
-    const el = document.getElementById('auth-welcome-text');
-    if (el) el.textContent = '환영합니다, ' + (currentUserId || currentUserEmail || '') + '님!';
-  }
 
   function showLoggedOut() {
     document.getElementById('auth-panel').style.display      = '';
-    document.getElementById('auth-logged-in').classList.remove('visible');
     document.getElementById('game-cards').style.display      = 'none';
     document.getElementById('btn-profile').style.display     = 'none';
     document.getElementById('auth-email').value    = '';
@@ -2470,9 +2460,6 @@
       // 인게임 룰 버튼: omok / blackjack / tictactoe / connect4 / indian / holdem / sevenpoker / thief / onecard 방에서 표시
       const rulesBtn = document.getElementById('btn-ingame-rules');
       rulesBtn.style.display = (roomId.startsWith('omok') || roomId.startsWith('blackjack') || roomId.startsWith('tictactoe') || roomId.startsWith('connect4') || roomId.startsWith('indian') || roomId.startsWith('holdem') || roomId.startsWith('sevenpoker') || roomId.startsWith('thief') || roomId.startsWith('onecard') || roomId.startsWith('mahjong')) ? '' : 'none';
-      // 족보 보기 버튼: holdem / sevenpoker 방에서만 표시
-      const handRankingsBtn = document.getElementById('btn-hand-rankings');
-      handRankingsBtn.style.display = (roomId.startsWith('holdem') || roomId.startsWith('sevenpoker')) ? '' : 'none';
       // 봇 추가 버튼: 오목, 4목, 틱택토, 인디언 포커, 홀덤, 세븐 포커, 도둑잡기, 원카드 방에서 표시 (blackjack 제외)
       const addBotBtn = document.getElementById('btn-add-bot');
       addBotBtn.style.display = (roomId.startsWith('omok') || roomId.startsWith('connect4') || roomId.startsWith('tictactoe') || roomId.startsWith('indian') || roomId.startsWith('holdem') || roomId.startsWith('sevenpoker') || roomId.startsWith('thief') || roomId.startsWith('onecard') || roomId.startsWith('mahjong')) ? '' : 'none';
@@ -3016,11 +3003,6 @@
       <li>하이카드 (High Card)</li>
     </ol>
   `;
-  function showHandRankingsModal() {
-    document.getElementById('rules-title').textContent = '📋 포커 족보 순서';
-    document.getElementById('rules-content').innerHTML = POKER_HAND_RANKINGS_HTML;
-    document.getElementById('rules-modal').classList.add('show');
-  }
   function closeRules() {
     document.getElementById('rules-modal').classList.remove('show');
   }
@@ -3086,7 +3068,6 @@
             case 'auth_ok':
               addLog('info', raw);
               if (parsed.userId) currentUserId = parsed.userId;
-              updateWelcomeText();
               document.getElementById('btn-profile').style.display = '';
               // 대기 중인 방 입장 또는 닉네임 설정
               if (pendingJoin) {

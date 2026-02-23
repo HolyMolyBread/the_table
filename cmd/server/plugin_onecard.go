@@ -505,7 +505,7 @@ func (g *OneCardGame) handleDraw(client *Client) {
 		g.hands[idx] = append(g.hands[idx], c)
 		notice, _ := json.Marshal(ServerResponse{
 			Type:    "game_notice",
-			Message: fmt.Sprintf("[%s]가 %s%s를 드로우했습니다.", client.UserID, c.Suit, c.Value),
+			Message: fmt.Sprintf("🎴 [%s] 님이 카드를 1장 뽑았습니다.", client.UserID),
 			RoomID:  g.room.ID,
 		})
 		g.room.broadcastAll(notice)
