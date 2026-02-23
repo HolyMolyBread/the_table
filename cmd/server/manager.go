@@ -238,6 +238,18 @@ func (m *RoomManager) BroadcastToRoom(roomID string, msg []byte, exclude *Client
 	room.broadcast(msg, exclude)
 }
 
+// broadcastRoomUpdate는 방 인원 수(pCount) 변경 시 프론트엔드의 ready_count UI를 갱신하기 위해 ready_update를 브로드캐스트합니다.
+func (m *RoomManager) broadcastRoomUpdate(room *Room) {
+	pCount := room.count()
+	upd, _ := json.Marshal(ReadyUpdateMessage{
+		Type:       "ready_update",
+		RoomID:     room.ID,
+		ReadyCount: 0,
+		TotalCount: pCount,
+	})
+	room.broadcastAll(upd)
+}
+
 // ── 메시지 핸들러 ─────────────────────────────────────────────────────────────
 
 // HandleMessage는 클라이언트로부터 수신한 원시 JSON을 파싱하고

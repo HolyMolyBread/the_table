@@ -75,6 +75,9 @@ func SpawnBot(m *RoomManager, room *Room, gamePrefix string) error {
 	data, _ := json.Marshal(resp)
 	room.broadcastAll(data)
 
+	// 프론트엔드에 방 인원 상태(pCount) 갱신 트리거
+	m.broadcastRoomUpdate(room)
+
 	if room.Plugin != nil {
 		room.Plugin.OnJoin(bot)
 		// 자동 레디: 1초 후 ready 액션 전송
