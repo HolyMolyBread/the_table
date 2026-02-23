@@ -358,25 +358,39 @@ func (g *ThiefGame) handleDraw(client *Client, targetID string, drawIndex int) {
 			g.room.broadcastAll(notice3)
 		}
 
-		// 게임 종료 체크: 조커만 남은 1명
-		remaining := 0
+		// 게임 종료 체크: activeCount<=1 (조커만 남은 1명 또는 뽑을 상대 없음)
+		activeCount := 0
 		loserIdx := -1
 		for i := 0; i < thiefMaxPlayers; i++ {
-			if g.players[i] != nil && !g.escaped[i] {
-				remaining++
+			if g.players[i] != nil && !g.escaped[i] && len(g.hands[i]) > 0 {
+				activeCount++
 				if len(g.hands[i]) == 1 && g.hands[i][0].Value == "JOKER" {
 					loserIdx = i
 				}
 			}
 		}
-		if remaining == 1 && loserIdx >= 0 {
-			g.players[loserIdx].RecordResult("thief", "lose")
-			for i := 0; i < thiefMaxPlayers; i++ {
-				if g.players[i] != nil && i != loserIdx && g.escaped[i] {
-					g.players[i].RecordResult("thief", "win")
+		if activeCount <= 1 {
+			var msg string
+			if loserIdx >= 0 {
+				g.players[loserIdx].RecordResult("thief", "lose")
+				for i := 0; i < thiefMaxPlayers; i++ {
+					if g.players[i] != nil && i != loserIdx && g.escaped[i] {
+						g.players[i].RecordResult("thief", "win")
+					}
+				}
+				msg = fmt.Sprintf("🃏 [%s]가 조커를 들고 남아 패배! 탈출한 플레이어 승리!", g.players[loserIdx].UserID)
+			} else {
+				for i := 0; i < thiefMaxPlayers; i++ {
+					if g.players[i] != nil && len(g.hands[i]) > 0 {
+						g.players[i].RecordResult("thief", "win")
+						msg = fmt.Sprintf("🏆 [%s] 단독 생존 승리!", g.players[i].UserID)
+						break
+					}
+				}
+				if msg == "" {
+					msg = "게임 종료."
 				}
 			}
-			msg := fmt.Sprintf("🃏 [%s]가 조커를 들고 남아 패배! 탈출한 플레이어 승리!", g.players[loserIdx].UserID)
 			room.mu.RLock()
 			totalCount := len(room.clients)
 			room.mu.RUnlock()
@@ -388,7 +402,6 @@ func (g *ThiefGame) handleDraw(client *Client, targetID string, drawIndex int) {
 				RematchEnabled: true,
 			})
 			room.broadcastAll(data)
-			log.Printf("[THIEF] room:[%s] 게임 종료: loser=[%s]", g.room.ID, g.players[loserIdx].UserID)
 			g.gameStarted = false
 			g.stopTurnTimerLocked()
 			return
@@ -476,9 +489,9 @@ func (g *ThiefGame) startGameLocked() {
 	})
 	g.room.broadcastAll(notice)
 
-	// 2초 후 페어 제거 및 게임 진행
+	// 1초 대기(하이라이트 효과) 후 페어 제거 및 게임 진행
 	room := g.room
-	time.AfterFunc(2*time.Second, func() {
+	time.AfterFunc(1*time.Second, func() {
 		g.mu.Lock()
 		defer g.mu.Unlock()
 		if !g.gameStarted {
@@ -509,25 +522,39 @@ func (g *ThiefGame) startGameLocked() {
 			}
 		}
 
-		// 게임 즉시 종료: 조커만 남은 1명
-		remaining := 0
+		// 게임 즉시 종료: activeCount<=1 (조커만 남은 1명 또는 뽑을 상대 없음)
+		activeCount := 0
 		loserIdx := -1
 		for i := 0; i < thiefMaxPlayers; i++ {
-			if g.players[i] != nil && !g.escaped[i] {
-				remaining++
+			if g.players[i] != nil && !g.escaped[i] && len(g.hands[i]) > 0 {
+				activeCount++
 				if len(g.hands[i]) == 1 && g.hands[i][0].Value == "JOKER" {
 					loserIdx = i
 				}
 			}
 		}
-		if remaining == 1 && loserIdx >= 0 {
-			g.players[loserIdx].RecordResult("thief", "lose")
-			for i := 0; i < thiefMaxPlayers; i++ {
-				if g.players[i] != nil && i != loserIdx && g.escaped[i] {
-					g.players[i].RecordResult("thief", "win")
+		if activeCount <= 1 {
+			var msg string
+			if loserIdx >= 0 {
+				g.players[loserIdx].RecordResult("thief", "lose")
+				for i := 0; i < thiefMaxPlayers; i++ {
+					if g.players[i] != nil && i != loserIdx && g.escaped[i] {
+						g.players[i].RecordResult("thief", "win")
+					}
+				}
+				msg = fmt.Sprintf("🃏 [%s]가 조커를 들고 남아 패배!", g.players[loserIdx].UserID)
+			} else {
+				for i := 0; i < thiefMaxPlayers; i++ {
+					if g.players[i] != nil && len(g.hands[i]) > 0 {
+						g.players[i].RecordResult("thief", "win")
+						msg = fmt.Sprintf("🏆 [%s] 단독 생존 승리!", g.players[i].UserID)
+						break
+					}
+				}
+				if msg == "" {
+					msg = "게임 종료."
 				}
 			}
-			msg := fmt.Sprintf("🃏 [%s]가 조커를 들고 남아 패배!", g.players[loserIdx].UserID)
 			room.mu.RLock()
 			totalCount := len(room.clients)
 			room.mu.RUnlock()

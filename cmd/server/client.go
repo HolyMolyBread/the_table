@@ -144,12 +144,12 @@ func (c *Client) RecordResult(gamePrefix, result string) {
 	log.Printf("[RECORD] [%s] %s → %s (총 %dW/%dL/%dD)",
 		c.UserID, gamePrefix, result, total.Wins, total.Losses, total.Draws)
 
-	// DB 비동기 upsert — UserUUID가 설정된 경우에만 실행 (개별 게임만, total은 LoadUserRecords에서 합산)
+	// DB 동기 upsert — UserUUID가 설정된 경우에만 실행. 승패가 반드시 DB에 기록되도록 동기 호출.
 	if db != nil && c.UserUUID != "" {
 		uuid := c.UserUUID
 		gameRec := *c.Records[gamePrefix]
 		dbName, isPVE := gameDBName(gamePrefix)
-		go db.UpsertGameRecord(uuid, dbName, isPVE, gameRec.Wins, gameRec.Losses, gameRec.Draws)
+		db.UpsertGameRecord(uuid, dbName, isPVE, gameRec.Wins, gameRec.Losses, gameRec.Draws)
 	}
 }
 

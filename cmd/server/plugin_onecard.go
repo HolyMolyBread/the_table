@@ -322,6 +322,15 @@ func (g *OneCardGame) canPlayNormal(c Card) bool {
 	if suit == "" {
 		suit = t.Suit
 	}
+	// 조커 후속: 흑백 조커(B_JOKER) 위에는 검은색(♠, ♣), 컬러 조커(C_JOKER) 위에는 붉은색(♥, ♦) 가능
+	if t.Value == "B_JOKER" {
+		blackSuits := c.Suit == "♠" || c.Suit == "♣"
+		return blackSuits || c.Value == "B_JOKER" || c.Value == "C_JOKER"
+	}
+	if t.Value == "C_JOKER" {
+		redSuits := c.Suit == "♥" || c.Suit == "♦"
+		return redSuits || c.Value == "B_JOKER" || c.Value == "C_JOKER"
+	}
 	return c.Suit == suit || c.Value == t.Value || c.Value == "B_JOKER" || c.Value == "C_JOKER"
 }
 

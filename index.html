@@ -507,6 +507,7 @@
       width: 100%; max-width: 460px;
       background: #062010; border-radius: 16px; overflow: hidden;
       border: 2px solid #1a4a28; box-shadow: inset 0 0 40px rgba(0,0,0,0.4);
+      position: relative;
     }
     #bj-status-bar {
       display: flex; justify-content: center; align-items: center;
@@ -558,6 +559,16 @@
       padding: 8px 18px 12px; font-size: 13px; font-weight: 600;
       color: var(--gold); min-height: 34px; text-align: center;
     }
+    .game-result-banner {
+      position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+      background: rgba(0,0,0,0.75); z-index: 100; border-radius: 16px;
+      font-size: 28px; font-weight: 800; letter-spacing: 2px; text-transform: uppercase;
+      animation: bannerPop 0.4s cubic-bezier(0.34,1.56,0.64,1);
+    }
+    .game-result-banner.win { color: #4ade80; text-shadow: 0 0 20px rgba(74,222,128,0.6); }
+    .game-result-banner.lose { color: #f87171; text-shadow: 0 0 20px rgba(248,113,113,0.6); }
+    .game-result-banner.push { color: var(--gold); text-shadow: 0 0 20px rgba(255,215,0,0.6); }
+    @keyframes bannerPop { from { opacity:0; transform: scale(0.7); } to { opacity:1; transform: scale(1); } }
 
     /* ══ TICTACTOE ═══════════════════════════════════════════════════════════ */
     #tictactoe-container {
@@ -764,6 +775,12 @@
       width: 100%; max-width: 520px;
     }
     #thief-status { font-size: 15px; font-weight: 700; text-align: center; }
+    .thief-tooltip {
+      position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
+      font-size: 14px; font-weight: 600; color: rgba(255,255,255,0.9);
+      background: rgba(0,0,0,0.65); padding: 10px 18px; border-radius: 10px;
+      pointer-events: none; z-index: 5; white-space: nowrap;
+    }
     /* 원탁 테이블 레이아웃 */
     .table-layout-wrap {
       position: relative; width: 100%; min-height: 340px;
@@ -1471,6 +1488,10 @@
           <span class="record-game-label">🀄 마작</span>
           <span id="record-mahjong" class="record-val">0승 0패 0무</span>
         </div>
+        <div class="record-popup-row">
+          <span class="record-game-label">⚫ 알까기</span>
+          <span id="record-alkkagi" class="record-val">0승 0패 0무</span>
+        </div>
       </div>
     </div>
     <button class="header-btn danger" id="btn-leave" style="display:none" onclick="leaveRoom()">🚪 나가기</button>
@@ -1833,6 +1854,7 @@
           <!-- 관전자 메시지 (Phase 4.3) -->
           <div id="bj-spectator-msg">👀 관전 중입니다</div>
           <div id="bj-message"></div>
+          <div id="bj-result-banner" class="game-result-banner" style="display:none;"></div>
         </div>
 
         <!-- Tictactoe container -->
@@ -1963,6 +1985,7 @@
           </div>
           <div id="thief-escaped" style="font-size:12px;color:var(--text-secondary);margin-bottom:8px;"></div>
           <div id="thief-table-wrap" class="table-layout-wrap">
+            <div class="thief-tooltip">상대방의 카드를 2번 클릭하여 뽑으세요</div>
             <div id="thief-players"></div>
             <div id="thief-me-slot" class="table-seat seat-bottom">
               <span class="table-seat-name">나</span>
@@ -3726,7 +3749,20 @@
     if (!data) return;
     renderBJHand('bj-dealer-hand', 'bj-dealer-score', data.dealerHand);
     renderBJHand('bj-player-hand', 'bj-player-score', data.playerHand);
-    if (data.message) document.getElementById('bj-message').textContent = data.message;
+    const msgEl = document.getElementById('bj-message');
+    const bannerEl = document.getElementById('bj-result-banner');
+    if (data.message) msgEl.textContent = data.message;
+
+    if (data.phase === 'settlement' && data.message) {
+      bannerEl.style.display = 'flex';
+      bannerEl.textContent = data.message;
+      bannerEl.className = 'game-result-banner';
+      if (/승리|Win|이겼|블랙잭/i.test(data.message)) bannerEl.classList.add('win');
+      else if (/패배|Lose|졌|버스트|Bust/i.test(data.message)) bannerEl.classList.add('lose');
+      else bannerEl.classList.add('push');
+    } else {
+      bannerEl.style.display = 'none';
+    }
 
     const startBtns    = document.getElementById('bj-start-buttons');
     const gameBtns     = document.getElementById('bj-game-buttons');
@@ -4099,6 +4135,7 @@
   }
 
   const TABLE_SEAT_ORDER = ['seat-top', 'seat-left', 'seat-right'];
+  let lastThiefHandJson = '';
 
   function renderThief(data) {
     if (!data) return;
@@ -4144,8 +4181,17 @@
 
     const handEl = document.getElementById('thief-hand');
     if (handEl && data.hand) {
-      const hoverOnMyCard = thiefHoveredTargetId === currentUserId;
-      handEl.innerHTML = data.hand.map((c, i) => renderThiefCard(c, hoverOnMyCard && thiefHoveredIndex === i)).join('');
+      const handJson = JSON.stringify(data.hand);
+      if (handJson !== lastThiefHandJson) {
+        lastThiefHandJson = handJson;
+        const hoverOnMyCard = thiefHoveredTargetId === currentUserId;
+        handEl.innerHTML = data.hand.map((c, i) => renderThiefCard(c, hoverOnMyCard && thiefHoveredIndex === i)).join('');
+      } else {
+        const hoverOnMyCard = thiefHoveredTargetId === currentUserId;
+        handEl.querySelectorAll('.thief-card').forEach((el, i) => {
+          el.classList.toggle('hover-finger', hoverOnMyCard && thiefHoveredIndex === i);
+        });
+      }
     }
 
     setTimeout(() => {
@@ -4491,6 +4537,12 @@
       },
     });
     M.Render.run(render);
+
+    const mouseConstraint = M.MouseConstraint.create(engine, {
+      element: render.canvas,
+      constraint: { stiffness: 0.2, render: { visible: false } },
+    });
+    M.World.add(world, mouseConstraint);
 
     const runner = M.Runner.create();
     M.Runner.run(runner, engine);

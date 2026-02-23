@@ -426,6 +426,23 @@ func (m *RoomManager) HandleMessage(client *Client, rawMsg []byte) {
 			UserID string `json:"userId"`
 		}{"auth_ok", client.UserID})
 
+	case "get_profile":
+		if client.UserUUID == "" {
+			client.SendJSON(ServerResponse{Type: "error", Message: "먼저 인증이 필요합니다 (action: auth)"})
+			return
+		}
+		if db == nil {
+			client.SendJSON(RecordUpdateResponse{Type: "record_update", Records: client.Records})
+			return
+		}
+		go func() {
+			loaded := db.LoadUserRecords(client.UserUUID)
+			if loaded != nil {
+				client.Records = loaded
+				client.SendJSON(RecordUpdateResponse{Type: "record_update", Records: client.Records})
+			}
+		}()
+
 	case "get_user_record":
 		if client.RoomID == "" {
 			client.SendJSON(ServerResponse{Type: "error", Message: "방에 입장한 상태에서만 상대 전적을 조회할 수 있습니다"})

@@ -240,6 +240,12 @@ func (g *IndianGame) handleShowdown(client *Client) {
 	case "first_action":
 		// 선공이 '승부' → 후공에게 차례 이전
 		g.stopTurnTimerLocked()
+		chatMsg, _ := json.Marshal(ServerResponse{
+			Type: "system", Message: fmt.Sprintf("[%s]님이 Call(승부)을 했습니다.", client.UserID),
+			RoomID: g.room.ID,
+		})
+		g.room.broadcastAll(chatMsg)
+		time.Sleep(1500 * time.Millisecond)
 		g.currentTurn = 1
 		g.phase = "second_action"
 		notice, _ := json.Marshal(ServerResponse{
@@ -281,6 +287,12 @@ func (g *IndianGame) handleGiveUp(client *Client) {
 	prev := g.hearts[idx]
 	g.hearts[idx]--
 
+	chatMsg, _ := json.Marshal(ServerResponse{
+		Type: "system", Message: fmt.Sprintf("[%s]님이 포기했습니다.", client.UserID),
+		RoomID: g.room.ID,
+	})
+	g.room.broadcastAll(chatMsg)
+	time.Sleep(1200 * time.Millisecond)
 	notice, _ := json.Marshal(ServerResponse{
 		Type: "game_notice",
 		Message: fmt.Sprintf(
@@ -318,6 +330,12 @@ func (g *IndianGame) resolveShowdownLocked() {
 	g.hearts[winnerIdx] += 2
 	g.hearts[loserIdx] -= 2
 
+	chatMsg, _ := json.Marshal(ServerResponse{
+		Type: "system", Message: fmt.Sprintf("[%s]님이 Call(승부)을 했습니다.", g.players[1].UserID),
+		RoomID: g.room.ID,
+	})
+	g.room.broadcastAll(chatMsg)
+	time.Sleep(1200 * time.Millisecond)
 	revealMsg := fmt.Sprintf(
 		"🃏 공개! [%s]: %s%s  vs  [%s]: %s%s  —  [%s] 승리! ❤️ %d→%d / ❤️ %d→%d",
 		g.players[0].UserID, c0.Value, c0.Suit,
@@ -416,6 +434,7 @@ func (g *IndianGame) startRoundLocked() {
 // nextRoundLocked은 선후공을 교체하고 새 라운드를 시작합니다.
 // g.mu 보유 상태에서 호출합니다.
 func (g *IndianGame) nextRoundLocked() {
+	time.Sleep(1 * time.Second)
 	// 선후공 교체: players[0]↔players[1], hearts[0]↔hearts[1]
 	g.players[0], g.players[1] = g.players[1], g.players[0]
 	g.hearts[0], g.hearts[1] = g.hearts[1], g.hearts[0]

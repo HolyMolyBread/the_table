@@ -261,13 +261,89 @@ func straightValue(sorted []int) int {
 
 // PokerShowdownParticipant는 쇼다운 참가자 정보입니다.
 type PokerShowdownParticipant struct {
-	UserID   string `json:"userId"`
-	HandName string `json:"handName"`
+	UserID              string `json:"userId"`
+	HandName            string `json:"handName"`
+	WinReason           string `json:"winReason,omitempty"`           // "A Kicker", "Spade" 등 승리 요인
+	HighCardHighlightIdx int   `json:"highCardHighlightIdx,omitempty"` // 하이카드 시 톱 카드 인덱스 (0~6)
 }
 
 // PokerShowdownResultData는 poker_showdown_result 메시지의 data 필드입니다.
 type PokerShowdownResultData struct {
 	WinnerID     string                    `json:"winnerId"`
 	WinningHand  string                    `json:"winningHand"`
+	WinReason    string                    `json:"winReason,omitempty"`
 	Participants []PokerShowdownParticipant `json:"participants"`
+}
+
+// rankToStr은 카드 랭크 숫자를 문자열로 변환합니다.
+func rankToStr(r int) string {
+	m := map[int]string{14: "A", 13: "K", 12: "Q", 11: "J", 10: "10", 9: "9", 8: "8", 7: "7", 6: "6", 5: "5", 4: "4", 3: "3", 2: "2"}
+	if s, ok := m[r]; ok {
+		return s
+	}
+	return "?"
+}
+
+// HandWinReason은 족보 점수에서 승리 요인 문자열을 추출합니다.
+func HandWinReason(score int64) string {
+	rank := int(score >> 20)
+	switch rank {
+	case 10:
+		return "로얄"
+	case 9:
+		return rankToStr(int(score & 0xFFFF)) + " 하이"
+	case 8:
+		quad := int((score >> 8) & 0xFF)
+		kicker := int(score & 0xFF)
+		return rankToStr(quad) + " 포카드, " + rankToStr(kicker) + " Kicker"
+	case 7:
+		trip := int((score >> 8) & 0xFF)
+		pair := int(score & 0xFF)
+		return rankToStr(trip) + " 풀하우스 " + rankToStr(pair)
+	case 6:
+		top := int((score >> 16) & 0xF)
+		return rankToStr(top) + " 하이 플러시"
+	case 5:
+		return rankToStr(int(score & 0xFFFF)) + " 스트레이트"
+	case 4:
+		trip := int((score >> 12) & 0xFF)
+		k1 := int((score >> 8) & 0xF)
+		return rankToStr(trip) + " 트리플, " + rankToStr(k1) + " Kicker"
+	case 3:
+		p1 := int((score >> 12) & 0xFF)
+		p2 := int((score >> 8) & 0xFF)
+		k := int(score & 0xFF)
+		return rankToStr(p1) + "/" + rankToStr(p2) + " 투페어, " + rankToStr(k) + " Kicker"
+	case 2:
+		pair := int((score >> 12) & 0xFF)
+		k1 := int((score >> 8) & 0xF)
+		return rankToStr(pair) + " 원페어, " + rankToStr(k1) + " Kicker"
+	case 1:
+		top := int((score >> 16) & 0xF)
+		return rankToStr(top) + " Kicker"
+	}
+	return ""
+}
+
+// EvaluateHandHighCardIdx는 7장 카드에서 하이카드 족보일 때 톱 카드의 인덱스(0~6)를 반환합니다.
+// 하이카드가 아니면 -1을 반환합니다.
+func EvaluateHandHighCardIdx(cards []Card) int {
+	if len(cards) < 5 {
+		return -1
+	}
+	score := EvaluateHand(cards)
+	if int(score>>20) != 1 {
+		return -1
+	}
+	// 하이카드: 가장 높은 카드 찾기
+	bestIdx := 0
+	bestRank, bestSuit := cardRank(cards[0]), suitRank(cards[0])
+	for i := 1; i < len(cards); i++ {
+		r, s := cardRank(cards[i]), suitRank(cards[i])
+		if r > bestRank || (r == bestRank && s > bestSuit) {
+			bestRank, bestSuit = r, s
+			bestIdx = i
+		}
+	}
+	return bestIdx
 }

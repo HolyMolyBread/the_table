@@ -13,7 +13,7 @@ const (
 	holdemMaxPlayers     = 4
 	holdemStartStars     = 10
 	holdemCheckCost      = 1
-	holdemTurnTimeLimit  = 15
+	holdemTurnTimeLimit  = 20
 )
 
 // ── 응답 타입 ─────────────────────────────────────────────────────────────────
@@ -551,12 +551,15 @@ func (g *HoldemGame) resolveShowdownLocked() {
 	g.potCarryOver = remainder
 
 	winningHandName := HandRankName(bestScore)
+	winReason := HandWinReason(bestScore)
 	participants := make([]PokerShowdownParticipant, len(survivors))
 	for i, idx := range survivors {
-		participants[i] = PokerShowdownParticipant{
+		p := PokerShowdownParticipant{
 			UserID:   g.players[idx].UserID,
 			HandName: HandRankName(scores[i]),
+			WinReason: HandWinReason(scores[i]),
 		}
+		participants[i] = p
 	}
 	showdownData, _ := json.Marshal(map[string]any{
 		"type":   "poker_showdown_result",
@@ -564,6 +567,7 @@ func (g *HoldemGame) resolveShowdownLocked() {
 		"data": map[string]any{
 			"winnerId":     g.players[winners[0]].UserID,
 			"winningHand":  winningHandName,
+			"winReason":    winReason,
 			"participants": participants,
 		},
 	})

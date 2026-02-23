@@ -10,12 +10,12 @@ import (
 )
 
 const (
-	sevenPokerMaxPlayers     = 4
-	sevenPokerStartStars     = 10
-	sevenPokerCheckCost      = 1
-	sevenPokerCards          = 7
-	sevenPokerTurnTimeLimit  = 20
-	sevenPokerChoiceTimeLimit = 15
+	sevenPokerMaxPlayers      = 4
+	sevenPokerStartStars      = 10
+	sevenPokerCheckCost       = 1
+	sevenPokerCards           = 7
+	sevenPokerTurnTimeLimit   = 20
+	sevenPokerChoiceTimeLimit = 20
 )
 
 // ── 응답 타입 ─────────────────────────────────────────────────────────────────
@@ -353,27 +353,24 @@ func (g *SevenPokerGame) handleChoice(client *Client, payload json.RawMessage) {
 	}
 
 	// 4장 중 discardIdx 제외한 3장을 인덱스 0,1,2에 배치
+	// 공개 카드는 UI 상 가장 오른쪽(배열 맨 끝, 인덱스 2)에 오도록 정렬
 	kept := make([]Card, 0, 3)
-	for j := 0; j < 4; j++ {
-		if j != p.DiscardIdx {
-			kept = append(kept, g.cards[idx][j])
-		}
-	}
-	// openIdx: 원본 4장 중 공개할 카드 인덱스 → kept 내 상대적 위치 0~2
-	relOpenIdx := 0
+	var openCard Card
 	for j := 0; j < 4; j++ {
 		if j == p.DiscardIdx {
 			continue
 		}
 		if j == p.OpenIdx {
-			break
+			openCard = g.cards[idx][j]
+		} else {
+			kept = append(kept, g.cards[idx][j])
 		}
-		relOpenIdx++
 	}
+	kept = append(kept, openCard) // 공개 카드를 맨 끝(오른쪽)에 배치
 
 	for j := 0; j < 3; j++ {
 		g.cards[idx][j] = kept[j]
-		g.cards[idx][j].Hidden = (j != relOpenIdx)
+		g.cards[idx][j].Hidden = (j != 2) // 인덱스 2 = 맨 끝 = 공개
 	}
 	for j := 3; j < sevenPokerCards; j++ {
 		g.cards[idx][j] = Card{}
@@ -668,12 +665,18 @@ func (g *SevenPokerGame) resolveShowdownLocked() {
 	g.stars[winnerIdx] += totalPot
 
 	winningHandName := HandRankName(bestScore)
+	winReason := HandWinReason(bestScore)
 	participants := make([]PokerShowdownParticipant, len(survivors))
 	for i, idx := range survivors {
-		participants[i] = PokerShowdownParticipant{
+		p := PokerShowdownParticipant{
 			UserID:   g.players[idx].UserID,
 			HandName: HandRankName(scores[i]),
+			WinReason: HandWinReason(scores[i]),
 		}
+		if int(bestScore>>20) == 1 {
+			p.HighCardHighlightIdx = EvaluateHandHighCardIdx(cards7[i])
+		}
+		participants[i] = p
 	}
 	showdownData, _ := json.Marshal(map[string]any{
 		"type":   "poker_showdown_result",
@@ -681,6 +684,7 @@ func (g *SevenPokerGame) resolveShowdownLocked() {
 		"data": map[string]any{
 			"winnerId":     g.players[winnerIdx].UserID,
 			"winningHand":  winningHandName,
+			"winReason":    winReason,
 			"participants": participants,
 		},
 	})

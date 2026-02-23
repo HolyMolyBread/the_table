@@ -285,8 +285,9 @@ func (d *DBClient) LoadUserRecords(userUUID string) map[string]*GameRecord {
 }
 
 // UpsertGameRecord는 game_records 테이블에 해당 유저+게임의 전적을 upsert(삽입 또는 갱신)합니다.
-// Supabase의 `Prefer: resolution=merge-duplicates` 옵션을 이용합니다.
-// (user_id, game_name) UNIQUE 제약이 있어야 정상 동작합니다.
+// Supabase PostgREST: POST + Prefer: resolution=merge-duplicates (ON CONFLICT DO UPDATE)
+// (user_id, game_name, is_pve) UNIQUE 제약이 있어야 정상 동작합니다.
+// 실패 시 최대 2회 재시도하여 DB 저장을 보장합니다.
 func (d *DBClient) UpsertGameRecord(userUUID, gameName string, isPVE bool, wins, losses, draws int) {
 	body := gameRecordRow{
 		UserID:   userUUID,
@@ -296,16 +297,28 @@ func (d *DBClient) UpsertGameRecord(userUUID, gameName string, isPVE bool, wins,
 		Losses:   losses,
 		Draws:    draws,
 	}
-	resp, err := d.do("POST", "/game_records", body, map[string]string{
-		"Prefer": "resolution=merge-duplicates,return=minimal",
-	})
-	if err != nil {
-		log.Printf("[DB] UpsertGameRecord 실패 [%s/%s]: %v", userUUID[:min(8, len(userUUID))], gameName, err)
-		return
+	for attempt := 0; attempt < 3; attempt++ {
+		resp, err := d.do("POST", "/game_records", body, map[string]string{
+			"Prefer": "resolution=merge-duplicates,return=minimal",
+		})
+		if err != nil {
+			log.Printf("[DB] UpsertGameRecord 실패 [%s/%s] attempt %d: %v", userUUID[:min(8, len(userUUID))], gameName, attempt+1, err)
+			if attempt < 2 {
+				time.Sleep(time.Duration(attempt+1) * 300 * time.Millisecond)
+			}
+			continue
+		}
+		resp.Body.Close()
+		if resp.StatusCode >= 200 && resp.StatusCode < 300 {
+			log.Printf("[DB] UpsertGameRecord 완료 [%s/%s] %dW/%dL/%dD (status %d)",
+				userUUID[:min(8, len(userUUID))], gameName, wins, losses, draws, resp.StatusCode)
+			return
+		}
+		log.Printf("[DB] UpsertGameRecord HTTP %d [%s/%s] attempt %d", resp.StatusCode, userUUID[:min(8, len(userUUID))], gameName, attempt+1)
+		if attempt < 2 {
+			time.Sleep(time.Duration(attempt+1) * 300 * time.Millisecond)
+		}
 	}
-	defer resp.Body.Close()
-	log.Printf("[DB] UpsertGameRecord 완료 [%s/%s] %dW/%dL/%dD (status %d)",
-		userUUID[:min(8, len(userUUID))], gameName, wins, losses, draws, resp.StatusCode)
 }
 
 // min은 Go 1.21 이전 버전을 위한 정수 최솟값 헬퍼입니다.
