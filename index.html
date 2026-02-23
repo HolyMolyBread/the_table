@@ -801,24 +801,24 @@
     .table-seat.seat-right { right: 12px; top: 50%; transform: translateY(-50%); }
     .table-seat.seat-bottom { bottom: 12px; left: 50%; transform: translateX(-50%); min-width: 200px; }
     .table-seat.seat-bottom .table-seat-name { font-size: 16px; font-weight: 800; }
-    .table-seat.seat-bottom .thief-hand, .table-seat.seat-bottom .onecard-hand, .table-seat.seat-bottom .mahjong-hand { gap: 10px; }
+    .table-seat.seat-bottom .thief-hand, .table-seat.seat-bottom .mahjong-hand { gap: 10px; }
     .table-seat-name { font-size: 12px; font-weight: 700; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
     .table-seat-count { font-size: 14px; font-weight: 700; color: var(--gold); margin-top: 4px; }
     .table-seat-target-cards {
       display: flex; flex-wrap: wrap; justify-content: center;
       padding-top: 15px; margin-top: 4px;
     }
-    .thief-hand, .onecard-hand {
+    .thief-hand {
       display: flex; flex-wrap: nowrap; overflow-x: auto;
       width: 100%; max-width: 90vw; padding: 10px 10px 20px 10px;
     }
-    .thief-hand::-webkit-scrollbar, .onecard-hand::-webkit-scrollbar { height: 6px; }
-    .thief-hand::-webkit-scrollbar-thumb, .onecard-hand::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
-    .thief-card, .onecard-card {
+    .thief-hand::-webkit-scrollbar { height: 6px; }
+    .thief-hand::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+    .thief-card {
       flex-shrink: 0; margin-left: -24px; position: relative;
       transition: transform 0.2s, z-index 0s;
     }
-    .thief-card:first-child, .onecard-card:first-child { margin-left: 0; }
+    .thief-card:first-child { margin-left: 0; }
     .thief-card:hover, .onecard-card:hover { transform: translateY(-15px); z-index: 100; margin-right: 15px; }
     .bj-card:hover, .indian-card-face:hover, .indian-card-back:hover, .holdem-card:hover {
       transform: translateY(-10px) scale(1.05);
@@ -877,6 +877,8 @@
       width: 100%; max-width: 520px;
     }
     .table-center-area { display: flex; align-items: center; justify-content: center; gap: 16px; }
+    /* 중앙 보드와 내 패 사이 여백 확보 */
+    #onecard-me-slot { margin-top: 120px !important; }
     #onecard-status { font-size: 15px; font-weight: 700; text-align: center; }
     .onecard-card {
       width: 56px; height: 80px; background: #fff; border: 1px solid #ccc;
@@ -892,7 +894,31 @@
       border: 1px solid #1e40af; cursor: pointer;
       display: flex; align-items: center; justify-content: center; font-size: 24px;
     }
-    .onecard-hand .onecard-card { cursor: pointer; }
+    /* 원카드 내 패: 한 줄 고정 + 카드 겹치기 (중앙 보드 가림 방지) */
+    .onecard-hand {
+      display: flex !important;
+      flex-wrap: nowrap !important;
+      justify-content: center !important;
+      overflow-x: auto !important;
+      padding-bottom: 20px !important;
+      max-width: 95vw !important;
+      margin: 0 auto !important;
+    }
+    .onecard-hand::-webkit-scrollbar { height: 6px; }
+    .onecard-hand::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+    .onecard-hand .onecard-card {
+      margin-left: -30px !important;
+      flex-shrink: 0 !important;
+      transition: transform 0.2s, margin-left 0.2s !important;
+      cursor: pointer;
+      position: relative;
+    }
+    .onecard-hand .onecard-card:first-child { margin-left: 0 !important; }
+    .onecard-hand .onecard-card:hover {
+      transform: translateY(-20px) scale(1.1) !important;
+      margin-left: -10px !important;
+      z-index: 100 !important;
+    }
     .onecard-hand .onecard-card.playable { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent); }
     .suit-btn { background-color: #ffffff !important; color: #000000 !important; }
     .onecard-player-box {
@@ -954,7 +980,7 @@
     .mahjong-tile.hidden { background: #e09f3e; color: #b5651d; }
     .mahjong-tile.discardable { cursor: pointer; border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent); }
     .mahjong-tile.discardable:hover { transform: translateY(-8px); }
-    .my-hand-area, .mahjong-hand, .thief-hand, .onecard-hand {
+    .my-hand-area, .mahjong-hand, .thief-hand {
       transform: scale(0.85) !important;
       transform-origin: bottom center !important;
       margin-bottom: -10px !important;
