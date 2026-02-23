@@ -281,6 +281,8 @@ func makeBotProcess(bot *Client, room *Room, gamePrefix string) func(msg []byte)
 				return
 			}
 			go func() {
+				time.Sleep(botThinkDelay) // 턴 시작 후 짝 맞추기 연출 대기
+
 				idx1 := rand.Intn(cardCount)
 				payload1, _ := json.Marshal(map[string]any{"cmd": "hover", "targetId": targetID, "index": idx1})
 				room.Plugin.HandleAction(bot, "game_action", payload1)
@@ -331,15 +333,9 @@ func makeBotProcess(bot *Client, room *Room, gamePrefix string) func(msg []byte)
 				return
 			}
 			time.Sleep(botThinkDelay)
-			// Top Card와 (문양 or 숫자) 일치하는 첫 번째 카드 play, 없으면 draw
-			top := d.TopCard
-			playIdx := -1
-			for i, c := range d.Hand {
-				if c.Suit == top.Suit || c.Value == top.Value {
-					playIdx = i
-					break
-				}
-			}
+
+			playIdx := botPickOneCard(d)
+
 			if playIdx >= 0 {
 				card := d.Hand[playIdx]
 				payloadMap := map[string]any{"cmd": "play", "index": playIdx}
@@ -428,4 +424,29 @@ func botPickConnect4(board [6][7]int) int {
 		return -1
 	}
 	return cols[rand.Intn(len(cols))]
+}
+
+func botPickOneCard(d OneCardData) int {
+	top := d.TopCard
+	suit := d.TargetSuit
+	if suit == "" {
+		suit = top.Suit
+	}
+	for i, c := range d.Hand {
+		if d.AttackPenalty > 0 {
+			// 방어 로직 (A, B_JOKER, C_JOKER)
+			if top.Value == "A" && (c.Value == "A" || c.Value == "B_JOKER" || c.Value == "C_JOKER") {
+				return i
+			}
+			if top.Value == "B_JOKER" && c.Value == "C_JOKER" {
+				return i
+			}
+		} else {
+			// 일반 플레이 로직
+			if c.Suit == suit || c.Value == top.Value || c.Value == "B_JOKER" || c.Value == "C_JOKER" {
+				return i
+			}
+		}
+	}
+	return -1 // 낼 카드가 없으면 -1 반환 (Draw)
 }
