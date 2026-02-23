@@ -955,9 +955,9 @@
     .mahjong-tile.discardable { cursor: pointer; border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent); }
     .mahjong-tile.discardable:hover { transform: translateY(-8px); }
     .my-hand-area, .mahjong-hand, .thief-hand, .onecard-hand {
-      transform: scale(0.5) !important;
+      transform: scale(0.85) !important;
       transform-origin: bottom center !important;
-      margin-bottom: -50px !important;
+      margin-bottom: -10px !important;
     }
     .mahjong-hand { display: flex; flex-wrap: nowrap; padding: 10px; justify-content: center; }
     .mahjong-discards {
@@ -1000,9 +1000,7 @@
 
     /* ══ TEXAS HOLDEM ════════════════════════════════════════════════════════ */
     #holdem-container, #sevenpoker-container {
-      margin-top: 120px !important;
-      transform: scale(0.85);
-      transform-origin: top center;
+      margin-top: 60px;
     }
     #holdem-container {
       display: none; flex-direction: column; align-items: center; gap: 12px;
@@ -2446,11 +2444,16 @@
   }
   function showOpponentRecordModal(userId, records) {
     const fmt = r => r ? `${r.wins}승 ${r.losses}패 ${r.draws}무` : '0승 0패 0무';
-    const labels = { total: '전체', omok: '🀱 오목', blackjack: '🃏 블랙잭', tictactoe: '⭕❌ 틱택토', connect4: '🔴🟡 4목', indian: '🃏 인디언' };
+    const games = ['omok', 'tictactoe', 'connect4', 'holdem', 'sevenpoker', 'indian', 'blackjack', 'onecard', 'thief', 'mahjong', 'alkkagi'];
+    const labels = { total: '전체', omok: '🀱 오목', tictactoe: '⭕❌ 틱택토', connect4: '🔴🟡 4목', holdem: '♠️ 텍사스 홀덤', sevenpoker: '🃏 세븐 포커', indian: '🃏 인디언 포커', blackjack: '🃏 블랙잭', onecard: '🃏 원카드', thief: '🃏 도둑잡기', mahjong: '🀄 마작', alkkagi: '⚫ 알까기' };
     let html = '';
-    for (const [key, label] of Object.entries(labels)) {
-      const r = records && records[key];
-      html += `<div class="opponent-record-row"><span class="opponent-record-label">${label}</span><span class="opponent-record-val">${fmt(r)}</span></div>`;
+    html += `<div class="opponent-record-row"><span class="opponent-record-label">${labels.total}</span><span class="opponent-record-val">${fmt(records && records.total)}</span></div>`;
+    for (const key of games) {
+      const label = labels[key];
+      if (label) {
+        const r = records && records[key];
+        html += `<div class="opponent-record-row"><span class="opponent-record-label">${label}</span><span class="opponent-record-val">${fmt(r)}</span></div>`;
+      }
     }
     document.getElementById('opponent-record-title').textContent = `${userId} 전적`;
     document.getElementById('opponent-record-content').innerHTML = html || '<div>전적 없음</div>';
@@ -3768,9 +3771,10 @@
     const bannerEl = document.getElementById('bj-result-banner');
     if (data.message) msgEl.textContent = data.message;
 
-    if (data.phase === 'settlement' && data.message) {
+    const showResult = (data.phase === 'settlement' || data.state === 'game_over') && data.message;
+    if (showResult) {
       bannerEl.style.display = 'flex';
-      bannerEl.textContent = data.message;
+      bannerEl.innerHTML = `<div class="result-title">${escapeHTML(data.message)}</div>`;
       bannerEl.className = 'game-result-banner';
       if (/승리|Win|이겼|블랙잭/i.test(data.message)) bannerEl.classList.add('win');
       else if (/패배|Lose|졌|버스트|Bust/i.test(data.message)) bannerEl.classList.add('lose');
@@ -4233,6 +4237,9 @@
   function thiefOnTargetCardClick(targetId, index, el) {
     if (!ws || ws.readyState !== WebSocket.OPEN) return;
     if (thiefHoveredTargetId === targetId && thiefHoveredIndex === index) {
+      if (window.isDrawing) return;
+      window.isDrawing = true;
+      setTimeout(() => { window.isDrawing = false; }, 500);
       sendRaw(JSON.stringify({ action: 'game_action', payload: { cmd: 'draw', targetId: targetId, index: index } }));
       thiefHoveredIndex = -1;
       thiefHoveredTargetId = '';

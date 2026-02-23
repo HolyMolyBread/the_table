@@ -281,8 +281,11 @@ func (g *ThiefGame) handleDraw(client *Client, targetID string, drawIndex int) {
 	g.mu.Lock()
 	defer g.mu.Unlock()
 
+	// 광클 방어: 게임 진행 중이 아니거나, 현재 턴 유저가 요청자와 다르면 즉시 무시
 	if !g.gameStarted {
-		client.SendJSON(ServerResponse{Type: "error", Message: "게임이 아직 시작되지 않았습니다."})
+		return
+	}
+	if g.players[g.currentTurn] == nil || g.players[g.currentTurn].UserID != client.UserID {
 		return
 	}
 

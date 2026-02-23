@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"sync"
 	"time"
 )
 
@@ -21,6 +22,7 @@ type DBClient struct {
 	authURL    string // Supabase URL + "/auth/v1"
 	apiKey     string // anon key
 	httpClient *http.Client
+	mu         sync.Mutex // 쓰기 작업 직렬화 (동시 UpsertGameRecord 방지)
 }
 
 // db는 서버 전체에서 공유하는 싱글턴 DB 클라이언트입니다.
@@ -288,7 +290,11 @@ func (d *DBClient) LoadUserRecords(userUUID string) map[string]*GameRecord {
 // Supabase PostgREST: POST + Prefer: resolution=merge-duplicates (ON CONFLICT DO UPDATE)
 // (user_id, game_name, is_pve) UNIQUE 제약이 있어야 정상 동작합니다.
 // 실패 시 최대 2회 재시도하여 DB 저장을 보장합니다.
+// 여러 고루틴이 동시에 호출해도 mu로 직렬화하여 한 명씩 순서대로 저장합니다.
 func (d *DBClient) UpsertGameRecord(userUUID, gameName string, isPVE bool, wins, losses, draws int) {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+
 	body := gameRecordRow{
 		UserID:   userUUID,
 		GameName: gameName,

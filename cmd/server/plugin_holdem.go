@@ -845,12 +845,27 @@ func (g *HoldemGame) handleReady(client *Client) {
 		client.SendJSON(ServerResponse{Type: "error", Message: "게임이 이미 시작되었습니다."})
 		return
 	}
-	idx := g.playerIndex(client)
-	if idx < 0 {
-		client.SendJSON(ServerResponse{Type: "error", Message: "플레이어가 아닙니다."})
-		return
+	// waiting 상태에서는 playerIndex 검사 생략: UserID로 플레이어 매칭 후 ready 등록
+	var readyClient *Client
+	if g.phase == "waiting" {
+		for i := 0; i < holdemMaxPlayers; i++ {
+			if g.players[i] != nil && g.players[i].UserID == client.UserID {
+				readyClient = g.players[i]
+				break
+			}
+		}
+		if readyClient == nil {
+			return // 관전자는 무시
+		}
+	} else {
+		idx := g.playerIndex(client)
+		if idx < 0 {
+			client.SendJSON(ServerResponse{Type: "error", Message: "플레이어가 아닙니다."})
+			return
+		}
+		readyClient = client
 	}
-	g.startReady[client] = true
+	g.startReady[readyClient] = true
 	total := 0
 	ready := 0
 	for i := 0; i < holdemMaxPlayers; i++ {
