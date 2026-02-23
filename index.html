@@ -1441,6 +1441,26 @@
       .chat-bubble { max-width: 180px; font-size: 12px; }
       #game-area-header { font-size: 11px; }
     }
+
+    /* ── room-controls: 준비/리매치 버튼 화면 중앙 고정 (홀덤·세븐포커 등) ── */
+    .room-controls {
+      position: fixed !important;
+      top: 50% !important;
+      left: 50% !important;
+      transform: translate(-50%, -50%) !important;
+      z-index: 999999 !important;
+      background-color: rgba(0, 0, 0, 0.8) !important;
+      padding: 20px 40px !important;
+      border-radius: 15px !important;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.8) !important;
+      text-align: center !important;
+      width: max-content !important;
+    }
+    .room-controls button {
+      font-size: 20px !important;
+      padding: 10px 20px !important;
+      cursor: pointer !important;
+    }
   </style>
 </head>
 <body>
@@ -1803,12 +1823,12 @@
           <div>상대방을 기다리는 중...</div>
         </div>
         <!-- 게임 시작 전 준비(Ready) 영역 (공통 PVP) -->
-        <div id="ready-area" style="display:none; flex-direction:column; align-items:center; gap:8px; margin-top:16px;">
+        <div id="ready-area" class="room-controls" style="display:none; flex-direction:column; align-items:center; gap:8px; margin-top:16px;">
           <button id="btn-ready" class="indian-btn" style="background:var(--success); color:#000;" onclick="sendReady()">✅ 준비 완료 (<span id="ready-count">0/0</span>)</button>
           <div style="font-size:12px; color:var(--text-muted);">전원이 준비해야 게임이 시작됩니다</div>
         </div>
         <!-- 리매치 영역 (공통 PVP) -->
-        <div id="rematch-area">
+        <div id="rematch-area" class="room-controls">
           <button id="btn-rematch" onclick="sendRematch()">
             🔄 한 판 더 (<span id="rematch-count">0/0</span>)
           </button>
