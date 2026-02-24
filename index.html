@@ -777,12 +777,6 @@
       width: 100%; max-width: 520px;
     }
     #thief-status { font-size: 15px; font-weight: 700; text-align: center; }
-    .thief-tooltip {
-      position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
-      font-size: 14px; font-weight: 600; color: rgba(255,255,255,0.9);
-      background: rgba(0,0,0,0.65); padding: 10px 18px; border-radius: 10px;
-      pointer-events: none; z-index: 5; white-space: nowrap;
-    }
     /* 원탁 테이블 레이아웃 */
     .table-layout-wrap {
       position: relative; width: 100%; min-height: 340px;
@@ -878,12 +872,7 @@
     }
     .table-center-area { display: flex; align-items: center; justify-content: center; gap: 16px; }
     /* 중앙 보드와 내 패 사이 물리적 여백 강제 확보 */
-    .onecard-table {
-      margin-bottom: 250px !important;
-      transform: translateY(-30px) !important;
-      z-index: 1 !important;
-    }
-    #onecard-me-slot { margin-top: 120px !important; }
+    .onecard-table { z-index: 1 !important; }
     #onecard-status { font-size: 15px; font-weight: 700; text-align: center; }
     .onecard-card {
       width: 56px; height: 80px; background: #fff; border: 1px solid #ccc;
@@ -1097,6 +1086,14 @@
     .holdem-player-name {
       font-size: 12px; font-weight: 600; color: var(--text-secondary);
       white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .holdem-dealer-btn {
+      width: 18px; height: 18px; border-radius: 50%;
+      background: #f3f4f6; color: #000;
+      font-size: 11px; font-weight: 900;
+      display: flex; align-items: center; justify-content: center;
+      border: 2px solid #9ca3af; box-shadow: 0 2px 4px rgba(0,0,0,0.5);
+      flex-shrink: 0;
     }
     .holdem-player-stars { font-size: 14px; font-weight: 700; color: var(--gold); }
     .holdem-player-status { font-size: 11px; color: var(--text-muted); }
@@ -1326,6 +1323,22 @@
     @keyframes pulse  { 0%,100%{opacity:1} 50%{opacity:0.4} }
     @keyframes fadeIn { from { opacity:0; } to { opacity:1; } }
 
+    /* ══ 통합 결과창 규격 (Showdown, Game Over 등) ═══════════════════════════════ */
+    .unified-result-box {
+      background: linear-gradient(135deg, #1a1f2e 0%, #0d1117 100%) !important;
+      border: 2px solid var(--gold) !important;
+      border-radius: 16px !important;
+      padding: 28px 36px !important;
+      text-align: center !important;
+      max-width: 420px !important;
+      width: 90% !important;
+      box-shadow: 0 0 50px rgba(255,215,0,0.25), 0 8px 32px rgba(0,0,0,0.6) !important;
+      animation: popIn 0.3s cubic-bezier(0.34,1.56,0.64,1) !important;
+    }
+    .unified-result-box.win  { border-color: var(--success) !important; box-shadow: 0 0 40px rgba(63,185,80,0.2) !important; color: var(--success) !important; }
+    .unified-result-box.lose { border-color: var(--danger) !important; box-shadow: 0 0 40px rgba(248,81,73,0.2) !important; color: var(--danger) !important; }
+    .unified-result-box.push { border-color: var(--gold) !important; box-shadow: 0 0 40px rgba(255,215,0,0.2) !important; color: var(--gold) !important; }
+
     /* ══ Indian Poker 승부 결과 오버레이 (토스트) ═══════════════════════════════ */
     #indian-showdown-overlay {
       display: none; position: fixed; inset: 0; z-index: 9999;
@@ -1479,10 +1492,10 @@
     /* ── room-controls: 준비/리매치 버튼 화면 중앙 고정 (홀덤·세븐포커 등) ── */
     .room-controls {
       position: fixed !important;
-      top: 50% !important;
+      top: 65% !important;
       left: 50% !important;
       transform: translate(-50%, -50%) !important;
-      z-index: 999999 !important;
+      z-index: 8000 !important;
       background-color: rgba(0, 0, 0, 0.8) !important;
       padding: 20px 40px !important;
       border-radius: 15px !important;
@@ -1494,6 +1507,53 @@
       font-size: 20px !important;
       padding: 10px 20px !important;
       cursor: pointer !important;
+    }
+
+    /* 원카드 중앙 보드 가림 절대 방지 */
+    #onecard-table-wrap {
+      margin-bottom: 60px !important;
+    }
+    #onecard-center {
+      top: 35% !important;
+    }
+    #onecard-me-slot {
+      bottom: -40px !important;
+    }
+
+    /* 마작 테이블 중앙 시야 확보 */
+    #mahjong-table-wrap {
+      min-height: 440px !important;
+      margin-bottom: 60px !important;
+    }
+    #mahjong-center {
+      top: 38% !important;
+    }
+    #mahjong-me-slot {
+      bottom: -40px !important;
+    }
+
+    /* 내 패 간격 좁히기 (다닥다닥 붙임) */
+    .table-seat.seat-bottom .mahjong-hand {
+      gap: 0 !important;
+    }
+    .mahjong-tile {
+      margin: 0 -1px !important;
+    }
+
+    /* 상대방 패 압축 (크기 축소 및 강하게 겹침) */
+    .opponent-hand {
+      gap: 0 !important;
+      padding: 4px !important;
+    }
+    .opponent-hand .mahjong-tile {
+      width: 24px !important;
+      height: 36px !important;
+      font-size: 22px !important;
+      margin-left: -14px !important;
+      box-shadow: -2px 0 4px rgba(0,0,0,0.4) !important;
+    }
+    .opponent-hand .mahjong-tile:first-child {
+      margin-left: 0 !important;
     }
   </style>
 </head>
@@ -1918,7 +1978,6 @@
           <!-- 관전자 메시지 (Phase 4.3) -->
           <div id="bj-spectator-msg">👀 관전 중입니다</div>
           <div id="bj-message"></div>
-          <div id="bj-result-banner" class="game-result-banner" style="display:none;"></div>
         </div>
 
         <!-- Tictactoe container -->
@@ -2049,7 +2108,6 @@
           </div>
           <div id="thief-escaped" style="font-size:12px;color:var(--text-secondary);margin-bottom:8px;"></div>
           <div id="thief-table-wrap" class="table-layout-wrap">
-            <div class="thief-tooltip">상대방의 카드를 2번 클릭하여 뽑으세요</div>
             <div id="thief-players"></div>
             <div id="thief-me-slot" class="table-seat seat-bottom">
               <span class="table-seat-name">나</span>
@@ -2228,7 +2286,7 @@
 
 <!-- ══ Indian Poker 승부 결과 오버레이 (3~5초 자동 사라짐) ════════════════════ -->
 <div id="indian-showdown-overlay" onclick="closeIndianOverlay()">
-  <div id="indian-showdown-box">
+  <div id="indian-showdown-box" class="unified-result-box">
     <div id="indian-showdown-vs">—</div>
     <div id="indian-showdown-result">—</div>
   </div>
@@ -2236,9 +2294,16 @@
 
 <!-- ══ Poker 쇼다운 결과 오버레이 (5초 자동 사라짐) ════════════════════════════ -->
 <div id="poker-showdown-overlay" onclick="closePokerShowdownOverlay()">
-  <div id="poker-showdown-box">
+  <div id="poker-showdown-box" class="unified-result-box">
     <div id="poker-showdown-winner">—</div>
     <div id="poker-showdown-participants"></div>
+  </div>
+</div>
+
+<!-- ══ Blackjack 결과 오버레이 (3.5초 자동 사라짐) ════════════════════════════ -->
+<div id="bj-result-overlay" style="display:none; position:fixed; inset:0; z-index:9999; align-items:center; justify-content:center; background:rgba(0,0,0,0.5); pointer-events:none;">
+  <div id="bj-result-box" class="unified-result-box">
+    <div id="bj-result-msg" style="font-size:24px; font-weight:800; letter-spacing:2px; text-transform:uppercase;"></div>
   </div>
 </div>
 
@@ -2278,7 +2343,7 @@
 <!-- ══ Game Result Modal ══════════════════════════════════════════════════════ -->
 <div id="result-modal">
   <div id="result-modal-backdrop" onclick="closeResultModal()"></div>
-  <div id="result-modal-box">
+  <div id="result-modal-box" class="unified-result-box">
     <div id="result-modal-icon">🏆</div>
     <div id="result-modal-title">게임 결과</div>
     <div id="result-modal-msg"></div>
@@ -2308,6 +2373,10 @@
   let reconnectTimer = null;
   let isIntentionalLeave = false;
   let currentMode = 'lobby'; // 'lobby' | 'room'
+
+  // Indian Poker 카드 렌더링 최적화 (변경 시에만 업데이트)
+  let lastIndianOppCard = '';
+  let lastIndianMyCard  = '';
 
   // Gomoku
   let gomokuMyColor    = 0;
@@ -3832,19 +3901,27 @@
     renderBJHand('bj-dealer-hand', 'bj-dealer-score', data.dealerHand);
     renderBJHand('bj-player-hand', 'bj-player-score', data.playerHand);
     const msgEl = document.getElementById('bj-message');
-    const bannerEl = document.getElementById('bj-result-banner');
+    const overlayEl = document.getElementById('bj-result-overlay');
+    const boxEl = document.getElementById('bj-result-box');
+    const msgTextEl = document.getElementById('bj-result-msg');
     if (data.message) msgEl.textContent = data.message;
 
     const showResult = (data.phase === 'settlement' || data.state === 'game_over') && data.message;
     if (showResult) {
-      bannerEl.style.display = 'flex';
-      bannerEl.innerHTML = `<div class="result-title">${escapeHTML(data.message)}</div>`;
-      bannerEl.className = 'game-result-banner';
-      if (/승리|Win|이겼|블랙잭/i.test(data.message)) bannerEl.classList.add('win');
-      else if (/패배|Lose|졌|버스트|Bust/i.test(data.message)) bannerEl.classList.add('lose');
-      else bannerEl.classList.add('push');
+      msgTextEl.textContent = data.message;
+      boxEl.className = 'unified-result-box';
+      if (/승리|Win|이겼|블랙잭/i.test(data.message)) boxEl.classList.add('win');
+      else if (/패배|Lose|졌|버스트|Bust/i.test(data.message)) boxEl.classList.add('lose');
+      else boxEl.classList.add('push');
+
+      overlayEl.style.display = 'flex';
+
+      if (window.bjResultTimer) clearTimeout(window.bjResultTimer);
+      window.bjResultTimer = setTimeout(() => {
+        overlayEl.style.display = 'none';
+      }, 3500);
     } else {
-      bannerEl.style.display = 'none';
+      overlayEl.style.display = 'none';
     }
 
     const startBtns    = document.getElementById('bj-start-buttons');
@@ -4102,6 +4179,8 @@
   // ── Indian Poker UI ────────────────────────────────────────────────────────
 
   function showIndianUI() {
+    lastIndianOppCard = '';
+    lastIndianMyCard  = '';
     switchGameView('indian');
   }
 
@@ -4170,7 +4249,11 @@
       ? `<span class="clickable-nickname" onclick="requestOpponentRecord('${escapeForJsAttr(oppName)}')" title="전적 보기">${escapeHTML(oppName)}</span>`
       : '—';
     document.getElementById('indian-opp-hearts').innerHTML = renderHeartsBar(data.opponentHearts);
-    document.getElementById('indian-opp-card-wrap').innerHTML = renderIndianCard(data.opponentCard);
+    const oppCardHtml = renderIndianCard(data.opponentCard);
+    if (lastIndianOppCard !== oppCardHtml) {
+      document.getElementById('indian-opp-card-wrap').innerHTML = oppCardHtml;
+      lastIndianOppCard = oppCardHtml;
+    }
 
     // 내 정보
     const myName = data.myName || '—';
@@ -4178,7 +4261,11 @@
       ? `<span class="clickable-nickname" onclick="requestOpponentRecord('${escapeForJsAttr(myName)}')" title="전적 보기">${escapeHTML(myName)}</span>`
       : '—';
     document.getElementById('indian-my-hearts').innerHTML = renderHeartsBar(data.myHearts);
-    document.getElementById('indian-my-card-wrap').innerHTML = renderIndianCard(data.myCard);
+    const myCardHtml = renderIndianCard(data.myCard);
+    if (lastIndianMyCard !== myCardHtml) {
+      document.getElementById('indian-my-card-wrap').innerHTML = myCardHtml;
+      lastIndianMyCard = myCardHtml;
+    }
 
     // 현재 턴 유저 래퍼에 active-turn 강조
     const oppArea = document.querySelector('.indian-player-area.opponent-area');
@@ -4514,7 +4601,7 @@
         return `<div class="table-seat mahjong-player-box ${seatClass} ${p.isTurn ? 'my-turn' : ''}" data-user-id="${escapeHTML(p.userId)}">
           <span class="table-seat-name">${escapeHTML(p.userId)}</span>
           <div class="mahjong-discards mahjong-discards-row">${discardsHtml}</div>
-          <div class="mahjong-hand">${handHtml}</div>
+          <div class="mahjong-hand opponent-hand">${handHtml}</div>
         </div>`;
       }).join('');
     }
@@ -4703,7 +4790,10 @@
           : escapeHTML(p.userId) + ' (나)';
         return `
           <div class="holdem-player-box ${isTurn ? 'my-turn' : ''} ${folded ? 'folded' : ''}">
-            <div class="holdem-player-name">${nameHtml}</div>
+            <div style="display:flex; justify-content:space-between; align-items:center; gap:4px;">
+              <div class="holdem-player-name" style="flex:1;">${nameHtml}</div>
+              ${p.userId === data.dealerId ? `<div class="holdem-dealer-btn" title="딜러">D</div>` : ''}
+            </div>
             <div class="holdem-player-stars">⭐×${p.stars}</div>
             <div class="holdem-player-status">${folded ? '🏳️ 폴드' : p.status === 'check' ? '✅ 체크' : ''}</div>
             <div class="holdem-player-cards">${cardsHtml}</div>
@@ -4872,7 +4962,7 @@
     vsEl.textContent = `내 카드 ${myVal}${mySuit}  vs  상대 ${oppVal}${oppSuit}`;
     resEl.textContent = isWin ? `승리! (${deltaStr} 하트)` : `패배 (${deltaStr} 하트)`;
     resEl.className = 'indian-showdown-result ' + (isWin ? 'win' : 'lose');
-    box.className = 'indian-showdown-box ' + (isWin ? 'win' : 'lose');
+    box.className = 'unified-result-box ' + (isWin ? 'win' : 'lose');
 
     if (indianShowdownTimeout) clearTimeout(indianShowdownTimeout);
     overlay.classList.add('show');
