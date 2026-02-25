@@ -375,7 +375,7 @@
         <!-- 게임 시작 전 준비(Ready) 영역 (공통 PVP) -->
         <div id="ready-area" class="room-controls" style="display:none; flex-direction:column; align-items:center; gap:8px; margin-top:16px;">
           <button id="btn-ready" class="indian-btn" style="background:var(--success); color:#000;" onclick="sendReady()">✅ 준비 완료 (<span id="ready-count">0/0</span>)</button>
-          <div style="font-size:12px; color:var(--text-muted);">전원이 준비해야 게임이 시작됩니다</div>
+          <div id="ready-hint" style="font-size:12px; color:var(--text-muted);">전원이 준비해야 게임이 시작됩니다</div>
         </div>
         <!-- 리매치 영역 (공통 PVP) -->
         <div id="rematch-area" class="room-controls">
@@ -623,6 +623,8 @@
             <div id="mahjong-me-slot" class="table-seat seat-bottom">
               <span class="table-seat-name">나</span>
               <div id="mahjong-discards-me" class="mahjong-discards mahjong-discards-row"></div>
+              <div id="mahjong-melds-me" class="mahjong-meld-area"></div>
+              <div id="mahjong-call-actions"></div>
               <div id="mahjong-hand" class="mahjong-hand"></div>
             </div>
           </div>
@@ -660,7 +662,7 @@
         <div style="display:flex;align-items:center;gap:8px;flex:1;min-width:0;">
           <div id="chat-preview"></div>
           <span id="chat-room-badge"></span>
-          <button id="btn-chat-toggle" onclick="toggleChatCollapse()" title="채팅창 펼치기">💬 ▲</button>
+          <button id="btn-chat-toggle" onclick="toggleChatCollapse()" title="채팅창 펼치기">채팅창 열기 💬</button>
         </div>
       </div>
       <div id="chat-messages"></div>

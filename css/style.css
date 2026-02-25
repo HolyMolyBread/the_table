@@ -293,6 +293,7 @@ header {
 
 /* ── Game Area ── */
 #game-area {
+  position: relative;
   border-right: 1px solid var(--border);
   display: flex; flex-direction: column; overflow: hidden;
 }
@@ -356,6 +357,15 @@ header {
 @media (max-width: 768px) {
   #chat-panel.collapsed { flex: 0 0 auto !important; min-height: unset; height: auto; }
   #chat-panel.collapsed #chat-input-area { display: flex !important; }
+}
+/* 접힌 상태일 때 토글 버튼 시인성 극대화 */
+#chat-panel.collapsed #btn-chat-toggle {
+  background: var(--accent);
+  color: #000;
+  border-color: var(--accent);
+  font-weight: bold;
+  box-shadow: 0 0 10px rgba(88, 166, 255, 0.4);
+  animation: pulse 2s infinite;
 }
 #chat-room-badge {
   font-size: 11px; color: var(--text-secondary);
@@ -979,14 +989,20 @@ header {
 .mahjong-tile {
   display: inline-flex; align-items: center; justify-content: center;
   font-size: 38px; width: 34px; height: 48px;
-  background: linear-gradient(to bottom, #fff, #f0f0f0);
-  border: 1px solid #ccc; border-radius: 4px;
-  box-shadow: 2px 2px 4px rgba(0,0,0,0.3), inset -1px -1px 2px rgba(0,0,0,0.1);
+  background: #ffffff !important;
+  background-image: linear-gradient(to bottom, #fff, #f0f0f0) !important;
+  color: #111111 !important;
+  border: 1px solid #999; border-radius: 4px;
+  box-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+  font-family: "Segoe UI Symbol", "Apple Color Emoji", "Noto Sans JP", sans-serif;
   cursor: pointer; user-select: none; transition: transform 0.1s;
-  line-height: 1; margin: 1px; color: #222;
+  line-height: 1; margin: 1px;
 }
 .mahjong-tile:hover { transform: translateY(-8px); border-color: var(--accent); }
-.mahjong-tile.hidden { background: #e09f3e; color: #b5651d; }
+.mahjong-tile.hidden {
+  background: #e09f3e !important;
+  color: #b5651d !important;
+}
 .mahjong-tile.discardable { cursor: pointer; border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent); }
 .mahjong-tile.discardable:hover { transform: translateY(-8px); }
 .my-hand-area, .mahjong-hand, .thief-hand {
@@ -1008,6 +1024,23 @@ header {
   display: flex; flex-direction: column; gap: 4px; align-items: center;
 }
 .mahjong-player-box.my-turn, .table-seat.my-turn { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(88,166,255,0.3); }
+
+/* 콜 액션 버튼 및 후로(Meld) 스타일 */
+#mahjong-call-actions {
+  position: absolute; bottom: 120px; left: 50%; transform: translateX(-50%);
+  display: flex; gap: 10px; z-index: 100;
+  background: rgba(0,0,0,0.8); padding: 10px 20px; border-radius: 12px; border: 1px solid var(--accent);
+}
+.mahjong-call-btn {
+  padding: 8px 16px; font-size: 16px; font-weight: bold; border-radius: 8px; cursor: pointer; border: none;
+}
+.mahjong-call-btn.pon { background: var(--warning); color: #000; }
+.mahjong-call-btn.chi { background: var(--accent); color: #000; }
+.mahjong-call-btn.pass { background: var(--bg-tertiary); color: #fff; border: 1px solid var(--border); }
+.mahjong-meld-area {
+  display: flex; gap: 4px; padding: 4px; margin-top: 4px; border-top: 1px dashed var(--border);
+}
+.mahjong-meld-group { display: flex; gap: 1px; }
 
 /* VS 구분선 */
 .indian-vs-bar {
@@ -1531,8 +1564,8 @@ header {
 
 /* ── room-controls: 준비/리매치 버튼 화면 중앙 고정 (홀덤·세븐포커 등) ── */
 .room-controls {
-  position: fixed !important;
-  top: 65% !important;
+  position: absolute !important;
+  top: 50% !important;
   left: 50% !important;
   transform: translate(-50%, -50%) !important;
   z-index: 8000 !important;

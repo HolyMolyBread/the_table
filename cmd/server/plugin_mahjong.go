@@ -23,22 +23,32 @@ type MahjongTile struct {
 	Value int    `json:"value"`
 }
 
+// MahjongMeld는 공개된 패(후로)를 의미합니다.
+type MahjongMeld struct {
+	Type  string        `json:"type"`  // "chi", "pon"
+	Tiles []MahjongTile `json:"tiles"` // 3장 (치/퐁)
+}
+
 // MahjongPlayerInfo는 한 플레이어의 공개 정보입니다.
 type MahjongPlayerInfo struct {
-	UserID    string        `json:"userId"`
-	HandCount int           `json:"handCount"` // 손패 수 (타인은 숫자만)
-	Discards  []MahjongTile `json:"discards"`  // 버림패
-	IsTurn    bool          `json:"isTurn"`
+	UserID    string         `json:"userId"`
+	HandCount int            `json:"handCount"` // 손패 수 (타인은 숫자만)
+	Discards  []MahjongTile  `json:"discards"`  // 버림패
+	Melds     []MahjongMeld  `json:"melds"`    // 공개된 패(후로)
+	IsTurn    bool           `json:"isTurn"`
 }
 
 // MahjongData는 mahjong_state 응답의 data 필드입니다.
 type MahjongData struct {
-	WallCount   int                 `json:"wallCount"`   // 남은 패 수
-	Players     []MahjongPlayerInfo `json:"players"`
-	CurrentTurn string              `json:"currentTurn"`
-	Message     string              `json:"message,omitempty"`
-	CanTakeover bool                `json:"canTakeover,omitempty"`
-	MyHand      []MahjongTile       `json:"myHand,omitempty"` // 본인 손패 (14장일 때 타패 가능)
+	WallCount       int                 `json:"wallCount"`   // 남은 패 수
+	Players         []MahjongPlayerInfo `json:"players"`
+	CurrentTurn     string              `json:"currentTurn"`
+	Message         string              `json:"message,omitempty"`
+	CanTakeover     bool                `json:"canTakeover,omitempty"`
+	MyHand          []MahjongTile       `json:"myHand,omitempty"` // 본인 손패 (14장일 때 타패 가능)
+	CallWindow      bool                `json:"callWindow"`      // 콜 대기 상태 여부
+	LastDiscard     *MahjongTile        `json:"lastDiscard,omitempty"`
+	LastDiscarderID string              `json:"lastDiscarderId,omitempty"`
 }
 
 // MahjongStateResponse는 마작 게임 상태 응답입니다.
@@ -49,19 +59,27 @@ type MahjongStateResponse struct {
 }
 
 // MahjongGame은 4인 마작 플러그인입니다.
-// Phase 1: 패 분배 + 쯔모/타패만 구현 (치/퐁/깡/역 제외)
+// Phase 1: 패 분배 + 쯔모/타패 + 콜 대기(치/퐁) 뼈대
 type MahjongGame struct {
 	room             *Room
 	players          [mahjongMaxPlayers]*Client
 	wall             []MahjongTile
 	hands            [mahjongMaxPlayers][]MahjongTile
 	discards         [mahjongMaxPlayers][]MahjongTile
+	melds            [mahjongMaxPlayers][]MahjongMeld
 	currentPlayerIdx int
 	playerCount      int
 	gameStarted      bool
 	startReady       map[*Client]bool
 	stopTick         chan struct{}
 	mu               sync.Mutex
+
+	// 콜 대기(Call Window) 상태
+	state            string       // "playing" | "call_window"
+	lastDiscard      MahjongTile
+	lastDiscarderIdx int
+	callPassed       map[*Client]bool // 패스한 플레이어
+	callTimerStop    chan struct{}
 }
 
 // NewMahjongGame creates a new Mahjong game plugin.
@@ -113,8 +131,14 @@ func (g *MahjongGame) OnJoin(client *Client) {
 	g.room.broadcastAll(notice)
 
 	if !g.gameStarted {
+		readyCount := 0
+		for i := 0; i < mahjongMaxPlayers; i++ {
+			if g.players[i] != nil && g.startReady[g.players[i]] {
+				readyCount++
+			}
+		}
 		upd, _ := json.Marshal(ReadyUpdateMessage{
-			Type: "ready_update", RoomID: g.room.ID, ReadyCount: 0, TotalCount: g.playerCount,
+			Type: "ready_update", RoomID: g.room.ID, ReadyCount: readyCount, TotalCount: mahjongMaxPlayers,
 		})
 		g.room.broadcastAll(upd)
 	}
@@ -148,7 +172,7 @@ func (g *MahjongGame) OnLeave(client *Client, remainingCount int) {
 			}
 		}
 		upd, _ := json.Marshal(ReadyUpdateMessage{
-			Type: "ready_update", RoomID: g.room.ID, ReadyCount: readyCount, TotalCount: g.playerCount,
+			Type: "ready_update", RoomID: g.room.ID, ReadyCount: readyCount, TotalCount: mahjongMaxPlayers,
 		})
 		g.room.broadcastAll(upd)
 		g.sendStateToAllLocked()
@@ -178,8 +202,10 @@ func (g *MahjongGame) OnLeave(client *Client, remainingCount int) {
 
 func (g *MahjongGame) HandleAction(client *Client, action string, payload json.RawMessage) {
 	var p struct {
-		Cmd   string `json:"cmd"`
-		Index int    `json:"index"`
+		Cmd        string          `json:"cmd"`
+		Index      int             `json:"index"`
+		CallType   string          `json:"callType"`
+		TargetTiles []MahjongTile  `json:"targetTiles"`
 	}
 	if err := json.Unmarshal(payload, &p); err != nil {
 		client.SendJSON(ServerResponse{Type: "error", Message: "game_action 페이로드 파싱 오류"})
@@ -191,6 +217,8 @@ func (g *MahjongGame) HandleAction(client *Client, action string, payload json.R
 		g.handleReady(client)
 	case "discard":
 		g.handleDiscard(client, p.Index)
+	case "call":
+		g.handleCall(client, p.CallType, p.TargetTiles)
 	default:
 		client.SendJSON(ServerResponse{
 			Type:    "error",
@@ -212,22 +240,28 @@ func (g *MahjongGame) handleReady(client *Client) {
 		client.SendJSON(ServerResponse{Type: "error", Message: "플레이어가 아닙니다."})
 		return
 	}
-	g.startReady[client] = true
 	total := 0
-	ready := 0
 	for i := 0; i < mahjongMaxPlayers; i++ {
 		if g.players[i] != nil {
 			total++
-			if g.startReady[g.players[i]] {
-				ready++
-			}
+		}
+	}
+	if total < mahjongMaxPlayers {
+		client.SendJSON(ServerResponse{Type: "error", Message: "4명이 모두 모여야 시작할 수 있습니다."})
+		return
+	}
+	g.startReady[client] = true
+	ready := 0
+	for i := 0; i < mahjongMaxPlayers; i++ {
+		if g.players[i] != nil && g.startReady[g.players[i]] {
+			ready++
 		}
 	}
 	upd, _ := json.Marshal(ReadyUpdateMessage{
-		Type: "ready_update", RoomID: g.room.ID, ReadyCount: ready, TotalCount: total,
+		Type: "ready_update", RoomID: g.room.ID, ReadyCount: ready, TotalCount: mahjongMaxPlayers,
 	})
 	g.room.broadcastAll(upd)
-	if ready == total && total >= 2 {
+	if ready == mahjongMaxPlayers {
 		g.startReady = make(map[*Client]bool)
 		g.gameStarted = true
 		g.startRoundLocked()
@@ -274,7 +308,247 @@ func (g *MahjongGame) handleDiscard(client *Client, index int) {
 	})
 	g.room.broadcastAll(notice)
 
+	// 콜 대기 상태로 전이 (바로 advanceTurnLocked 호출하지 않음)
+	g.state = "call_window"
+	g.lastDiscard = discarded
+	g.lastDiscarderIdx = idx
+	g.callPassed = make(map[*Client]bool)
+	g.stopTurnTimerLocked()
+	g.startCallTimerLocked()
+	g.sendStateToAllLocked()
+}
+
+func (g *MahjongGame) startCallTimerLocked() {
+	if g.callTimerStop != nil {
+		close(g.callTimerStop)
+		g.callTimerStop = nil
+	}
+	stopCh := make(chan struct{})
+	g.callTimerStop = stopCh
+	room := g.room
+	go func() {
+		select {
+		case <-stopCh:
+			return
+		case <-time.After(5 * time.Second):
+			g.mu.Lock()
+			if g.state == "call_window" {
+				g.endCallWindowLocked()
+			}
+			g.mu.Unlock()
+		}
+		_ = room
+	}()
+}
+
+func (g *MahjongGame) endCallWindowLocked() {
+	if g.callTimerStop != nil {
+		close(g.callTimerStop)
+		g.callTimerStop = nil
+	}
+	g.state = "playing"
+	g.callPassed = nil
 	g.advanceTurnLocked()
+}
+
+func (g *MahjongGame) handleCall(client *Client, callType string, targetTiles []MahjongTile) {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+
+	if !g.gameStarted || g.state != "call_window" {
+		client.SendJSON(ServerResponse{Type: "error", Message: "콜 대기 상태가 아닙니다."})
+		return
+	}
+	callerIdx := g.playerIndex(client)
+	if callerIdx < 0 {
+		client.SendJSON(ServerResponse{Type: "error", Message: "플레이어가 아닙니다."})
+		return
+	}
+	if callerIdx == g.lastDiscarderIdx {
+		client.SendJSON(ServerResponse{Type: "error", Message: "버린 사람은 콜할 수 없습니다."})
+		return
+	}
+
+	switch callType {
+	case "pass":
+		g.callPassed[client] = true
+		passedCount := len(g.callPassed)
+		canCallCount := 0
+		for i := 0; i < mahjongMaxPlayers; i++ {
+			if i != g.lastDiscarderIdx && g.players[i] != nil {
+				canCallCount++
+			}
+		}
+		if passedCount >= canCallCount {
+			g.endCallWindowLocked()
+			return
+		}
+		g.sendStateToAllLocked()
+	case "pon":
+		g.executePonLocked(client, callerIdx)
+	case "chi":
+		g.executeChiLocked(client, callerIdx, targetTiles)
+	default:
+		client.SendJSON(ServerResponse{Type: "error", Message: fmt.Sprintf("알 수 없는 콜 타입: %s", callType)})
+	}
+}
+
+func (g *MahjongGame) executePonLocked(client *Client, callerIdx int) {
+	// 손패에서 lastDiscard와 같은 패 2장 찾기
+	hand := g.hands[callerIdx]
+	var keep []MahjongTile
+	var matched []MahjongTile
+	for _, t := range hand {
+		if t.Type == g.lastDiscard.Type && t.Value == g.lastDiscard.Value {
+			if len(matched) < 2 {
+				matched = append(matched, t)
+			} else {
+				keep = append(keep, t)
+			}
+		} else {
+			keep = append(keep, t)
+		}
+	}
+	if len(matched) < 2 {
+		client.SendJSON(ServerResponse{Type: "error", Message: "퐁에 필요한 패가 없습니다."})
+		return
+	}
+	// meld 생성: 2장(손패) + 1장(버림패)
+	meld := MahjongMeld{
+		Type:  "pon",
+		Tiles: []MahjongTile{matched[0], matched[1], g.lastDiscard},
+	}
+	g.melds[callerIdx] = append(g.melds[callerIdx], meld)
+	g.hands[callerIdx] = keep
+	// 버린 사람의 마지막 버림패 제거
+	discarderDiscards := g.discards[g.lastDiscarderIdx]
+	if len(discarderDiscards) > 0 {
+		g.discards[g.lastDiscarderIdx] = discarderDiscards[:len(discarderDiscards)-1]
+	}
+	g.currentPlayerIdx = callerIdx
+	g.state = "playing"
+	if g.callTimerStop != nil {
+		close(g.callTimerStop)
+		g.callTimerStop = nil
+	}
+	g.callPassed = nil
+	notice, _ := json.Marshal(ServerResponse{
+		Type:    "game_notice",
+		Message: fmt.Sprintf("[%s] 퐁! %s", client.UserID, g.tileDisplayName(g.lastDiscard)),
+		RoomID:  g.room.ID,
+	})
+	g.room.broadcastAll(notice)
+	g.startTurnTimerLocked()
+	g.sendStateToAllLocked()
+}
+
+func (g *MahjongGame) executeChiLocked(client *Client, callerIdx int, targetTiles []MahjongTile) {
+	t := g.lastDiscard
+	if t.Type == "honor" {
+		client.SendJSON(ServerResponse{Type: "error", Message: "자패는 치할 수 없습니다."})
+		return
+	}
+	hand := make([]MahjongTile, len(g.hands[callerIdx]))
+	copy(hand, g.hands[callerIdx])
+
+	var allThree []MahjongTile
+	if len(targetTiles) == 2 {
+		// 클라이언트가 targetTiles를 보낸 경우
+		for _, need := range targetTiles {
+			found := false
+			for i, h := range hand {
+				if h.Type == need.Type && h.Value == need.Value {
+					hand = append(hand[:i], hand[i+1:]...)
+					found = true
+					break
+				}
+			}
+			if !found {
+				client.SendJSON(ServerResponse{Type: "error", Message: "치에 필요한 패가 손패에 없습니다."})
+				return
+			}
+		}
+		allThree = []MahjongTile{targetTiles[0], targetTiles[1], g.lastDiscard}
+	} else {
+		// targetTiles 없으면 손패에서 가능한 치 조합 자동 탐색
+		v := t.Value
+		possiblePairs := [][]int{{v - 2, v - 1}, {v - 1, v + 1}, {v + 1, v + 2}}
+		for _, pair := range possiblePairs {
+			if pair[0] < 1 || pair[1] > 9 {
+				continue
+			}
+			var keep []MahjongTile
+			var used []MahjongTile
+			for _, h := range hand {
+				if h.Type != t.Type {
+					keep = append(keep, h)
+					continue
+				}
+				if h.Value == pair[0] && (len(used) == 0 || used[0].Value != pair[0]) {
+					used = append(used, h)
+				} else if h.Value == pair[1] && (len(used) == 0 || used[0].Value != pair[1]) {
+					used = append(used, h)
+				} else if len(used) == 1 && (h.Value == pair[0] || h.Value == pair[1]) && h.Value != used[0].Value {
+					used = append(used, h)
+				} else {
+					keep = append(keep, h)
+				}
+			}
+			if len(used) == 2 {
+				hand = keep
+				if used[0].Value > used[1].Value {
+					used[0], used[1] = used[1], used[0]
+				}
+				allThree = []MahjongTile{used[0], g.lastDiscard, used[1]}
+				for i := 0; i < len(allThree)-1; i++ {
+					for j := i + 1; j < len(allThree); j++ {
+						if allThree[i].Value > allThree[j].Value {
+							allThree[i], allThree[j] = allThree[j], allThree[i]
+						}
+					}
+				}
+				break
+			}
+		}
+	}
+	if len(allThree) != 3 {
+		client.SendJSON(ServerResponse{Type: "error", Message: "치에 필요한 연속 패가 없습니다."})
+		return
+	}
+	// 정렬 검증
+	for i := 0; i < len(allThree)-1; i++ {
+		for j := i + 1; j < len(allThree); j++ {
+			if allThree[i].Value > allThree[j].Value {
+				allThree[i], allThree[j] = allThree[j], allThree[i]
+			}
+		}
+	}
+	if allThree[1].Value-allThree[0].Value != 1 || allThree[2].Value-allThree[1].Value != 1 {
+		client.SendJSON(ServerResponse{Type: "error", Message: "연속된 수패가 아닙니다."})
+		return
+	}
+	meld := MahjongMeld{Type: "chi", Tiles: allThree}
+	g.melds[callerIdx] = append(g.melds[callerIdx], meld)
+	g.hands[callerIdx] = hand
+	discarderDiscards := g.discards[g.lastDiscarderIdx]
+	if len(discarderDiscards) > 0 {
+		g.discards[g.lastDiscarderIdx] = discarderDiscards[:len(discarderDiscards)-1]
+	}
+	g.currentPlayerIdx = callerIdx
+	g.state = "playing"
+	if g.callTimerStop != nil {
+		close(g.callTimerStop)
+		g.callTimerStop = nil
+	}
+	g.callPassed = nil
+	notice, _ := json.Marshal(ServerResponse{
+		Type:    "game_notice",
+		Message: fmt.Sprintf("[%s] 치! %s", client.UserID, g.tileDisplayName(g.lastDiscard)),
+		RoomID:  g.room.ID,
+	})
+	g.room.broadcastAll(notice)
+	g.startTurnTimerLocked()
+	g.sendStateToAllLocked()
 }
 
 func (g *MahjongGame) tileDisplayName(t MahjongTile) string {
@@ -402,7 +676,12 @@ func (g *MahjongGame) handleTimeOver(timedOutPlayer *Client) {
 		RoomID:  g.room.ID,
 	})
 	g.room.broadcastAll(notice)
-	g.advanceTurnLocked()
+	g.state = "call_window"
+	g.lastDiscard = discarded
+	g.lastDiscarderIdx = idx
+	g.callPassed = make(map[*Client]bool)
+	g.startCallTimerLocked()
+	g.sendStateToAllLocked()
 }
 
 func (g *MahjongGame) buildWall() []MahjongTile {
@@ -432,15 +711,17 @@ func (g *MahjongGame) startRoundLocked() {
 			activeCount++
 		}
 	}
-	if activeCount < 2 {
+	if activeCount < mahjongMaxPlayers {
 		g.sendStateToAllLocked()
 		return
 	}
 
 	g.wall = g.buildWall()
+	g.state = "playing"
 	for i := 0; i < mahjongMaxPlayers; i++ {
 		g.hands[i] = nil
 		g.discards[i] = nil
+		g.melds[i] = nil
 	}
 
 	// 4명에게 각각 13장 분배 (13*4=52장 사용)
@@ -487,10 +768,17 @@ func (g *MahjongGame) buildMahjongDataForPlayer(viewerIdx int) MahjongData {
 		if g.players[i] != nil {
 			discards := make([]MahjongTile, len(g.discards[i]))
 			copy(discards, g.discards[i])
+			melds := make([]MahjongMeld, len(g.melds[i]))
+			copy(melds, g.melds[i])
+			for j := range g.melds[i] {
+				melds[j].Tiles = make([]MahjongTile, len(g.melds[i][j].Tiles))
+				copy(melds[j].Tiles, g.melds[i][j].Tiles)
+			}
 			players[i] = MahjongPlayerInfo{
 				UserID:    g.players[i].UserID,
 				HandCount: len(g.hands[i]),
 				Discards:  discards,
+				Melds:     melds,
 				IsTurn:    i == g.currentPlayerIdx,
 			}
 		} else {
@@ -499,7 +787,7 @@ func (g *MahjongGame) buildMahjongDataForPlayer(viewerIdx int) MahjongData {
 	}
 
 	currentTurn := ""
-	if g.players[g.currentPlayerIdx] != nil {
+	if g.currentPlayerIdx >= 0 && g.currentPlayerIdx < mahjongMaxPlayers && g.players[g.currentPlayerIdx] != nil {
 		currentTurn = g.players[g.currentPlayerIdx].UserID
 	}
 
@@ -519,12 +807,25 @@ func (g *MahjongGame) buildMahjongDataForPlayer(viewerIdx int) MahjongData {
 		copy(myHand, g.hands[viewerIdx])
 	}
 
+	callWindow := g.state == "call_window"
+	var lastDiscard *MahjongTile
+	lastDiscarderID := ""
+	if callWindow {
+		lastDiscard = &g.lastDiscard
+		if g.players[g.lastDiscarderIdx] != nil {
+			lastDiscarderID = g.players[g.lastDiscarderIdx].UserID
+		}
+	}
+
 	return MahjongData{
-		WallCount:   len(g.wall),
-		Players:     players,
-		CurrentTurn: currentTurn,
-		CanTakeover: canTakeover,
-		MyHand:      myHand,
+		WallCount:       len(g.wall),
+		Players:         players,
+		CurrentTurn:     currentTurn,
+		CanTakeover:     canTakeover,
+		MyHand:          myHand,
+		CallWindow:      callWindow,
+		LastDiscard:     lastDiscard,
+		LastDiscarderID: lastDiscarderID,
 	}
 }
 

@@ -709,10 +709,12 @@
       const readyArea = document.getElementById('ready-area');
       const btnReady = document.getElementById('btn-ready');
       const readyCountEl = document.getElementById('ready-count');
+      const readyHintEl = document.getElementById('ready-hint');
       if (!roomId.startsWith('blackjack')) {
         readyArea.style.display = 'flex';
         if (btnReady) btnReady.disabled = false;
-        if (readyCountEl) readyCountEl.textContent = '0/0';
+        if (readyCountEl) readyCountEl.textContent = roomId.startsWith('mahjong') ? '0/4' : '0/0';
+        if (readyHintEl) readyHintEl.textContent = roomId.startsWith('mahjong') ? '4인이 모두 준비해야 게임이 시작됩니다' : '전원이 준비해야 게임이 시작됩니다';
       } else {
         readyArea.style.display = 'none';
       }
@@ -785,7 +787,7 @@
     const panel = document.getElementById('chat-panel');
     const btn   = document.getElementById('btn-chat-toggle');
     panel.classList.toggle('collapsed');
-    btn.textContent = panel.classList.contains('collapsed') ? '💬 ▲' : '💬 ▼';
+    btn.textContent = panel.classList.contains('collapsed') ? '채팅창 열기 💬' : '채팅 닫기 🔽';
     btn.title = panel.classList.contains('collapsed') ? '채팅창 펼치기' : '채팅창 접기';
   }
 
@@ -1006,7 +1008,12 @@
               break;
             case 'error': {
               addLog('error', raw);
-              const errMsg = parsed.message || '서버 오류가 발생했습니다.';
+              let errMsg = parsed.message || '서버 오류가 발생했습니다.';
+              if (currentRoomId && currentRoomId.startsWith('mahjong') && /4명|인원/.test(errMsg)) {
+                errMsg = '4인 대전 전용 게임입니다. 인원을 기다려주세요.';
+                const btnReady = document.getElementById('btn-ready');
+                if (btnReady) btnReady.disabled = false;
+              }
               showToast(errMsg, 'error');
               const fullKeywords = ['이미 2명', '1인 전용', '가득 찼습니다', '정원 초과', '인원이 가득', '방이 해산'];
               if (fullKeywords.some(kw => errMsg.includes(kw))) {
