@@ -6,7 +6,1500 @@
   <title>The Table ??蹂대뱶寃뚯엫 ?뚮옯??/title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"></script>
+<<<<<<< HEAD
   <link rel="stylesheet" href="css/style.css">
+=======
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg-primary:    #0d1117;
+      --bg-secondary:  #161b22;
+      --bg-tertiary:   #21262d;
+      --border:        #30363d;
+      --text-primary:  #e6edf3;
+      --text-secondary:#8b949e;
+      --text-muted:    #484f58;
+      --accent:        #58a6ff;
+      --accent-hover:  #79c0ff;
+      --success:       #3fb950;
+      --warning:       #d29922;
+      --danger:        #f85149;
+      --gold:          #ffd700;
+      --sent-color:    #d2a8ff;
+      --echo-color:    #a5d6ff;
+      --system-color:  #3fb950;
+      --error-color:   #f85149;
+      --radius:        8px;
+      --radius-lg:     12px;
+      --font-mono:     'Fira Code', 'Consolas', monospace;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      height: 100dvh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    /* ── Header ── */
+    header {
+      background: var(--bg-secondary);
+      border-bottom: 1px solid var(--border);
+      padding: 0 24px;
+      height: 56px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-shrink: 0;
+      z-index: 100;
+      gap: 12px;
+    }
+    .header-left { display: flex; align-items: center; gap: 14px; min-width: 0; }
+    .logo        { font-size: 20px; font-weight: 700; letter-spacing: -0.3px; white-space: nowrap; }
+    .header-right{ display: flex; align-items: center; gap: 10px; }
+
+    #conn-indicator {
+      display: flex; align-items: center; gap: 6px;
+      padding: 4px 10px; border-radius: 12px; border: 1px solid var(--border);
+      font-size: 12px; color: var(--text-secondary);
+    }
+    #conn-dot {
+      width: 7px; height: 7px; border-radius: 50%;
+      background: var(--text-muted); transition: background 0.3s;
+    }
+    #conn-dot.connected  { background: var(--success); box-shadow: 0 0 5px var(--success); }
+    #conn-dot.connecting { background: var(--warning); animation: pulse 0.9s infinite; }
+
+    /* ── 전적 배지 ── */
+    #record-badge-wrapper {
+      display: none; position: relative;
+    }
+    #record-badge-wrapper.visible { display: block; }
+    #record-badge-total {
+      display: flex; align-items: center; gap: 6px;
+      padding: 5px 12px; cursor: pointer;
+      background: rgba(255,215,0,0.08); border: 1px solid rgba(255,215,0,0.3);
+      border-radius: 20px; font-size: 13px; font-weight: 700; color: var(--gold);
+      user-select: none; transition: background 0.15s;
+    }
+    #record-badge-total:hover { background: rgba(255,215,0,0.15); }
+    #record-popup {
+      display: none; position: absolute; top: calc(100% + 8px); right: 0;
+      background: var(--bg-secondary); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 10px 14px; min-width: 190px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.4); z-index: 200;
+    }
+    #record-popup.open { display: block; animation: popIn 0.15s ease; }
+    .record-popup-row {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 5px 0; font-size: 12px; color: var(--text-secondary);
+      border-bottom: 1px solid var(--border);
+    }
+    .record-popup-row:last-child { border-bottom: none; }
+    .record-game-label { font-weight: 600; color: var(--text-primary); }
+    .record-val { font-family: var(--font-mono); font-size: 12px; }
+
+    .header-btn {
+      padding: 6px 14px; border-radius: var(--radius); border: 1px solid var(--border);
+      background: transparent; color: var(--text-secondary); font-size: 13px;
+      cursor: pointer; transition: all 0.15s; white-space: nowrap;
+    }
+    .header-btn:hover { border-color: var(--accent); color: var(--accent); }
+    .header-btn.danger { border-color: var(--danger); color: var(--danger); }
+    .header-btn.danger:hover { background: var(--danger); color: #fff; }
+    /* ── App ── */
+    #app { flex: 1; overflow: hidden; position: relative; display: flex; flex-direction: column; }
+
+    /* ══ LOBBY VIEW ══════════════════════════════════════════════════════════ */
+    #lobby-view {
+      flex: 1; overflow-y: auto;
+      display: flex; flex-direction: column; align-items: center;
+      padding: 48px 24px 32px; gap: 40px;
+    }
+
+    #lobby-hero { text-align: center; }
+    #lobby-hero h1 {
+      font-size: 30px; font-weight: 700; margin-bottom: 8px;
+      background: linear-gradient(135deg, #e6edf3, #8b949e);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    }
+    #lobby-hero p { font-size: 15px; color: var(--text-secondary); margin-bottom: 22px; }
+
+    /* ── Auth Panel ── */
+    #auth-panel {
+      width: 100%; max-width: 360px;
+      background: var(--bg-secondary); border: 1px solid var(--border);
+      border-radius: var(--radius-lg); padding: 22px 24px 18px;
+      display: flex; flex-direction: column; gap: 12px;
+    }
+    #auth-panel h3 {
+      font-size: 14px; font-weight: 700; color: var(--text-primary);
+      text-align: center; letter-spacing: 0.3px;
+    }
+    .auth-input {
+      width: 100%; padding: 9px 14px;
+      background: var(--bg-tertiary); border: 1px solid var(--border);
+      border-radius: var(--radius); color: var(--text-primary);
+      font-size: 14px; transition: border-color 0.15s;
+    }
+    .auth-input:focus { outline: none; border-color: var(--accent); }
+    .auth-btn-row { display: flex; gap: 8px; }
+    .auth-btn-row button {
+      flex: 1; padding: 9px 0; border: none; border-radius: var(--radius);
+      font-size: 13px; font-weight: 700; cursor: pointer; transition: background 0.15s;
+    }
+    #btn-auth-login  { background: var(--accent); color: #000; }
+    #btn-auth-login:hover  { background: var(--accent-hover); }
+    #btn-auth-signup { background: var(--bg-tertiary); color: var(--text-primary); border: 1px solid var(--border); }
+    #btn-auth-signup:hover { border-color: var(--accent); color: var(--accent); }
+    #auth-status { font-size: 12px; text-align: center; min-height: 16px; }
+    #auth-status.error { color: var(--danger); }
+    #auth-status.loading { color: var(--text-secondary); }
+
+    /* 경고 배너 */
+    .auth-warning {
+      background: rgba(210,153,34,0.1); border: 1px solid var(--warning);
+      border-radius: var(--radius); padding: 9px 12px;
+      font-size: 12px; color: var(--warning); line-height: 1.5; text-align: left;
+    }
+    /* 모드 전환 링크 */
+    .auth-mode-link {
+      background: none; border: none; padding: 0;
+      font-size: 12px; color: var(--accent); cursor: pointer; text-decoration: underline;
+    }
+    .auth-mode-link:hover { color: var(--accent-hover); }
+    .auth-switch-row {
+      text-align: center; font-size: 12px; color: var(--text-secondary);
+    }
+    /* 회원가입 전용 비밀번호 확인 필드 (기본 숨김) */
+    #auth-confirm-group { display: none; }
+
+    /* ── Game Cards ── */
+    #game-cards { display: none; flex-direction: column; align-items: center; gap: 20px; }
+    .lobby-category { width: 100%; margin-bottom: 20px; }
+    .lobby-category h3 { font-size: 16px; margin-bottom: 12px; border-bottom: 1px solid var(--border); padding-bottom: 8px; }
+    .lobby-category .category-cards { display: flex; gap: 20px; flex-wrap: wrap; justify-content: center; }
+
+    .game-card {
+      width: 240px; background: var(--bg-secondary); border: 1px solid var(--border);
+      border-radius: var(--radius-lg); padding: 24px 20px 18px;
+      display: flex; flex-direction: column; gap: 10px;
+      transition: border-color 0.2s, transform 0.2s, box-shadow 0.2s;
+    }
+    .game-card:hover {
+      border-color: var(--accent); transform: translateY(-3px);
+      box-shadow: 0 8px 24px rgba(88,166,255,0.1);
+    }
+    .game-card.dimmed { opacity: 0.55; }
+    .game-card.dimmed:hover { transform: none; box-shadow: none; border-color: var(--border); }
+
+    .card-icon  { font-size: 38px; line-height: 1; }
+    .card-title { font-size: 17px; font-weight: 700; }
+    .card-desc  { font-size: 12px; color: var(--text-secondary); line-height: 1.6; flex: 1; }
+    .card-badge {
+      display: inline-block; padding: 2px 10px; border-radius: 12px;
+      font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;
+      width: fit-content;
+    }
+    .card-badge.pvp  { background: rgba(88,166,255,0.12); color: var(--accent); border: 1px solid var(--accent); }
+    .card-badge.pve  { background: rgba(63,185,80,0.12);  color: var(--success); border: 1px solid var(--success); }
+    .card-badge.soon { background: rgba(210,153,34,0.12); color: var(--warning); border: 1px solid var(--warning); }
+
+    .card-actions { display: flex; gap: 8px; margin-top: 4px; }
+    .card-btn-rule {
+      flex: 1; padding: 8px; border: 1px solid var(--border); border-radius: var(--radius);
+      background: transparent; color: var(--text-secondary); font-size: 12px;
+      cursor: pointer; transition: all 0.15s;
+    }
+    .card-btn-rule:hover { border-color: var(--text-secondary); color: var(--text-primary); }
+    .card-btn-enter {
+      flex: 2; padding: 8px; border: none; border-radius: var(--radius);
+      background: var(--accent); color: #000; font-size: 13px; font-weight: 600;
+      cursor: pointer; transition: background 0.15s;
+    }
+    .card-btn-enter:hover:not(:disabled) { background: var(--accent-hover); }
+    .card-btn-enter:disabled { background: var(--bg-tertiary); color: var(--text-muted); cursor: not-allowed; }
+
+    /* ── 방 만들기 / 코드 입장 (카드 하단 영역 재설계) ── */
+    .card-actions-bottom {
+      display: flex; flex-direction: column; gap: 8px; margin-top: 6px;
+    }
+    .card-top-actions { display: flex; gap: 8px; }
+    .card-btn-create {
+      flex: 2; padding: 8px 10px; border-radius: var(--radius);
+      border: 1px solid var(--accent); background: transparent;
+      color: var(--accent); font-size: 13px; font-weight: 600;
+      cursor: pointer; transition: all 0.15s;
+    }
+    .card-btn-create:hover { background: var(--accent); color: #000; }
+    .card-join-row {
+      display: flex; gap: 6px; width: 100%; min-width: 0;
+    }
+    .card-code-input {
+      flex: 1; min-width: 0; /* flex shrink 허용 */
+      padding: 7px 8px;
+      background: var(--bg-primary); border: 1px solid var(--border);
+      border-radius: var(--radius); color: var(--text-primary);
+      font-size: 14px; font-weight: 700; font-family: var(--font-mono);
+      text-transform: uppercase; letter-spacing: 2px; text-align: center;
+      transition: border-color 0.15s; width: 0; /* 오버플로우 방지 */
+    }
+    .card-code-input:focus { outline: none; border-color: var(--success); }
+    .card-code-input::placeholder {
+      letter-spacing: 0; font-size: 11px; font-weight: 400;
+      text-transform: none; font-family: sans-serif; color: var(--text-muted);
+    }
+    .card-btn-join-code {
+      flex-shrink: 0; padding: 7px 12px; border-radius: var(--radius);
+      border: 1px solid var(--border); background: var(--bg-tertiary);
+      color: var(--text-secondary); font-size: 13px; font-weight: 600;
+      cursor: pointer; transition: all 0.15s; white-space: nowrap;
+    }
+    .card-btn-join-code:hover { border-color: var(--success); color: var(--success); }
+
+    /* ── 오목 리매치 버튼 ── */
+    #rematch-area {
+      display: none; flex-direction: column; align-items: center; gap: 8px;
+    }
+    #rematch-area.visible { display: flex; }
+    #btn-rematch {
+      padding: 11px 28px; border: 2px solid var(--accent); border-radius: var(--radius);
+      background: transparent; color: var(--accent); font-size: 15px; font-weight: 700;
+      cursor: pointer; transition: all 0.2s;
+    }
+    #btn-rematch:hover:not(:disabled) { background: var(--accent); color: #000; }
+    #btn-rematch:disabled { opacity: 0.5; cursor: not-allowed; }
+    #rematch-hint { font-size: 12px; color: var(--text-muted); }
+
+    /* ── 블랙잭 관전 메시지 ── */
+    #bj-spectator-msg {
+      display: none; padding: 14px 18px;
+      font-size: 14px; font-weight: 600; color: var(--text-secondary);
+      text-align: center;
+    }
+
+    /* ── 방 코드 배지 (game-area-header 내부) ── */
+    #room-code-badge {
+      display: none; align-items: center; gap: 5px;
+      padding: 4px 12px; border-radius: 20px;
+      border: 1px solid var(--border); background: var(--bg-tertiary);
+      font-size: 12px; color: var(--text-secondary);
+      cursor: pointer; transition: all 0.15s; white-space: nowrap;
+      font-family: var(--font-mono); user-select: none;
+    }
+    #room-code-badge:hover { border-color: var(--accent); color: var(--accent); }
+    #room-code-badge.visible { display: flex; }
+    #room-code-text { font-size: 14px; font-weight: 700; color: var(--text-primary); letter-spacing: 2px; }
+    .toast.toast-success { background: #0d2010; border-color: var(--success); color: #86efac; }
+
+    /* ══ ROOM VIEW ═══════════════════════════════════════════════════════════ */
+    #room-view {
+      display: none; flex: 1; overflow: hidden;
+      grid-template-columns: 1fr 320px;
+    }
+    #room-view.active { display: grid; }
+
+    /* ── Game Area ── */
+    #game-area {
+      border-right: 1px solid var(--border);
+      display: flex; flex-direction: column; overflow: hidden;
+    }
+    #game-area-header {
+      padding: 10px 18px; border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; gap: 10px;
+      font-size: 13px; font-weight: 600; flex-shrink: 0;
+      background: var(--bg-secondary);
+    }
+    #game-area-title { flex: 1; }
+    #game-area-content {
+      flex: 1; overflow-y: auto; display: flex; flex-direction: column;
+      align-items: center; justify-content: center; padding: 16px; gap: 14px;
+    }
+
+    /* Placeholder */
+    #board-placeholder {
+      text-align: center; color: var(--text-secondary);
+      font-size: 13px; line-height: 1.8;
+      display: flex; flex-direction: column; align-items: center; gap: 8px;
+    }
+    #board-placeholder .hint {
+      margin-top: 8px; font-family: var(--font-mono); font-size: 11px;
+      background: var(--bg-tertiary); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 7px 14px; color: var(--accent);
+    }
+
+    /* ── Chat Panel ── */
+    #chat-panel {
+      display: flex; flex-direction: column;
+      background: var(--bg-secondary); overflow: hidden;
+    }
+    #chat-header {
+      padding: 12px 16px; border-bottom: 1px solid var(--border);
+      display: flex; justify-content: space-between; align-items: center;
+      font-size: 13px; font-weight: 600; flex-shrink: 0;
+    }
+    #btn-chat-toggle {
+      padding: 4px 8px; font-size: 12px; background: var(--bg-tertiary);
+      border: 1px solid var(--border); border-radius: var(--radius);
+      color: var(--text-secondary); cursor: pointer; transition: all 0.15s;
+    }
+    #btn-chat-toggle:hover { background: var(--border); color: var(--text-primary); }
+    #chat-panel.collapsed #chat-messages { display: none !important; }
+    #chat-panel.collapsed #chat-header { border-bottom: none; }
+    #chat-preview { display: none; }
+    #chat-panel.collapsed #chat-preview {
+      display: block;
+      flex: 1;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      font-size: 12px;
+      color: var(--text-secondary);
+      margin: 0 10px;
+    }
+    @media (min-width: 769px) {
+      #chat-panel.collapsed { flex: 0 0 auto; max-height: 52px; min-height: 52px; }
+      #chat-panel.collapsed #chat-input-area { display: none; }
+    }
+    @media (max-width: 768px) {
+      #chat-panel.collapsed { flex: 0 0 auto !important; min-height: unset; height: auto; }
+      #chat-panel.collapsed #chat-input-area { display: flex !important; }
+    }
+    #chat-room-badge {
+      font-size: 11px; color: var(--text-secondary);
+      padding: 2px 8px; border: 1px solid var(--border); border-radius: 10px;
+      max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    #chat-messages {
+      flex: 1; overflow-y: auto; padding: 12px 12px;
+      display: flex; flex-direction: column; gap: 6px;
+    }
+    #chat-messages::-webkit-scrollbar { width: 3px; }
+    #chat-messages::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+    .chat-msg { display: flex; flex-direction: column; gap: 2px; max-width: 100%; }
+    .chat-msg.mine  { align-items: flex-end; }
+    .chat-msg.other { align-items: flex-start; }
+    .chat-msg.system{ align-items: center; }
+    .chat-sender { font-size: 11px; color: var(--text-secondary); padding: 0 4px; }
+    .chat-bubble {
+      padding: 7px 11px; border-radius: 14px; font-size: 13px;
+      line-height: 1.5; max-width: 210px; word-break: break-word;
+    }
+    .chat-msg.mine  .chat-bubble { background: var(--accent); color: #000; border-bottom-right-radius: 4px; }
+    .chat-msg.other .chat-bubble { background: var(--bg-tertiary); color: var(--text-primary); border-bottom-left-radius: 4px; }
+
+    .system-msg {
+      font-size: 11px; color: var(--text-muted); background: var(--bg-tertiary);
+      padding: 4px 12px; border-radius: 12px; text-align: center; max-width: 260px;
+    }
+    .result-msg {
+      font-size: 12px; font-weight: 600; color: var(--gold);
+      background: rgba(255,215,0,0.06); border: 1px solid rgba(255,215,0,0.2);
+      padding: 6px 12px; border-radius: 10px; text-align: center; width: 100%; max-width: 280px;
+    }
+    .notice-msg {
+      font-size: 12px; color: var(--accent); background: rgba(88,166,255,0.06);
+      border: 1px solid rgba(88,166,255,0.15);
+      padding: 5px 12px; border-radius: 10px; text-align: center; width: 100%; max-width: 280px;
+    }
+
+    #chat-input-area {
+      padding: 10px 12px; border-top: 1px solid var(--border);
+      display: flex; gap: 8px; flex-shrink: 0;
+    }
+    #chat-input {
+      flex: 1; padding: 8px 12px; background: var(--bg-tertiary); border: 1px solid var(--border);
+      border-radius: 18px; color: var(--text-primary); font-size: 13px; transition: border-color 0.15s;
+    }
+    #chat-input:focus { outline: none; border-color: var(--accent); }
+    #chat-input:disabled { opacity: 0.4; }
+    #btn-send-chat {
+      padding: 8px 14px; background: var(--accent); color: #000; border: none;
+      border-radius: 18px; font-size: 13px; font-weight: 600; cursor: pointer; white-space: nowrap;
+    }
+    #btn-send-chat:hover { background: var(--accent-hover); }
+    #btn-send-chat:disabled { background: var(--bg-tertiary); color: var(--text-muted); cursor: not-allowed; }
+
+    /* ══ GAME STATUS BAR (Gomoku) ═══════════════════════════════════════════ */
+    #game-status-bar {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 12px 18px; background: var(--bg-tertiary);
+      border: 1px solid var(--border); border-radius: var(--radius);
+      width: 100%; max-width: 460px; flex-shrink: 0;
+      position: sticky; top: 0; z-index: 20; box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+    }
+    #status-turn-block { display: flex; align-items: center; gap: 10px; }
+    #status-stone-icon { font-size: 26px; line-height: 1; }
+    .status-label { font-size: 10px; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.6px; margin-bottom: 2px; }
+    #status-turn-user { font-weight: 700; font-size: 15px; }
+    #status-timer-block { text-align: right; }
+    #status-seconds { font-family: var(--font-mono); font-size: 32px; font-weight: 900; color: var(--accent); line-height: 1; display: block; }
+    .status-unit { font-size: 11px; color: var(--text-secondary); }
+    #status-timer-block.urgent #status-seconds { color: var(--error-color); animation: timerPulse 0.5s ease infinite; }
+    .game-timer-block {
+      display: flex; align-items: center; justify-content: center; gap: 4px;
+      font-size: 12px; color: var(--text-secondary);
+    }
+    .game-timer-block .timer-num {
+      font-family: var(--font-mono); font-size: 26px; font-weight: 900;
+      color: var(--accent); line-height: 1; padding-bottom: 2px;
+    }
+    .game-timer-block.urgent .timer-num {
+      color: var(--danger);
+      animation: timerPulse 0.5s ease infinite;
+    }
+    @keyframes timerPulse { 0%,100%{opacity:1} 50%{opacity:0.35} }
+
+    /* ── Gomoku Color info ── */
+    #gomoku-color-info { font-size: 12px; color: var(--text-secondary); letter-spacing: 0.3px; }
+
+    /* ══ GOMOKU BOARD ════════════════════════════════════════════════════════ */
+    #gomoku-container {
+      display: none; flex-direction: column; align-items: center; gap: 14px;
+    }
+    #gomoku-board {
+      display: grid;
+      grid-template-columns: repeat(15, 30px);
+      grid-template-rows: repeat(15, 30px);
+      background: #c8a45a; padding: 14px;
+      border: 2px solid #7a5010; border-radius: 4px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+      user-select: none;
+    }
+    .gomoku-cell { position: relative; width: 30px; height: 30px; cursor: default; }
+    .gomoku-cell::before {
+      content: ''; position: absolute; top: 50%; left: 0; right: 0;
+      height: 1px; background: #7a5010; transform: translateY(-50%); z-index: 0;
+    }
+    .gomoku-cell::after {
+      content: ''; position: absolute; left: 50%; top: 0; bottom: 0;
+      width: 1px; background: #7a5010; transform: translateX(-50%); z-index: 0;
+    }
+    .edge-top::after    { top: 50%; }
+    .edge-bottom::after { bottom: 50%; }
+    .edge-left::before  { left: 50%; }
+    .edge-right::before { right: 50%; }
+    .gomoku-cell.can-place { cursor: pointer; }
+    .gomoku-cell.can-place:hover { background: rgba(0,0,0,0.12); border-radius: 50%; }
+    .gomoku-stone {
+      position: absolute; width: 84%; height: 84%;
+      top: 50%; left: 50%; transform: translate(-50%,-50%);
+      border-radius: 50%; z-index: 2; pointer-events: none;
+    }
+    .gomoku-stone.black { background: radial-gradient(circle at 38% 35%, #777, #111); box-shadow: 2px 3px 7px rgba(0,0,0,0.65); }
+    .gomoku-stone.white { background: radial-gradient(circle at 38% 35%, #fff, #c8c8c8); box-shadow: 2px 3px 7px rgba(0,0,0,0.3); border: 1px solid #999; }
+    .gomoku-stone.last-move::after {
+      content: ''; position: absolute; width: 28%; height: 28%;
+      background: rgba(230,30,30,0.9); border-radius: 50%;
+      top: 50%; left: 50%; transform: translate(-50%,-50%); z-index: 3; pointer-events: none;
+    }
+    .star-point::before {
+      content: ''; position: absolute; width: 6px; height: 6px;
+      background: #7a5010; border-radius: 50%;
+      top: 50%; left: 50%; transform: translate(-50%,-50%); z-index: 1;
+    }
+
+    /* ══ BLACKJACK ════════════════════════════════════════════════════════════ */
+    #blackjack-container {
+      display: none; flex-direction: column; align-items: stretch;
+      width: 100%; max-width: 460px;
+      background: #062010; border-radius: 16px; overflow: hidden;
+      border: 2px solid #1a4a28; box-shadow: inset 0 0 40px rgba(0,0,0,0.4);
+      position: relative;
+    }
+    #bj-status-bar {
+      display: flex; justify-content: center; align-items: center;
+      padding: 10px 18px; background: rgba(0,0,0,0.35); border-bottom: 1px solid #1a4a28;
+      font-size: 13px; font-weight: 600; color: var(--text-secondary);
+    }
+    .bj-area { padding: 14px 18px 10px; }
+    .bj-area + .bj-area { border-top: 1px dashed #1a4a28; }
+    .bj-area-title { font-size: 11px; text-transform: uppercase; letter-spacing: 1.2px; color: #86efac; margin-bottom: 8px; font-weight: 600; }
+    .bj-hand { display: flex; flex-wrap: wrap; gap: 6px; min-height: 70px; align-items: flex-start; }
+    .bj-score { margin-top: 6px; font-size: 20px; font-weight: 700; color: #f0f6fc; }
+    .bj-score.bust { color: var(--danger); }
+    .bj-card {
+      width: 50px; height: 72px; background: #fff; border: 1px solid #ccc; border-radius: 7px;
+      display: inline-flex; flex-direction: column; justify-content: space-between;
+      padding: 4px 5px; font-weight: 800; box-shadow: 2px 3px 8px rgba(0,0,0,0.55);
+      flex-shrink: 0; animation: bjCardDeal 0.28s cubic-bezier(0.22,1,0.36,1);
+    }
+    .bj-card-top    { font-size: 12px; line-height: 1; }
+    .bj-card-center { font-size: 18px; text-align: center; line-height: 1; }
+    .bj-card-bot    { font-size: 12px; line-height: 1; transform: rotate(180deg); align-self: flex-end; }
+    .bj-card.red    { color: #dc2626; }
+    .bj-card.black  { color: #111; }
+    .bj-card.hidden {
+      background: repeating-linear-gradient(-45deg, #1e3a8a 0px, #1e3a8a 6px, #2563eb 6px, #2563eb 12px);
+      border-color: #1e40af;
+    }
+    @keyframes bjCardDeal {
+      from { opacity: 0; transform: translateY(-14px) scale(0.82) rotate(-6deg); }
+      to   { opacity: 1; transform: none; }
+    }
+    #bj-actions {
+      padding: 10px 18px 14px; border-top: 1px dashed #1a4a28; display: flex; gap: 8px; flex-wrap: wrap;
+    }
+    .bj-btn {
+      padding: 9px 20px; border: none; border-radius: var(--radius);
+      font-size: 14px; font-weight: 700; cursor: pointer;
+      transition: transform 0.1s, opacity 0.15s, background 0.15s;
+    }
+    .bj-btn:active { transform: scale(0.96); }
+    .bj-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+    .bj-btn-bet   { background: var(--gold); color: #111; }
+    .bj-btn-bet:hover:not(:disabled) { background: #ffe566; }
+    .bj-btn-hit   { background: var(--success); color: #000; }
+    .bj-btn-hit:hover:not(:disabled) { background: #56d364; }
+    .bj-btn-stand { background: var(--accent); color: #000; }
+    .bj-btn-stand:hover:not(:disabled) { background: var(--accent-hover); }
+    #bj-message {
+      padding: 8px 18px 12px; font-size: 13px; font-weight: 600;
+      color: var(--gold); min-height: 34px; text-align: center;
+    }
+    .game-result-banner {
+      position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+      background: rgba(0,0,0,0.75); z-index: 9999 !important; border-radius: 16px;
+      font-size: 28px; font-weight: 800; letter-spacing: 2px; text-transform: uppercase;
+      animation: bannerPop 0.4s cubic-bezier(0.34,1.56,0.64,1);
+      pointer-events: none !important;
+    }
+    .game-result-banner.win { color: #4ade80; text-shadow: 0 0 20px rgba(74,222,128,0.6); }
+    .game-result-banner.lose { color: #f87171; text-shadow: 0 0 20px rgba(248,113,113,0.6); }
+    .game-result-banner.push { color: var(--gold); text-shadow: 0 0 20px rgba(255,215,0,0.6); }
+    @keyframes bannerPop { from { opacity:0; transform: scale(0.7); } to { opacity:1; transform: scale(1); } }
+
+    /* ══ TICTACTOE ═══════════════════════════════════════════════════════════ */
+    #tictactoe-container {
+      display: none; flex-direction: column; align-items: center; gap: 16px;
+    }
+    #ttt-status {
+      font-size: 15px; font-weight: 600; color: var(--text-primary);
+      background: var(--bg-tertiary); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 10px 20px; text-align: center;
+      min-width: 200px;
+    }
+    #ttt-board {
+      display: grid;
+      grid-template-columns: repeat(3, 96px);
+      grid-template-rows: repeat(3, 96px);
+      gap: 0;
+      background: var(--border);
+      border: 2px solid var(--border); border-radius: 8px; overflow: hidden;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+    }
+    .ttt-cell {
+      width: 96px; height: 96px;
+      background: var(--bg-secondary);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 48px; cursor: pointer; user-select: none;
+      transition: background 0.15s;
+      border: 1px solid var(--border);
+    }
+    .ttt-cell:hover.ttt-can-place { background: var(--bg-tertiary); }
+    .ttt-cell.ttt-o { cursor: default; color: #58a6ff; }
+    .ttt-cell.ttt-x { cursor: default; color: #f78166; }
+    .ttt-cell-inner { display: inline-block; }
+    #ttt-color-info {
+      font-size: 13px; color: var(--text-secondary); text-align: center; line-height: 1.8;
+    }
+
+    /* ══ CONNECT 4 ════════════════════════════════════════════════════════════ */
+    #connect4-container {
+      display: none; flex-direction: column; align-items: center; gap: 14px;
+    }
+    #c4-status {
+      font-size: 15px; font-weight: 600; color: var(--text-primary);
+      background: var(--bg-tertiary); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 10px 20px; text-align: center;
+      min-width: 220px;
+    }
+    #c4-color-info {
+      font-size: 13px; color: var(--text-secondary); text-align: center; line-height: 1.8;
+    }
+    /* 열 선택 버튼 행 */
+    #c4-col-btns {
+      display: grid;
+      grid-template-columns: repeat(7, 52px);
+      gap: 3px;
+    }
+    .c4-col-btn {
+      width: 52px; height: 30px;
+      background: var(--bg-tertiary); border: 1px solid var(--border);
+      border-radius: 6px 6px 0 0;
+      color: var(--text-secondary); font-size: 14px; font-weight: 700;
+      cursor: pointer; display: flex; align-items: center; justify-content: center;
+      transition: background 0.15s, color 0.15s;
+    }
+    .c4-col-btn:hover:not(:disabled) { background: var(--accent); color: #000; }
+    .c4-col-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+    /* 파란 보드 프레임 */
+    #c4-board-wrap {
+      background: #1d4ed8;
+      padding: 6px;
+      border-radius: 10px;
+      box-shadow: 0 6px 24px rgba(0,0,0,0.5);
+    }
+    /* 6행 7열 그리드 */
+    #c4-board {
+      display: grid;
+      grid-template-columns: repeat(7, 52px);
+      grid-template-rows: repeat(6, 52px);
+      gap: 3px;
+    }
+    /* 각 셀 = 원형 구멍 */
+    .c4-cell {
+      position: relative;
+      width: 52px; height: 52px;
+      border-radius: 50%;
+      background: #0f172a; /* 빈 구멍 — 어두운 색으로 깊이감 */
+      box-shadow: inset 0 3px 8px rgba(0,0,0,0.6);
+      transition: background 0.1s;
+      overflow: hidden;
+    }
+    .c4-piece {
+      position: absolute; inset: 2px; border-radius: 50%;
+      pointer-events: none; z-index: 1;
+    }
+    .c4-piece.c4-red {
+      background: radial-gradient(circle at 38% 35%, #ff6b6b, #dc2626);
+      box-shadow: inset 0 -3px 8px rgba(0,0,0,0.4), 0 2px 6px rgba(220,38,38,0.5);
+    }
+    .c4-piece.c4-yellow {
+      background: radial-gradient(circle at 38% 35%, #fde68a, #f59e0b);
+      box-shadow: inset 0 -3px 8px rgba(0,0,0,0.3), 0 2px 6px rgba(245,158,11,0.5);
+    }
+    .c4-cell.c4-last::after {
+      content: '';
+      position: absolute;
+      top: 50%; left: 50%;
+      transform: translate(-50%, -50%);
+      width: 14px; height: 14px;
+      background: white;
+      border-radius: 50%;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.5);
+    }
+    @keyframes c4Drop {
+      from { transform: scaleY(0.4) translateY(-30%); opacity: 0.6; }
+      to   { transform: none; opacity: 1; }
+    }
+
+    /* 타일/그리드 게임 전용 모션 */
+    @keyframes stonePop {
+      0% { transform: scale(0.3); opacity: 0; }
+      70% { transform: scale(1.15); }
+      100% { transform: scale(1); opacity: 1; }
+    }
+    @keyframes pieceDrop {
+      0% { transform: translateY(-200px); opacity: 0; }
+      60% { transform: translateY(15px); opacity: 1; }
+      80% { transform: translateY(-5px); }
+      100% { transform: translateY(0); opacity: 1; }
+    }
+    .animate-pop { animation: stonePop 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; }
+    .animate-drop { animation: pieceDrop 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards; }
+    /* 오목 돌은 translate(-50%,-50%) 유지 */
+    @keyframes stonePopGomoku {
+      0% { transform: translate(-50%,-50%) scale(0.3); opacity: 0; }
+      70% { transform: translate(-50%,-50%) scale(1.15); }
+      100% { transform: translate(-50%,-50%) scale(1); opacity: 1; }
+    }
+    .gomoku-stone.animate-pop { animation: stonePopGomoku 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; }
+
+    /* ══ INDIAN POKER ════════════════════════════════════════════════════════ */
+    #indian-container {
+      display: none; flex-direction: column; align-items: center; gap: 10px;
+      width: 100%; max-width: 360px;
+    }
+    #indian-round-bar {
+      font-size: 13px; font-weight: 600; color: var(--text-secondary);
+      background: var(--bg-tertiary); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 6px 16px; text-align: center;
+    }
+    #indian-status {
+      font-size: 15px; font-weight: 700; color: var(--text-primary);
+      text-align: center; min-height: 22px;
+    }
+    /* 플레이어 영역 (상대 / 나) */
+    .indian-player-area {
+      width: 100%; background: var(--bg-tertiary);
+      border: 1px solid var(--border); border-radius: 12px;
+      padding: 14px 18px; display: flex; align-items: center; gap: 14px;
+    }
+    .indian-player-area.opponent-area { flex-direction: row-reverse; }
+    .indian-player-area.active-turn { box-shadow: 0 0 20px red; border-radius: 8px; }
+    .indian-player-info { flex: 1; display: flex; flex-direction: column; gap: 4px; }
+    .indian-player-name {
+      font-size: 13px; font-weight: 600; color: var(--text-secondary);
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .indian-hearts-bar {
+      display: flex; flex-wrap: wrap; gap: 2px; line-height: 1;
+    }
+    .indian-heart { font-size: 16px; transition: opacity 0.2s; }
+    .indian-heart.lost { opacity: 0.18; filter: grayscale(1); }
+    .indian-hearts-count {
+      font-size: 20px; font-weight: 800; color: #f87171; margin-left: 4px;
+    }
+    /* 카드 표시 */
+    .indian-card-wrap { flex-shrink: 0; }
+    .indian-card-face {
+      width: 58px; height: 84px;
+      background: #fff; border: 1px solid #ccc; border-radius: 8px;
+      display: flex; flex-direction: column; justify-content: space-between;
+      padding: 5px 6px; font-weight: 800;
+      box-shadow: 2px 3px 10px rgba(0,0,0,0.5);
+      animation: indianCardReveal 0.25s cubic-bezier(0.22,1,0.36,1);
+    }
+    .indian-card-face.red-suit { color: #dc2626; }
+    .indian-card-face.black-suit { color: #111; }
+    .indian-card-val-top { font-size: 13px; line-height: 1; }
+    .indian-card-suit-center { font-size: 22px; text-align: center; line-height: 1; }
+    .indian-card-val-bot { font-size: 13px; line-height: 1; transform: rotate(180deg); align-self: flex-end; }
+    .indian-card-back {
+      width: 58px; height: 84px; border-radius: 8px;
+      background: repeating-linear-gradient(-45deg, #1e3a8a 0px, #1e3a8a 6px, #2563eb 6px, #2563eb 12px);
+      border: 1px solid #1e40af;
+      box-shadow: 2px 3px 10px rgba(0,0,0,0.5);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 28px;
+    }
+    @keyframes indianCardReveal {
+      from { opacity: 0; transform: rotateY(90deg) scale(0.8); }
+      to   { opacity: 1; transform: none; }
+    }
+
+    /* ══ THIEF (도둑잡기) ═══════════════════════════════════════════════════════ */
+    #thief-container {
+      display: none; flex-direction: column; align-items: center; gap: 12px;
+      width: 100%; max-width: 520px;
+    }
+    #thief-status { font-size: 15px; font-weight: 700; text-align: center; }
+    .thief-tooltip {
+      position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
+      font-size: 14px; font-weight: 600; color: rgba(255,255,255,0.9);
+      background: rgba(0,0,0,0.65); padding: 10px 18px; border-radius: 10px;
+      pointer-events: none; z-index: 5; white-space: nowrap;
+    }
+    /* 원탁 테이블 레이아웃 */
+    .table-layout-wrap {
+      position: relative; width: 100%; min-height: 340px;
+      background: linear-gradient(145deg, rgba(34,60,34,0.4) 0%, rgba(20,40,20,0.5) 100%);
+      border-radius: 16px; border: 2px solid rgba(139,90,43,0.5);
+      box-shadow: inset 0 0 40px rgba(0,0,0,0.3);
+    }
+    .table-seat {
+      position: absolute; display: flex; flex-direction: column; align-items: center;
+      padding: 10px 14px; background: var(--bg-tertiary);
+      border-radius: 12px; border: 1px solid var(--border);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.25);
+    }
+    .table-seat.seat-top { top: 12px; left: 50%; transform: translateX(-50%); }
+    .table-seat.seat-left { left: 12px; top: 50%; transform: translateY(-50%); }
+    .table-seat.seat-right { right: 12px; top: 50%; transform: translateY(-50%); }
+    .table-seat.seat-bottom { bottom: 12px; left: 50%; transform: translateX(-50%); min-width: 200px; }
+    .table-seat.seat-bottom .table-seat-name { font-size: 16px; font-weight: 800; }
+    .table-seat.seat-bottom .thief-hand, .table-seat.seat-bottom .mahjong-hand { gap: 10px; }
+    .table-seat-name { font-size: 12px; font-weight: 700; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+    .table-seat-count { font-size: 14px; font-weight: 700; color: var(--gold); margin-top: 4px; }
+    .table-seat-target-cards {
+      display: flex; flex-wrap: wrap; justify-content: center;
+      padding-top: 15px; margin-top: 4px;
+    }
+    .thief-hand {
+      display: flex; flex-wrap: nowrap; overflow-x: auto;
+      width: 100%; max-width: 90vw; padding: 10px 10px 20px 10px;
+    }
+    .thief-hand::-webkit-scrollbar { height: 6px; }
+    .thief-hand::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+    .thief-card {
+      flex-shrink: 0; margin-left: -24px; position: relative;
+      transition: transform 0.2s, z-index 0s;
+    }
+    .thief-card:first-child { margin-left: 0; }
+    .thief-card:hover, .onecard-card:hover { transform: translateY(-15px); z-index: 100; margin-right: 15px; }
+    .bj-card:hover, .indian-card-face:hover, .indian-card-back:hover, .holdem-card:hover {
+      transform: translateY(-10px) scale(1.05);
+      z-index: 10;
+      box-shadow: 0 10px 20px rgba(0,0,0,0.3);
+    }
+    .thief-card {
+      width: 48px; height: 70px; background: #fff; border: 1px solid #ccc;
+      border-radius: 6px; padding: 4px 5px; font-weight: 700; font-size: 11px;
+      display: flex; flex-direction: column; justify-content: space-between;
+      box-shadow: 2px 2px 6px rgba(0,0,0,0.3);
+    }
+    .thief-card.red-suit { color: #dc2626; }
+    .thief-card.black-suit { color: #111; }
+    .thief-target-card {
+      width: 40px; height: 58px; background: var(--bg-tertiary); border: 1px solid var(--border);
+      border-radius: 6px; display: flex; align-items: center; justify-content: center;
+      font-size: 20px; cursor: pointer; transition: all 0.15s ease; user-select: none;
+      margin-left: -20px; position: relative; box-shadow: 2px 2px 6px rgba(0,0,0,0.4);
+    }
+    .thief-target-card:first-child { margin-left: 0; }
+    .thief-target-card:hover, .thief-target-card.hovered {
+      border-color: var(--accent); transform: translateY(-15px); z-index: 100; margin-right: 12px;
+    }
+    .thief-card.hover-finger { position: relative; }
+    .thief-card.hover-finger::after {
+      content: '👆'; position: absolute; top: -8px; left: 50%; transform: translateX(-50%);
+      font-size: 18px; animation: timerPulse 0.5s ease infinite;
+    }
+    .thief-card.discarding-pair {
+      box-shadow: 0 0 15px yellow;
+      transform: translateY(-20px);
+    }
+
+    /* 카드 딜링 팝인 애니메이션 제거 (렌더링 시 스팸 방지) */
+    .thief-card, .thief-target-card, .onecard-card, .holdem-card, .mahjong-tile,
+    .bj-card, .indian-card-face, .indian-card-back {
+      transition: transform 0.2s ease, box-shadow 0.2s ease, margin 0.2s ease;
+    }
+
+    /* 타겟 유저 영역 붉은색 강조 */
+    @keyframes targetBlink {
+      0%, 100% { box-shadow: 0 0 0px var(--danger); }
+      50% { box-shadow: 0 0 15px var(--danger); }
+    }
+    .target-seat {
+      border: 2px dashed var(--danger) !important;
+      animation: targetBlink 1.5s infinite;
+      background: rgba(255, 85, 85, 0.1) !important;
+      transition: all 0.3s ease;
+    }
+
+    /* ══ ONECARD (원카드) ═══════════════════════════════════════════════════════ */
+    #onecard-container {
+      display: none; flex-direction: column; align-items: center; gap: 12px;
+      width: 100%; max-width: 520px;
+    }
+    .table-center-area { display: flex; align-items: center; justify-content: center; gap: 16px; }
+    /* 중앙 보드와 내 패 사이 물리적 여백 강제 확보 */
+    .onecard-table {
+      margin-bottom: 250px !important;
+      transform: translateY(-30px) !important;
+      z-index: 1 !important;
+    }
+    #onecard-me-slot { margin-top: 120px !important; }
+    #onecard-status { font-size: 15px; font-weight: 700; text-align: center; }
+    .onecard-card {
+      width: 56px; height: 80px; background: #fff; border: 1px solid #ccc;
+      border-radius: 8px; padding: 5px 6px; font-weight: 800; font-size: 12px;
+      display: flex; flex-direction: column; justify-content: space-between;
+      box-shadow: 2px 3px 10px rgba(0,0,0,0.4);
+    }
+    .onecard-card.red-suit { color: #dc2626; }
+    .onecard-card.black-suit { color: #111; }
+    .onecard-deck {
+      width: 56px; height: 80px; border-radius: 8px;
+      background: repeating-linear-gradient(-45deg, #1e3a8a 0, #1e3a8a 6px, #2563eb 6px, #2563eb 12px);
+      border: 1px solid #1e40af; cursor: pointer;
+      display: flex; align-items: center; justify-content: center; font-size: 24px;
+    }
+    /* 원카드 내 패: 한 줄 고정 + 카드 겹치기 (중앙 보드 가림 방지) */
+    .onecard-hand {
+      display: flex !important;
+      flex-wrap: nowrap !important;
+      justify-content: center !important;
+      overflow-x: auto !important;
+      padding-bottom: 20px !important;
+      max-width: 95vw !important;
+      margin: 0 auto !important;
+      position: relative !important;
+      z-index: 10 !important;
+      max-height: 150px !important;
+    }
+    .onecard-hand::-webkit-scrollbar { height: 6px; }
+    .onecard-hand::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+    .onecard-hand .onecard-card {
+      margin-left: -30px !important;
+      flex-shrink: 0 !important;
+      transition: transform 0.2s, margin-left 0.2s !important;
+      cursor: pointer;
+      position: relative;
+    }
+    .onecard-hand .onecard-card:first-child { margin-left: 0 !important; }
+    .onecard-hand .onecard-card:hover {
+      transform: translateY(-20px) scale(1.1) !important;
+      margin-left: -10px !important;
+      z-index: 100 !important;
+    }
+    .onecard-hand .onecard-card.playable { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent); }
+    .suit-btn { background-color: #ffffff !important; color: #000000 !important; }
+    .onecard-player-box {
+      background: var(--bg-tertiary); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 10px 12px;
+      display: flex; flex-direction: column; gap: 6px; align-items: center;
+    }
+    .onecard-player-box.my-turn, .table-seat.my-turn {
+      border-color: var(--accent); box-shadow: 0 0 0 2px rgba(88,166,255,0.3);
+    }
+    .onecard-card-count { font-size: 14px; font-weight: 700; color: var(--gold); }
+    #onecard-attack-banner {
+      display: none; padding: 12px 20px; background: linear-gradient(135deg, #dc2626 0%, #991b1b 100%);
+      color: #fff; font-size: 18px; font-weight: 800; border-radius: 8px;
+      box-shadow: 0 4px 12px rgba(220,38,38,0.5); animation: pulse 1s ease infinite;
+    }
+    #onecard-attack-banner.show { display: block; }
+    #onecard-actions-row { display: flex; gap: 12px; align-items: center; justify-content: center; flex-wrap: wrap; }
+    #btn-onecard-call {
+      padding: 10px 20px; font-size: 16px; font-weight: 800; border-radius: 8px;
+      background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); color: #fff;
+      border: none; cursor: pointer; box-shadow: 0 4px 12px rgba(245,158,11,0.5);
+    }
+    #btn-onecard-call:hover { opacity: 0.9; transform: scale(1.02); }
+    #btn-onecard-call:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+    #onecard-suit-modal {
+      display: none; position: fixed; inset: 0; align-items: center; justify-content: center; z-index: 9100;
+    }
+    #onecard-suit-modal.show { display: flex; }
+    #onecard-suit-backdrop { position: absolute; inset: 0; background: rgba(0,0,0,0.75); }
+    #onecard-suit-box {
+      position: relative; z-index: 1; background: var(--bg-secondary); border: 2px solid var(--accent);
+      border-radius: 14px; padding: 24px; text-align: center;
+    }
+    #onecard-suit-title { font-size: 16px; font-weight: 700; margin-bottom: 16px; }
+    #onecard-suit-btns { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+    #onecard-suit-btns button {
+      width: 64px; height: 64px; font-size: 28px; border-radius: 8px; border: 2px solid var(--border);
+      cursor: pointer; background: var(--bg-primary); transition: all 0.15s;
+    }
+    #onecard-suit-btns button:hover { border-color: var(--accent); transform: scale(1.08); }
+
+    /* ══ MAHJONG (마작) ═══════════════════════════════════════════════════════ */
+    #mahjong-container {
+      display: none; flex-direction: column; align-items: center; gap: 12px;
+      width: 100%; max-width: 520px;
+    }
+    #mahjong-status { font-size: 15px; font-weight: 700; text-align: center; }
+    .mahjong-tile {
+      display: inline-flex; align-items: center; justify-content: center;
+      font-size: 38px; width: 34px; height: 48px;
+      background: linear-gradient(to bottom, #fff, #f0f0f0);
+      border: 1px solid #ccc; border-radius: 4px;
+      box-shadow: 2px 2px 4px rgba(0,0,0,0.3), inset -1px -1px 2px rgba(0,0,0,0.1);
+      cursor: pointer; user-select: none; transition: transform 0.1s;
+      line-height: 1; margin: 1px; color: #222;
+    }
+    .mahjong-tile:hover { transform: translateY(-8px); border-color: var(--accent); }
+    .mahjong-tile.hidden { background: #e09f3e; color: #b5651d; }
+    .mahjong-tile.discardable { cursor: pointer; border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent); }
+    .mahjong-tile.discardable:hover { transform: translateY(-8px); }
+    .my-hand-area, .mahjong-hand, .thief-hand {
+      transform: scale(0.85) !important;
+      transform-origin: bottom center !important;
+      margin-bottom: -10px !important;
+    }
+    .mahjong-hand { display: flex; flex-wrap: nowrap; padding: 10px; justify-content: center; }
+    .mahjong-discards {
+      display: grid; grid-template-columns: repeat(6, 36px); gap: 2px;
+      background: rgba(0,0,0,0.2); padding: 8px; border-radius: 8px;
+    }
+    .mahjong-discards .mahjong-tile { width: 32px; height: 44px; font-size: 32px; cursor: default; }
+    .mahjong-discards .mahjong-tile:hover { transform: none; border-color: #ccc; }
+    .mahjong-discards-row { min-height: 36px; margin-bottom: 8px; }
+    .mahjong-player-box {
+      background: var(--bg-tertiary); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 8px 10px;
+      display: flex; flex-direction: column; gap: 4px; align-items: center;
+    }
+    .mahjong-player-box.my-turn, .table-seat.my-turn { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(88,166,255,0.3); }
+
+    /* VS 구분선 */
+    .indian-vs-bar {
+      width: 100%; display: flex; align-items: center; gap: 10px;
+      color: var(--text-secondary); font-size: 12px; font-weight: 700;
+    }
+    .indian-vs-bar::before, .indian-vs-bar::after {
+      content: ''; flex: 1; height: 1px; background: var(--border);
+    }
+    /* 액션 버튼 */
+    #indian-actions {
+      display: flex; gap: 12px; margin-top: 4px;
+    }
+    .indian-btn {
+      padding: 10px 24px; border: none; border-radius: var(--radius);
+      font-size: 15px; font-weight: 700; cursor: pointer;
+      transition: transform 0.1s, opacity 0.15s;
+    }
+    .indian-btn:active { transform: scale(0.96); }
+    .indian-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+    #btn-indian-showdown { background: #dc2626; color: #fff; }
+    #btn-indian-showdown:hover:not(:disabled) { background: #ef4444; }
+    #btn-indian-giveup   { background: var(--bg-tertiary); color: var(--text-primary); border: 1px solid var(--border); }
+    #btn-indian-giveup:hover:not(:disabled)   { background: var(--bg-secondary); }
+
+    /* ══ TEXAS HOLDEM ════════════════════════════════════════════════════════ */
+    #holdem-container, #sevenpoker-container {
+      margin-top: 60px;
+    }
+    #holdem-container {
+      display: none; flex-direction: column; align-items: center; gap: 12px;
+      width: 100%; max-width: 480px;
+    }
+    #holdem-round-bar {
+      font-size: 13px; font-weight: 600; color: var(--text-secondary);
+      background: var(--bg-tertiary); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 6px 16px; text-align: center;
+    }
+    #holdem-pot-bar {
+      font-size: 16px; font-weight: 700; color: var(--gold);
+      background: rgba(255,215,0,0.08); border: 1px solid rgba(255,215,0,0.3);
+      border-radius: var(--radius); padding: 8px 20px;
+    }
+    .holdem-cards-row {
+      display: flex; gap: 8px; flex-wrap: wrap; justify-content: center;
+    }
+    .holdem-card {
+      width: 44px; height: 64px;
+      background: #fff; border: 1px solid #ccc; border-radius: 6px;
+      display: flex; flex-direction: column; justify-content: space-between;
+      padding: 4px 5px; font-weight: 700; font-size: 11px;
+      box-shadow: 2px 2px 6px rgba(0,0,0,0.4);
+    }
+    .holdem-card.red-suit { color: #dc2626; }
+    .holdem-card.black-suit { color: #111; }
+    .holdem-card-top { font-size: 10px; line-height: 1; }
+    .holdem-card-suit { text-align: center; font-size: 14px; line-height: 1; }
+    .holdem-card-bot { font-size: 10px; line-height: 1; transform: rotate(180deg); align-self: flex-end; }
+    .holdem-card.hidden {
+      background: repeating-linear-gradient(-45deg, #1e3a8a 0px, #1e3a8a 4px, #2563eb 4px, #2563eb 8px);
+      border-color: #1e40af; color: transparent;
+    }
+    .holdem-card.my-secret-card {
+      position: relative;
+      border: 2px dashed var(--danger);
+      box-shadow: inset 0 0 10px rgba(255,85,85,0.2);
+    }
+    .holdem-card.my-secret-card::after {
+      content: '🔒 히든';
+      position: absolute;
+      top: -10px; right: -10px;
+      background: var(--bg-primary); color: var(--danger);
+      font-size: 10px; font-weight: bold;
+      padding: 2px 6px; border-radius: 6px; border: 1px solid var(--danger);
+      z-index: 5;
+    }
+    .holdem-players-grid {
+      display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px;
+      width: 100%;
+    }
+    .holdem-player-box {
+      background: var(--bg-tertiary); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 10px 12px;
+      display: flex; flex-direction: column; gap: 6px;
+    }
+    .holdem-player-box.my-turn { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(88,166,255,0.3); }
+    .holdem-player-box.folded { opacity: 0.6; }
+    .holdem-player-name {
+      font-size: 12px; font-weight: 600; color: var(--text-secondary);
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .holdem-player-stars { font-size: 14px; font-weight: 700; color: var(--gold); }
+    .holdem-player-status { font-size: 11px; color: var(--text-muted); }
+    .holdem-player-cards { display: flex; gap: 4px; }
+    #holdem-actions {
+      display: flex; gap: 12px; margin-top: 4px;
+    }
+    .holdem-btn {
+      padding: 10px 20px; border: none; border-radius: var(--radius);
+      font-size: 14px; font-weight: 700; cursor: pointer;
+      transition: transform 0.1s, opacity 0.15s;
+    }
+    .holdem-btn:active { transform: scale(0.96); }
+    .holdem-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+    #btn-holdem-check { background: var(--success); color: #000; }
+    #btn-holdem-check:hover:not(:disabled) { background: #4ade80; }
+    #btn-holdem-fold  { background: var(--bg-tertiary); color: var(--text-primary); border: 1px solid var(--border); }
+    #btn-holdem-fold:hover:not(:disabled)  { background: var(--danger); color: #fff; border-color: var(--danger); }
+
+    .poker-hand-guide {
+      width: 100%; background: var(--bg-tertiary); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 12px; margin-top: 8px;
+    }
+    .poker-hand-guide-title {
+      font-size: 12px; font-weight: 700; color: var(--gold); margin-bottom: 10px; text-align: center;
+      letter-spacing: 0.5px;
+    }
+    .poker-hand-guide-grid {
+      display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px;
+    }
+    .poker-hand-item {
+      display: flex; flex-direction: column;
+      background: var(--bg-secondary); padding: 6px 8px; border-radius: 4px; border: 1px solid var(--border);
+    }
+    .poker-hand-item.active { border-color: var(--accent); background: rgba(88,166,255,0.15); box-shadow: inset 0 0 8px rgba(88,166,255,0.3); }
+    .poker-hand-name { font-size: 11px; font-weight: 700; color: var(--text-primary); margin-bottom: 2px; }
+    .poker-hand-desc { font-size: 10px; color: var(--text-muted); line-height: 1.3; word-break: keep-all; }
+
+    /* ══ SEVEN POKER ═════════════════════════════════════════════════════════ */
+    #sevenpoker-container {
+      display: none; flex-direction: column; align-items: center; gap: 12px;
+      width: 100%; max-width: 520px;
+    }
+    #sevenpoker-round-bar {
+      font-size: 13px; font-weight: 600; color: var(--text-secondary);
+      background: var(--bg-tertiary); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 6px 16px; text-align: center;
+    }
+    #sevenpoker-pot-bar {
+      font-size: 16px; font-weight: 700; color: var(--gold);
+      background: rgba(255,215,0,0.08); border: 1px solid rgba(255,215,0,0.3);
+      border-radius: var(--radius); padding: 8px 20px;
+    }
+    .sevenpoker-players-grid {
+      display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px;
+      width: 100%;
+    }
+    .sevenpoker-player-box {
+      background: var(--bg-tertiary); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 10px 12px;
+      display: flex; flex-direction: column; gap: 6px;
+    }
+    .sevenpoker-player-box.my-turn { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(88,166,255,0.3); }
+    .sevenpoker-player-box.folded { opacity: 0.6; }
+    .sevenpoker-player-name { font-size: 12px; font-weight: 600; color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .sevenpoker-player-stars { font-size: 14px; font-weight: 700; color: var(--gold); }
+    .sevenpoker-player-status { font-size: 11px; color: var(--text-muted); }
+    .sevenpoker-player-cards { display: flex; gap: 4px; flex-wrap: wrap; }
+
+    /* ══ DEBUG PANEL (slide-in from right) ══════════════════════════════════ */
+    #debug-backdrop {
+      display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 500;
+    }
+    #debug-backdrop.open { display: block; }
+    #debug-panel {
+      position: fixed; top: 0; right: -440px; width: 440px; height: 100vh;
+      background: var(--bg-secondary); border-left: 1px solid var(--border);
+      z-index: 600; display: flex; flex-direction: column;
+      transition: right 0.28s cubic-bezier(0.4,0,0.2,1);
+      box-shadow: -4px 0 20px rgba(0,0,0,0.4);
+    }
+    #debug-panel.open { right: 0; }
+    #debug-panel-header {
+      padding: 14px 16px; border-bottom: 1px solid var(--border);
+      display: flex; justify-content: space-between; align-items: center;
+      font-size: 14px; font-weight: 600; flex-shrink: 0;
+    }
+    #debug-panel-header button {
+      background: none; border: none; color: var(--text-secondary);
+      font-size: 18px; cursor: pointer; padding: 2px 6px; border-radius: 4px;
+    }
+    #debug-panel-header button:hover { color: var(--text-primary); }
+    #debug-panel-content {
+      flex: 1; overflow-y: auto; padding: 14px; display: flex; flex-direction: column; gap: 14px;
+    }
+    .debug-section { display: flex; flex-direction: column; gap: 6px; }
+    .debug-section > label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-secondary); }
+    .debug-input {
+      padding: 7px 10px; background: var(--bg-tertiary); border: 1px solid var(--border);
+      border-radius: var(--radius); color: var(--text-primary); font-size: 12px; font-family: var(--font-mono);
+    }
+    .debug-input:focus { outline: none; border-color: var(--accent); }
+    .debug-input.textarea { resize: vertical; min-height: 80px; }
+    .debug-btn-row { display: flex; gap: 6px; }
+    .debug-btn {
+      flex: 1; padding: 7px; border-radius: var(--radius);
+      border: 1px solid var(--border); background: var(--bg-tertiary);
+      color: var(--text-secondary); font-size: 12px; cursor: pointer; transition: all 0.15s;
+    }
+    .debug-btn:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
+    .debug-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+    .debug-btn.connect   { border-color: var(--success); color: var(--success); }
+    .debug-btn.connect:hover:not(:disabled)    { background: var(--success); color: #000; }
+    .debug-btn.disconnect{ border-color: var(--danger); color: var(--danger); }
+    .debug-btn.disconnect:hover:not(:disabled) { background: var(--danger);  color: #fff; }
+    #log-output {
+      background: var(--bg-primary); border: 1px solid var(--border); border-radius: var(--radius);
+      padding: 8px; height: 240px; overflow-y: auto;
+      font-family: var(--font-mono); font-size: 11px; line-height: 1.5;
+    }
+    #log-output::-webkit-scrollbar { width: 3px; }
+    #log-output::-webkit-scrollbar-thumb { background: var(--border); }
+    .log-entry { margin-bottom: 4px; }
+    .log-entry.sent  { color: #d2a8ff; }
+    .log-entry.error { color: var(--danger); }
+    .log-entry.recv  { color: var(--accent); }
+    .log-time { opacity: 0.5; font-size: 10px; }
+
+    /* ══ RULES MODAL ═════════════════════════════════════════════════════════ */
+    #rules-modal {
+      display: none; position: fixed; inset: 0;
+      align-items: center; justify-content: center; z-index: 9000;
+    }
+    #rules-modal.show { display: flex; }
+    #rules-backdrop { position: absolute; inset: 0; background: rgba(0,0,0,0.7); }
+    #rules-box {
+      position: relative; z-index: 1; background: var(--bg-secondary);
+      border: 1px solid var(--border); border-radius: var(--radius-lg);
+      padding: 28px 28px 22px; max-width: 440px; width: 92%; max-height: 80vh; overflow-y: auto;
+      animation: popIn 0.2s ease;
+    }
+    #rules-title { font-size: 18px; font-weight: 700; margin-bottom: 14px; }
+    #rules-content { font-size: 13px; line-height: 1.6; color: var(--text-secondary); }
+    #rules-content h3 { color: var(--text-primary); margin: 16px 0 6px; font-size: 14px; }
+    #rules-content h3:first-child { margin-top: 0; }
+    #rules-content ul { padding-left: 18px; margin-bottom: 8px; }
+    #rules-content li { margin-bottom: 6px; }
+    #rules-content strong { color: var(--text-primary); }
+    #rules-close {
+      margin-top: 20px; width: 100%; padding: 9px;
+      background: var(--bg-tertiary); border: 1px solid var(--border);
+      border-radius: var(--radius); color: var(--text-primary); font-size: 13px; cursor: pointer;
+    }
+    #rules-close:hover { border-color: var(--text-secondary); }
+
+    /* ── Profile / Opponent Record Modals ── */
+    #profile-modal, #opponent-record-modal {
+      display: none; position: fixed; inset: 0;
+      align-items: center; justify-content: center; z-index: 9500;
+    }
+    #profile-modal.show, #opponent-record-modal.show { display: flex; }
+    #profile-backdrop, #opponent-record-backdrop { position: absolute; inset: 0; background: rgba(0,0,0,0.7); }
+    #profile-box, #opponent-record-box {
+      position: relative; z-index: 1; background: var(--bg-secondary);
+      border: 1px solid var(--border); border-radius: var(--radius-lg);
+      padding: 24px; max-width: 360px; width: 92%; animation: popIn 0.2s ease;
+    }
+    #profile-box h3, #opponent-record-box h3 { font-size: 16px; margin-bottom: 12px; }
+    .profile-info-block { background: var(--bg-tertiary); border-radius: var(--radius); padding: 12px 14px; margin-bottom: 16px; }
+    .profile-info-row { display: flex; justify-content: space-between; padding: 6px 0; font-size: 13px; }
+    .profile-info-row:first-child { padding-top: 0; }
+    .profile-info-row:last-child { padding-bottom: 0; }
+    .profile-label { color: var(--text-muted); }
+    .profile-section { margin-bottom: 16px; }
+    .profile-section-title { font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-muted); margin-bottom: 8px; }
+    .profile-status-text { font-size: 12px; color: var(--text-muted); margin-top: 6px; margin-bottom: 10px; }
+    .profile-apply-btn { background: var(--accent); color: #000; border: none; width: 100%; padding: 10px; }
+    .profile-apply-btn:hover:not(:disabled) { background: var(--accent-hover); }
+    .profile-apply-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .profile-logout-btn { width: 100%; margin-top: 8px; padding: 10px; }
+    #opponent-record-content { font-size: 13px; line-height: 1.8; }
+    .opponent-record-row { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid var(--border); }
+    .opponent-record-row:last-child { border-bottom: none; }
+    .opponent-record-label { color: var(--text-secondary); }
+    .opponent-record-val { font-weight: 600; }
+    .clickable-nickname { cursor: pointer; text-decoration: underline; }
+    .clickable-nickname:hover { color: var(--accent); }
+
+    /* ══ TOAST ════════════════════════════════════════════════════════════════ */
+    #toast-container {
+      position: fixed; bottom: 24px; right: 24px;
+      display: flex; flex-direction: column-reverse; gap: 8px; z-index: 9999; pointer-events: none;
+    }
+    .toast {
+      padding: 11px 16px; border-radius: var(--radius); font-size: 13px; font-weight: 500;
+      max-width: 320px; pointer-events: all; cursor: pointer;
+      animation: toastIn 0.22s ease forwards; border-left: 4px solid;
+    }
+    .toast.dismissing { animation: toastOut 0.22s ease forwards; }
+    .toast.toast-error { background: #200d0e; border-color: var(--danger); color: #fca5a5; }
+    @keyframes toastIn  { from { opacity:0; transform: translateX(16px); } to { opacity:1; transform: none; } }
+    @keyframes toastOut { from { opacity:1; } to { opacity:0; transform: translateX(16px); } }
+
+    /* ══ RESULT MODAL ════════════════════════════════════════════════════════ */
+    #result-modal {
+      display: none; position: fixed; inset: 0;
+      align-items: center; justify-content: center; z-index: 10000;
+    }
+    #result-modal.show { display: flex; }
+    #result-modal-backdrop { position: absolute; inset: 0; background: rgba(0,0,0,0.72); }
+    #result-modal-box {
+      position: relative; z-index: 1; background: var(--bg-secondary);
+      border: 2px solid var(--gold); border-radius: 14px;
+      padding: 32px 36px; text-align: center; max-width: 400px; width: 90%;
+      box-shadow: 0 0 40px rgba(255,215,0,0.15); animation: popIn 0.22s ease;
+    }
+    #result-modal-icon  { font-size: 40px; margin-bottom: 8px; }
+    #result-modal-title { font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: var(--gold); margin-bottom: 12px; }
+    #result-modal-msg   { font-size: 16px; font-weight: 700; line-height: 1.6; margin-bottom: 22px; }
+    #result-modal-close {
+      background: var(--gold); color: #111; border: none; border-radius: var(--radius);
+      padding: 9px 28px; font-size: 14px; font-weight: 700; cursor: pointer;
+    }
+    #result-modal-close:hover { background: #ffe566; }
+
+    @keyframes popIn  { from { opacity:0; transform: scale(0.9); } to { opacity:1; transform: scale(1); } }
+    @keyframes pulse  { 0%,100%{opacity:1} 50%{opacity:0.4} }
+    @keyframes fadeIn { from { opacity:0; } to { opacity:1; } }
+
+    /* ══ Indian Poker 승부 결과 오버레이 (토스트) ═══════════════════════════════ */
+    #indian-showdown-overlay {
+      display: none; position: fixed; inset: 0; z-index: 9999;
+      align-items: center; justify-content: center; pointer-events: none;
+    }
+    #indian-showdown-overlay.show {
+      display: flex; animation: indianOverlayIn 0.3s ease;
+      pointer-events: auto; cursor: pointer;
+    }
+    #indian-showdown-box {
+      background: linear-gradient(135deg, #1a1f2e 0%, #0d1117 100%);
+      border: 2px solid var(--gold); border-radius: 16px;
+      padding: 28px 36px; text-align: center; max-width: 340px; width: 90%;
+      box-shadow: 0 0 50px rgba(255,215,0,0.25), 0 8px 32px rgba(0,0,0,0.6);
+    }
+    #indian-showdown-box.win  { border-color: var(--success); box-shadow: 0 0 40px rgba(63,185,80,0.2); }
+    #indian-showdown-box.lose { border-color: var(--danger);  box-shadow: 0 0 40px rgba(248,81,73,0.2); }
+    #indian-showdown-vs {
+      font-size: 22px; font-weight: 800; color: var(--text-primary);
+      margin-bottom: 8px; letter-spacing: 1px;
+    }
+    #indian-showdown-result {
+      font-size: 20px; font-weight: 800; margin-top: 12px;
+    }
+    #indian-showdown-result.win  { color: var(--success); }
+    #indian-showdown-result.lose { color: var(--danger); }
+    @keyframes indianOverlayIn { from { opacity:0; transform: scale(0.85); } to { opacity:1; transform: scale(1); } }
+
+    /* ══ Poker (홀덤/세븐포커) 쇼다운 결과 오버레이 ═══════════════════════════════ */
+    #poker-showdown-overlay {
+      display: none; position: fixed; inset: 0; z-index: 9999;
+      align-items: center; justify-content: center; pointer-events: none;
+    }
+    #poker-showdown-overlay.show {
+      display: flex; animation: indianOverlayIn 0.3s ease;
+      pointer-events: auto; cursor: pointer;
+    }
+    #poker-showdown-box {
+      background: linear-gradient(135deg, #1a1f2e 0%, #0d1117 100%);
+      border: 2px solid var(--gold); border-radius: 16px;
+      padding: 28px 36px; text-align: center; max-width: 420px; width: 90%;
+      box-shadow: 0 0 50px rgba(255,215,0,0.25), 0 8px 32px rgba(0,0,0,0.6);
+    }
+    #poker-showdown-winner { font-size: 22px; font-weight: 800; color: var(--gold); margin-bottom: 16px; }
+    #poker-showdown-participants { font-size: 14px; color: var(--text-secondary); text-align: left; margin-top: 12px; }
+    .poker-showdown-row { padding: 6px 0; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; gap: 12px; }
+    .poker-showdown-row:last-child { border-bottom: none; }
+
+    /* ══════════════════════════════════════════════════════════════════════════
+       모바일 반응형 (≤768px)
+       ══════════════════════════════════════════════════════════════════════════ */
+    @media (max-width: 768px) {
+
+      /* ── 앱 셸 ── */
+      #app { flex-direction: column; }
+      header { height: auto; min-height: 56px; flex-wrap: wrap; gap: 8px; justify-content: center; padding: 10px; }
+      #record-badge-wrapper { order: -1; }
+
+      /* ── 로비 ── */
+      #lobby-view { padding: 12px 8px 60px; }
+      #game-cards { gap: 10px; }
+      .category-cards { gap: 10px; }
+      .game-card { padding: 14px 12px; }
+
+      /* ── 룸 뷰: 그리드 → 세로 스택 ── */
+      #room-view {
+        display: none;
+        flex-direction: column !important;
+      }
+      #room-view.active {
+        display: flex !important;
+        flex-direction: column;
+        overflow: hidden;
+        height: 100%;
+      }
+      #game-area {
+        flex: 1 1 auto;
+        min-height: 0;
+        border-right: none;
+        border-bottom: 1px solid var(--border);
+        overflow-y: auto;
+      }
+      #game-area-content {
+        justify-content: flex-start !important;
+        padding: 10px 6px;
+        padding-bottom: 40px !important;
+      }
+
+      /* ── 게임 컨테이너: 압착 방지 및 유연한 중앙 정렬 ── */
+      #gomoku-container, #blackjack-container, #tictactoe-container, #connect4-container, #indian-container, #holdem-container, #sevenpoker-container, #thief-container, #onecard-container, #mahjong-container, #alkkagi-container {
+        flex-shrink: 0;
+        margin: auto 0;
+        width: 100%;
+      }
+
+      /* ── 채팅 패널: 하단 고정, 높이 제한 ── */
+      #chat-panel {
+        flex: 0 0 40vh;
+        max-height: 280px;
+        height: auto;
+        border-top: 1px solid var(--border);
+      }
+      #chat-messages { padding: 8px; }
+
+      /* ── 오목 보드: 모바일 축소 ──
+         15×30px = 450px 보드를 화면 너비에 맞게 scale 다운.
+         wrapper로 감싸 overflow를 숨기고 transform-origin을 top-left로 설정. */
+      #gomoku-container { gap: 8px; }
+      #game-status-bar { max-width: 100%; padding: 8px 10px; }
+      #status-seconds { font-size: 24px; }
+
+      /* board를 감싸는 가상 박스로 정확한 크기 확보 */
+      #gomoku-board-scaler {
+        width: 100%;
+        overflow: hidden;
+        display: flex;
+        justify-content: center;
+      }
+      #gomoku-board {
+        transform-origin: top center;
+        /* JS에서 동적으로 scale을 주입하지만 CSS 폴백도 설정 */
+        max-width: 100vw;
+      }
+
+      /* ── 블랙잭 컨테이너 ── */
+      #blackjack-container {
+        max-width: 100% !important;
+        width: 100%;
+        border-radius: 8px;
+      }
+      .bj-area { padding: 10px 10px 8px; }
+      .bj-card { font-size: 20px; padding: 8px 10px; min-width: 38px; }
+
+      /* ── 헤더 버튼 그룹 ── */
+      #game-area-header { flex-wrap: wrap; gap: 6px; padding: 8px 10px; }
+      .header-btn { padding: 5px 9px; font-size: 11px; }
+      #room-code-badge { font-size: 11px; }
+
+      /* ── 리매치 / 관전 메시지 ── */
+      #rematch-area { padding: 10px; }
+      #btn-rematch { font-size: 13px; }
+    }
+
+    /* 초소형 화면 (≤400px) 추가 보정 */
+    @media (max-width: 400px) {
+      #chat-panel { height: 30vh; max-height: 200px; }
+      .chat-bubble { max-width: 180px; font-size: 12px; }
+      #game-area-header { font-size: 11px; }
+    }
+
+    /* ── room-controls: 준비/리매치 버튼 화면 중앙 고정 (홀덤·세븐포커 등) ── */
+    .room-controls {
+      position: fixed !important;
+      top: 50% !important;
+      left: 50% !important;
+      transform: translate(-50%, -50%) !important;
+      z-index: 999999 !important;
+      background-color: rgba(0, 0, 0, 0.8) !important;
+      padding: 20px 40px !important;
+      border-radius: 15px !important;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.8) !important;
+      text-align: center !important;
+      width: max-content !important;
+    }
+    .room-controls button {
+      font-size: 20px !important;
+      padding: 10px 20px !important;
+      cursor: pointer !important;
+    }
+  </style>
+>>>>>>> parent of ed2fc56 (260224_1739)
 </head>
 <body>
 
@@ -218,6 +1711,7 @@
           <!-- 愿?꾩옄 硫붿떆吏 (Phase 4.3) -->
           <div id="bj-spectator-msg">?? 愿??以묒엯?덈떎</div>
           <div id="bj-message"></div>
+          <div id="bj-result-banner" class="game-result-banner" style="display:none;"></div>
         </div>
 
         <!-- Tictactoe container -->
@@ -345,6 +1839,7 @@
           </div>
           <div id="thief-escaped" style="font-size:12px;color:var(--text-secondary);margin-bottom:8px;"></div>
           <div id="thief-table-wrap" class="table-layout-wrap">
+            <div class="thief-tooltip">상대방의 카드를 2번 클릭하여 뽑으세요</div>
             <div id="thief-players"></div>
             <div id="thief-me-slot" class="table-seat seat-bottom">
               <span class="table-seat-name">??/span>
@@ -520,20 +2015,32 @@
 
 <!-- ?먥븧 Indian Poker ?밸? 寃곌낵 ?ㅻ쾭?덉씠 (3~5珥??먮룞 ?щ씪吏? ?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧 -->
 <div id="indian-showdown-overlay" onclick="closeIndianOverlay()">
+<<<<<<< HEAD
   <div id="indian-showdown-box" class="unified-result-box">
     <div id="indian-showdown-vs">??/div>
     <div id="indian-showdown-result">??/div>
+=======
+  <div id="indian-showdown-box">
+    <div id="indian-showdown-vs">—</div>
+    <div id="indian-showdown-result">—</div>
+>>>>>>> parent of ed2fc56 (260224_1739)
   </div>
 </div>
 
 <!-- ?먥븧 Poker ?쇰떎??寃곌낵 ?ㅻ쾭?덉씠 (5珥??먮룞 ?щ씪吏? ?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧 -->
 <div id="poker-showdown-overlay" onclick="closePokerShowdownOverlay()">
+<<<<<<< HEAD
   <div id="poker-showdown-box" class="unified-result-box">
     <div id="poker-showdown-winner">??/div>
+=======
+  <div id="poker-showdown-box">
+    <div id="poker-showdown-winner">—</div>
+>>>>>>> parent of ed2fc56 (260224_1739)
     <div id="poker-showdown-participants"></div>
   </div>
 </div>
 
+<<<<<<< HEAD
 <!-- ?먥븧 Blackjack 寃곌낵 ?ㅻ쾭?덉씠 (3.5珥??먮룞 ?щ씪吏? ?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧 -->
 <div id="bj-result-overlay" style="display:none; position:fixed; inset:0; z-index:9999; align-items:center; justify-content:center; background:rgba(0,0,0,0.5); pointer-events:none;">
   <div id="bj-result-box" class="unified-result-box">
@@ -542,6 +2049,9 @@
 </div>
 
 <!-- ?먥븧 Profile Modal (留덉씠?섏씠吏) ?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧??-->
+=======
+<!-- ══ Profile Modal (마이페이지) ═══════════════════════════════════════════ -->
+>>>>>>> parent of ed2fc56 (260224_1739)
 <div id="profile-modal">
   <div id="profile-backdrop" onclick="closeProfileModal()"></div>
   <div id="profile-box">
@@ -577,15 +2087,2665 @@
 <!-- ?먥븧 Game Result Modal ?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧 -->
 <div id="result-modal">
   <div id="result-modal-backdrop" onclick="closeResultModal()"></div>
+<<<<<<< HEAD
   <div id="result-modal-box" class="unified-result-box">
     <div id="result-modal-icon">?룇</div>
     <div id="result-modal-title">寃뚯엫 寃곌낵</div>
+=======
+  <div id="result-modal-box">
+    <div id="result-modal-icon">🏆</div>
+    <div id="result-modal-title">게임 결과</div>
+>>>>>>> parent of ed2fc56 (260224_1739)
     <div id="result-modal-msg"></div>
     <button id="result-modal-close" onclick="closeResultModal()">?뺤씤</button>
   </div>
 
 </div>
 
+<<<<<<< HEAD
   <script src="js/main.js"></script>
+=======
+<script>
+  // ── Supabase 클라이언트 초기화 ──────────────────────────────────────────────
+  // anon key는 프론트엔드용 퍼블릭 키이므로 소스 노출이 허용됩니다.
+  const _SB_URL = 'https://mfezndumovplmobazthw.supabase.co';
+  const _SB_KEY = 'sb_publishable_hgb5-k3rlP3FYaDgAiF62g_UEG4oODU';
+  const supabaseClient = supabase.createClient(_SB_URL, _SB_KEY);
+
+  // ── State ──────────────────────────────────────────────────────────────────
+  let actionCooldown = false;  // 게임 액션 광클 방지 (0.4초 쿨다운)
+  let ws            = null;
+  let currentRoomId = '';
+  let currentUserId = '';  // 인증 후 표시명 (닉네임 또는 이메일)
+  let currentUserEmail = '';  // 인증된 이메일 주소 (프로필 모달 표시용)
+  let currentToken  = '';  // Supabase JWT access_token (auth 이후 설정)
+  let pendingJoin   = null; // { roomId } — auth+connect 후 자동 입장
+  let pendingNickname = null; // 회원가입 직후 설정할 닉네임
+  let _signupNicknameChecked = false;   // 회원가입 시 중복확인 통과 여부
+  let _profileNicknameChecked = false;  // 마이페이지 시 중복확인 통과 여부
+  let _onNicknameCheckDone = null;
+  let reconnectTimer = null;
+  let isIntentionalLeave = false;
+  let currentMode = 'lobby'; // 'lobby' | 'room'
+
+  // Gomoku
+  let gomokuMyColor    = 0;
+  let gomokuTurnUserId = '';
+  let gomokuColorMap   = {};
+  let gomokuBoardReady = false;
+  let gomokuEnded      = false; // 게임 종료 후 리매치 버튼 표시 여부
+  let gomokuPrevBoard  = null;  // diffing용 이전 보드 (15x15)
+  let tttBoardReady    = false;
+  let tttPrevBoard     = null;  // diffing용 이전 보드 (3x3)
+  let c4BoardReady     = false;
+  let c4PrevBoard      = null;  // diffing용 이전 보드 (6x7)
+
+  const STAR_POINTS = new Set(
+    [3,7,11].flatMap(r => [3,7,11].map(c => `${r},${c}`))
+  );
+
+  // Debug panel element references
+  const logOutput  = document.getElementById('log-output');
+  const wsUrl      = document.getElementById('ws-url');
+  const msgInput   = document.getElementById('msg-input');
+  const inputUserId= document.getElementById('input-user-id');
+  const inputRoomId= document.getElementById('input-room-id');
+
+  window.onbeforeunload = function(e) {
+    if (currentMode === 'room' && !isIntentionalLeave) {
+      e.preventDefault();
+      e.returnValue = '';
+      return '';
+    }
+  };
+
+  // ── 백그라운드 탭 복귀 시 연결 끊김 처리 ─────────────────────────────────────
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') {
+      // 로비 화면(room이 아닐 때)에서만 자동 재연결 허용
+      if (currentMode !== 'room' && (!ws || ws.readyState !== WebSocket.OPEN)) {
+        if (currentToken) connect();
+        else window.location.reload();
+      }
+    }
+  });
+
+  // ── Init ──────────────────────────────────────────────────────────────────
+  (function init() {
+    setConnectionState(false);
+    // 이미 로그인된 세션이 있으면 자동 복구
+    supabaseClient.auth.getSession().then(({ data: { session } }) => {
+      if (session) {
+        currentToken     = session.access_token;
+        currentUserEmail = session.user.email;
+        currentUserId    = session.user.email;  // auth_ok에서 닉네임으로 갱신됨
+        showLoggedIn(session.user.email);
+        connect();
+      }
+    });
+  })();
+
+  // ── Supabase Auth 함수들 ──────────────────────────────────────────────────
+  // ── Auth 모드 전환 ─────────────────────────────────────────────────────────
+  let _authMode = 'login'; // 'login' | 'signup'
+
+  function toggleAuthMode(mode) {
+    _authMode = mode;
+    const isSignup = mode === 'signup';
+    document.getElementById('auth-panel-title').textContent  = isSignup ? '📝 회원가입' : '🔐 로그인';
+    document.getElementById('auth-confirm-group').style.display = isSignup ? 'block' : 'none';
+    document.getElementById('auth-nickname-group').style.display = isSignup ? 'block' : 'none';
+    document.getElementById('auth-nickname').value = '';
+    document.getElementById('auth-nickname-status').textContent = '';
+    document.getElementById('auth-login-btn-row').style.display   = isSignup ? 'none' : '';
+    document.getElementById('auth-login-switch').style.display    = isSignup ? 'none' : '';
+    document.getElementById('auth-signup-btn-row').style.display  = isSignup ? '' : 'none';
+    document.getElementById('auth-signup-switch').style.display   = isSignup ? '' : 'none';
+    document.getElementById('auth-password').placeholder          = isSignup ? '비밀번호 (6자 이상)' : '비밀번호';
+    document.getElementById('auth-password-confirm').value        = '';
+    _signupNicknameChecked = false;
+    document.getElementById('btn-auth-signup').disabled = true;
+    setAuthStatus('');
+  }
+
+  /** 닉네임 입력 시 중복확인 강제 리셋 — 회원가입/마이페이지 공통 */
+  function resetNicknameCheck(type) {
+    if (type === 'signup') {
+      _signupNicknameChecked = false;
+      document.getElementById('btn-auth-signup').disabled = true;
+      const statusEl = document.getElementById('auth-nickname-status');
+      statusEl.textContent = '⚠️ 중복확인을 해주세요';
+      statusEl.style.color = 'var(--warning)';
+    } else if (type === 'profile') {
+      _profileNicknameChecked = false;
+      document.getElementById('btn-profile-apply').disabled = true;
+      const statusEl = document.getElementById('profile-nickname-status');
+      statusEl.textContent = '⚠️ 중복확인을 해주세요';
+      statusEl.style.color = 'var(--warning)';
+    }
+  }
+
+  function onAuthKeyDown(e) {
+    if (e.key !== 'Enter') return;
+    if (_authMode === 'signup') authSignup();
+    else authLogin();
+  }
+
+  /** 회원가입 시 닉네임 중복확인 — Supabase 직접 조회 (WS 미연결 상태) */
+  async function checkNickname() {
+    const nickname = document.getElementById('auth-nickname').value.trim();
+    const statusEl = document.getElementById('auth-nickname-status');
+    if (!nickname) { statusEl.textContent = '닉네임을 입력하세요.'; statusEl.style.color = 'var(--danger)'; return; }
+    if (nickname.length < 2 || nickname.length > 20) { statusEl.textContent = '닉네임은 2~20자로 입력하세요.'; statusEl.style.color = 'var(--danger)'; return; }
+    statusEl.textContent = '확인 중...'; statusEl.style.color = 'var(--text-secondary)';
+    try {
+      const { data, error } = await supabaseClient.from('profiles').select('id').eq('username', nickname).limit(1);
+      if (error) throw error;
+      const available = !data || data.length === 0;
+      _signupNicknameChecked = available;
+      document.getElementById('btn-auth-signup').disabled = !available;
+      if (available) { statusEl.textContent = '✓ 사용 가능한 닉네임입니다.'; statusEl.style.color = 'var(--success)'; }
+      else { statusEl.textContent = '✗ 이미 사용 중인 닉네임입니다.'; statusEl.style.color = 'var(--danger)'; }
+    } catch (e) {
+      statusEl.textContent = '확인 중 오류가 발생했습니다.'; statusEl.style.color = 'var(--danger)';
+    }
+  }
+
+  function sendSetNickname(nickname) {
+    if (!ws || ws.readyState !== WebSocket.OPEN) return;
+    sendRaw(JSON.stringify({ action: 'set_nickname', payload: { nickname } }));
+  }
+
+  function openProfileModal() {
+    if (currentRoomId) {
+      alert('게임 진행 중에는 프로필을 변경할 수 없습니다.');
+      return;
+    }
+    document.getElementById('profile-email').textContent = currentUserEmail || currentUserId || '—';
+    document.getElementById('profile-current-nickname').textContent = currentUserId || '—';
+    document.getElementById('profile-new-nickname').value = currentUserId || '';
+    _profileNicknameChecked = false;
+    document.getElementById('btn-profile-apply').disabled = true;
+    document.getElementById('profile-nickname-status').textContent = '⚠️ 중복확인을 해주세요';
+    document.getElementById('profile-nickname-status').style.color = 'var(--warning)';
+    document.getElementById('profile-modal').classList.add('show');
+  }
+  function closeProfileModal() {
+    document.getElementById('profile-modal').classList.remove('show');
+  }
+  /** 마이페이지 닉네임 중복확인 — Supabase 직접 조회 */
+  async function checkNicknameProfile() {
+    const nickname = document.getElementById('profile-new-nickname').value.trim();
+    const statusEl = document.getElementById('profile-nickname-status');
+    if (!nickname) { statusEl.textContent = '닉네임을 입력하세요.'; statusEl.style.color = 'var(--danger)'; return; }
+    if (nickname.length < 2 || nickname.length > 20) { statusEl.textContent = '닉네임은 2~20자로 입력하세요.'; statusEl.style.color = 'var(--danger)'; return; }
+    if (nickname === currentUserId) {
+      _profileNicknameChecked = true;
+      document.getElementById('btn-profile-apply').disabled = false;
+      statusEl.textContent = '✓ 현재 닉네임과 동일합니다.'; statusEl.style.color = 'var(--success)';
+      return;
+    }
+    statusEl.textContent = '확인 중...'; statusEl.style.color = 'var(--text-secondary)';
+    try {
+      const { data, error } = await supabaseClient.from('profiles').select('id').eq('username', nickname).limit(1);
+      if (error) throw error;
+      const available = !data || data.length === 0;
+      _profileNicknameChecked = available;
+      document.getElementById('btn-profile-apply').disabled = !available;
+      if (available) { statusEl.textContent = '✓ 사용 가능한 닉네임입니다.'; statusEl.style.color = 'var(--success)'; }
+      else { statusEl.textContent = '✗ 이미 사용 중인 닉네임입니다.'; statusEl.style.color = 'var(--danger)'; }
+    } catch (e) {
+      statusEl.textContent = '확인 중 오류가 발생했습니다.'; statusEl.style.color = 'var(--danger)';
+    }
+  }
+  function saveProfileNickname() {
+    if (!_profileNicknameChecked) { showToast('중복확인을 먼저 해주세요.', 'error'); return; }
+    const nickname = document.getElementById('profile-new-nickname').value.trim();
+    if (!nickname || nickname.length < 2 || nickname.length > 20) {
+      showToast('닉네임은 2~20자로 입력하세요.', 'error'); return;
+    }
+    if (!ws || ws.readyState !== WebSocket.OPEN) { showToast('연결이 끊어졌습니다.', 'error'); return; }
+    sendRaw(JSON.stringify({ action: 'set_nickname', payload: { nickname } }));
+    currentUserId = nickname;
+    closeProfileModal();
+    showToast('닉네임이 변경되었습니다.', 'info');
+  }
+
+  function requestOpponentRecord(userId) {
+    if (!userId || userId === currentUserId) return;
+    if (!ws || ws.readyState !== WebSocket.OPEN) { showToast('연결이 끊어졌습니다.', 'error'); return; }
+    sendRaw(JSON.stringify({ action: 'get_user_record', payload: { userId } }));
+  }
+  function showOpponentRecordModal(userId, records) {
+    const fmt = r => r ? `${r.wins}승 ${r.losses}패 ${r.draws}무` : '0승 0패 0무';
+    const games = ['omok', 'tictactoe', 'connect4', 'holdem', 'sevenpoker', 'indian', 'blackjack', 'onecard', 'thief', 'mahjong', 'alkkagi'];
+    const labels = { total: '전체', omok: '🀱 오목', tictactoe: '⭕❌ 틱택토', connect4: '🔴🟡 4목', holdem: '♠️ 텍사스 홀덤', sevenpoker: '🃏 세븐 포커', indian: '🃏 인디언 포커', blackjack: '🃏 블랙잭', onecard: '🃏 원카드', thief: '🃏 도둑잡기', mahjong: '🀄 마작', alkkagi: '⚫ 알까기' };
+    let html = '';
+    html += `<div class="opponent-record-row"><span class="opponent-record-label">${labels.total}</span><span class="opponent-record-val">${fmt(records && records.total)}</span></div>`;
+    for (const key of games) {
+      const label = labels[key];
+      if (label) {
+        const r = records && records[key];
+        html += `<div class="opponent-record-row"><span class="opponent-record-label">${label}</span><span class="opponent-record-val">${fmt(r)}</span></div>`;
+      }
+    }
+    document.getElementById('opponent-record-title').textContent = `${userId} 전적`;
+    document.getElementById('opponent-record-content').innerHTML = html || '<div>전적 없음</div>';
+    document.getElementById('opponent-record-modal').classList.add('show');
+  }
+  function closeOpponentRecordModal() {
+    document.getElementById('opponent-record-modal').classList.remove('show');
+  }
+
+  function setAuthStatus(msg, cls = '') {
+    const el = document.getElementById('auth-status');
+    el.textContent = msg;
+    el.className   = cls;
+  }
+
+  async function authLogin() {
+    const email    = document.getElementById('auth-email').value.trim();
+    const password = document.getElementById('auth-password').value;
+    if (!email || !password) { setAuthStatus('이메일과 비밀번호를 입력하세요.', 'error'); return; }
+    setAuthStatus('로그인 중...', 'loading');
+    const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
+    if (error) { setAuthStatus(error.message, 'error'); return; }
+    currentToken     = data.session.access_token;
+    currentUserEmail = data.user.email;
+    currentUserId    = data.user.email;  // auth_ok에서 닉네임으로 갱신됨
+    showLoggedIn(data.user.email);
+    connect();
+  }
+
+  async function authSignup() {
+    const email    = document.getElementById('auth-email').value.trim();
+    const password = document.getElementById('auth-password').value;
+    const confirm  = document.getElementById('auth-password-confirm').value;
+    const nickname = document.getElementById('auth-nickname').value.trim();
+    if (!email || !password) { setAuthStatus('이메일과 비밀번호를 입력하세요.', 'error'); return; }
+    if (password.length < 6)  { setAuthStatus('비밀번호는 6자 이상이어야 합니다.', 'error'); return; }
+    if (password !== confirm)  { setAuthStatus('비밀번호가 일치하지 않습니다.', 'error'); return; }
+    if (!nickname || nickname.length < 2 || nickname.length > 20) {
+      setAuthStatus('닉네임은 2~20자로 입력하세요.', 'error'); return;
+    }
+    if (!_signupNicknameChecked) {
+      setAuthStatus('닉네임 중복확인을 해주세요.', 'error'); return;
+    }
+    setAuthStatus('가입 중...', 'loading');
+    const { data, error } = await supabaseClient.auth.signUp({ email, password });
+    if (error) { setAuthStatus(error.message, 'error'); return; }
+    if (data.session) {
+      currentToken     = data.session.access_token;
+      currentUserEmail = data.user.email;
+      currentUserId    = nickname;
+      showLoggedIn(data.user.email, nickname);
+      connect();
+      pendingNickname = nickname;
+    } else {
+      setAuthStatus('📧 가입 확인 이메일을 발송했습니다. 이메일을 확인해 주세요.', 'loading');
+    }
+  }
+
+  async function authLogout() {
+    await supabaseClient.auth.signOut();
+    currentToken  = '';
+    currentUserId = '';
+    if (ws) ws.close();
+    showLoggedOut();
+    setRoomState('', '');
+    showToast('로그아웃 되었습니다.', 'info');
+  }
+
+  function showLoggedIn(email, nickname) {
+    document.getElementById('auth-panel').style.display      = 'none';
+    if (email) currentUserEmail = email;
+    if (nickname) currentUserId = nickname;
+    document.getElementById('game-cards').style.display      = 'flex';
+    document.getElementById('btn-profile').style.display     = '';
+    setAuthStatus('');
+  }
+
+  function showLoggedOut() {
+    document.getElementById('auth-panel').style.display      = '';
+    document.getElementById('game-cards').style.display      = 'none';
+    document.getElementById('btn-profile').style.display     = 'none';
+    document.getElementById('auth-email').value    = '';
+    document.getElementById('auth-password').value = '';
+  }
+
+  // ── Connection State ───────────────────────────────────────────────────────
+  function setConnectionState(connected) {
+    const dot  = document.getElementById('conn-dot');
+    const text = document.getElementById('conn-text');
+    dot.className  = connected ? 'connected' : '';
+    text.textContent = connected ? '연결됨' : '연결 끊김';
+
+    document.getElementById('btn-connect').disabled    = connected;
+    document.getElementById('btn-disconnect').disabled = !connected;
+    document.getElementById('btn-send').disabled       = !connected;
+    document.getElementById('btn-join').disabled       = !connected;
+
+    if (connected) {
+      document.getElementById('record-badge-wrapper').classList.add('visible');
+    } else {
+      document.getElementById('record-badge-wrapper').classList.remove('visible');
+      document.getElementById('record-popup').classList.remove('open');
+      setRoomState('', '');
+    }
+  }
+
+  // ── Room State (lobby ↔ room transition) ───────────────────────────────────
+  function setRoomState(userId, roomId) {
+    // currentUserId는 auth 시 설정됨. 방 퇴장 시에도 유지.
+    if (userId) currentUserId = userId;
+    currentRoomId = roomId;
+    currentMode = roomId ? 'room' : 'lobby';
+
+    if (roomId) {
+      // ── Enter room ──
+      document.getElementById('lobby-view').style.display = 'none';
+      document.getElementById('room-view').classList.add('active');
+      document.getElementById('btn-leave').style.display = '';
+      document.getElementById('chat-room-badge').textContent = roomId;
+      document.getElementById('chat-input').disabled      = false;
+      document.getElementById('btn-send-chat').disabled   = false;
+
+      // Board title
+      const titleEl = document.getElementById('game-area-title');
+      if      (roomId.startsWith('omok'))      titleEl.textContent = '🀱 오목';
+      else if (roomId.startsWith('blackjack')) titleEl.textContent = '🃏 블랙잭';
+      else if (roomId.startsWith('tictactoe')) titleEl.textContent = '⭕❌ 틱택토';
+      else if (roomId.startsWith('connect4'))  titleEl.textContent = '🔴🟡 4목';
+      else if (roomId.startsWith('indian'))    titleEl.textContent = '🃏 인디언 포커';
+      else if (roomId.startsWith('thief'))     titleEl.textContent = '🃏 도둑잡기';
+      else if (roomId.startsWith('onecard'))   titleEl.textContent = '🃏 원카드';
+      else if (roomId.startsWith('mahjong'))   titleEl.textContent = '🀄 마작';
+      else if (roomId.startsWith('alkkagi'))   titleEl.textContent = '⚫ 알까기';
+      else                                     titleEl.textContent = roomId;
+
+      // Room code badge: extract last segment after last underscore
+      const codeParts = roomId.split('_');
+      const roomCode  = codeParts[codeParts.length - 1].toUpperCase();
+      document.getElementById('room-code-text').textContent = roomCode;
+      document.getElementById('room-code-badge').classList.add('visible');
+
+      // 인게임 룰 버튼: omok / blackjack / tictactoe / connect4 / indian / holdem / sevenpoker / thief / onecard 방에서 표시
+      const rulesBtn = document.getElementById('btn-ingame-rules');
+      rulesBtn.style.display = (roomId.startsWith('omok') || roomId.startsWith('blackjack') || roomId.startsWith('tictactoe') || roomId.startsWith('connect4') || roomId.startsWith('indian') || roomId.startsWith('holdem') || roomId.startsWith('sevenpoker') || roomId.startsWith('thief') || roomId.startsWith('onecard') || roomId.startsWith('mahjong') || roomId.startsWith('alkkagi')) ? '' : 'none';
+      // 봇 추가 버튼: 오목, 4목, 틱택토, 인디언 포커, 홀덤, 세븐 포커, 도둑잡기, 원카드 방에서 표시 (blackjack 제외)
+      const addBotBtn = document.getElementById('btn-add-bot');
+      addBotBtn.style.display = (roomId.startsWith('omok') || roomId.startsWith('connect4') || roomId.startsWith('tictactoe') || roomId.startsWith('indian') || roomId.startsWith('holdem') || roomId.startsWith('sevenpoker') || roomId.startsWith('thief') || roomId.startsWith('onecard') || roomId.startsWith('mahjong') || roomId.startsWith('alkkagi')) ? '' : 'none';
+
+      // Sync debug inputs
+      if (inputUserId) inputUserId.value = userId;
+      if (inputRoomId) inputRoomId.value = roomId;
+
+      // Ready 영역: blackjack이 아닌 PVP 게임에서는 표시
+      const readyArea = document.getElementById('ready-area');
+      const btnReady = document.getElementById('btn-ready');
+      const readyCountEl = document.getElementById('ready-count');
+      if (!roomId.startsWith('blackjack')) {
+        readyArea.style.display = 'flex';
+        if (btnReady) btnReady.disabled = false;
+        if (readyCountEl) readyCountEl.textContent = '0/0';
+      } else {
+        readyArea.style.display = 'none';
+      }
+
+    } else {
+      // ── Leave room / show lobby ──
+      document.getElementById('lobby-view').style.display = '';
+      document.getElementById('room-view').classList.remove('active');
+      document.getElementById('btn-leave').style.display  = 'none';
+      document.getElementById('room-code-badge').classList.remove('visible');
+      document.getElementById('room-code-text').textContent = '------';
+      document.getElementById('btn-ingame-rules').style.display = 'none';
+      document.getElementById('btn-add-bot').style.display = 'none';
+      document.getElementById('btn-takeover').style.display = 'none';
+      document.getElementById('chat-input').disabled      = true;
+      document.getElementById('btn-send-chat').disabled   = true;
+
+      // Reset game boards
+      gomokuTurnUserId = '';
+      gomokuMyColor    = 0;
+      gomokuColorMap   = {};
+      gomokuBoardReady = false;
+      gomokuEnded      = false;
+      gomokuPrevBoard  = null;
+      tttBoardReady    = false;
+      tttPrevBoard     = null;
+      c4BoardReady     = false;
+      c4PrevBoard      = null;
+      setGomokuEnded();
+      document.getElementById('gomoku-container').style.display    = 'none';
+      document.getElementById('blackjack-container').style.display = 'none';
+      document.getElementById('tictactoe-container').style.display = 'none';
+      document.getElementById('connect4-container').style.display  = 'none';
+      document.getElementById('indian-container').style.display    = 'none';
+      document.getElementById('holdem-container').style.display    = 'none';
+      document.getElementById('sevenpoker-container').style.display = 'none';
+      document.getElementById('thief-container').style.display    = 'none';
+      document.getElementById('onecard-container').style.display   = 'none';
+      document.getElementById('mahjong-container').style.display   = 'none';
+      document.getElementById('alkkagi-container').style.display   = 'none';
+      document.getElementById('board-placeholder').style.display   = 'flex';
+      // Reset rematch UI
+      document.getElementById('rematch-area').classList.remove('visible');
+      document.getElementById('rematch-count').textContent = '0/0';
+      document.getElementById('btn-rematch').disabled = false;
+      // Reset ready UI
+      document.getElementById('ready-area').style.display = 'none';
+      document.getElementById('ready-count').textContent = '0/0';
+      document.getElementById('btn-ready').disabled = false;
+
+      // Clear chat
+      document.getElementById('chat-messages').innerHTML = '';
+    }
+  }
+
+  const games = ['omok', 'blackjack', 'tictactoe', 'connect4', 'indian', 'holdem', 'sevenpoker', 'thief', 'onecard', 'mahjong', 'alkkagi'];
+
+  /** record_update 수신 시 전적 배지 및 팝업을 갱신합니다. */
+  function updateRecords(records) {
+    if (!records) return;
+    const fmt = r => r ? `${r.wins}승 ${r.losses}패 ${r.draws}무` : '0승 0패 0무';
+    if (records.total)      document.getElementById('record-total').textContent      = fmt(records.total);
+    if (records.omok)       document.getElementById('record-omok').textContent       = fmt(records.omok);
+    if (records.blackjack)  document.getElementById('record-blackjack').textContent  = fmt(records.blackjack);
+    if (records.tictactoe)  document.getElementById('record-tictactoe').textContent = fmt(records.tictactoe);
+    if (records.connect4)   document.getElementById('record-connect4').textContent   = fmt(records.connect4);
+    if (records.indian)     document.getElementById('record-indian').textContent     = fmt(records.indian);
+    if (records.holdem)     document.getElementById('record-holdem').textContent     = fmt(records.holdem);
+    if (records.sevenpoker) document.getElementById('record-sevenpoker').textContent = fmt(records.sevenpoker);
+    if (records.thief)      document.getElementById('record-thief').textContent      = fmt(records.thief);
+    if (records.onecard)   document.getElementById('record-onecard').textContent    = fmt(records.onecard);
+    if (records.mahjong)  document.getElementById('record-mahjong').textContent   = fmt(records.mahjong);
+    if (records.alkkagi)  document.getElementById('record-alkkagi').textContent  = fmt(records.alkkagi);
+  }
+
+  /** 채팅창 접기/펼치기 토글 */
+  function toggleChatCollapse() {
+    const panel = document.getElementById('chat-panel');
+    const btn   = document.getElementById('btn-chat-toggle');
+    panel.classList.toggle('collapsed');
+    btn.textContent = panel.classList.contains('collapsed') ? '💬 ▲' : '💬 ▼';
+    btn.title = panel.classList.contains('collapsed') ? '채팅창 펼치기' : '채팅창 접기';
+  }
+
+  /** 전적 팝업 토글 (외부 클릭 시 닫힘) */
+  function toggleRecordPopup(e) {
+    e.stopPropagation();
+    document.getElementById('record-popup').classList.toggle('open');
+  }
+  document.addEventListener('click', () => {
+    document.getElementById('record-popup')?.classList.remove('open');
+  });
+
+  // ── Chat System ────────────────────────────────────────────────────────────
+  function addChatMessage(type, parsed) {
+    const messages = document.getElementById('chat-messages');
+    const el = document.createElement('div');
+
+    if (type === 'chat') {
+      const isMine  = parsed.userId === currentUserId;
+      const content = (parsed.message || '').replace(/^\[.+?\]:\s*/, '');
+      el.className  = `chat-msg ${isMine ? 'mine' : 'other'}`;
+      el.innerHTML  = isMine
+        ? `<div class="chat-bubble">${escapeHTML(content)}</div>`
+        : `<div class="chat-sender">${escapeHTML(parsed.userId || '')}</div>`
+        + `<div class="chat-bubble">${escapeHTML(content)}</div>`;
+    } else if (type === 'join') {
+      el.className = 'chat-msg system';
+      el.innerHTML = `<div class="system-msg">👋 ${escapeHTML(parsed.userId || '')}님이 입장했습니다</div>`;
+    } else if (type === 'leave') {
+      el.className = 'chat-msg system';
+      el.innerHTML = `<div class="system-msg">🚪 ${escapeHTML(parsed.userId || '')}님이 퇴장했습니다</div>`;
+    } else if (type === 'game_result') {
+      el.className = 'chat-msg system';
+      el.innerHTML = `<div class="result-msg">🏆 ${escapeHTML(parsed.message || '')}</div>`;
+    } else if (type === 'game_notice') {
+      el.className = 'chat-msg system';
+      el.innerHTML = `<div class="notice-msg">${escapeHTML(parsed.message || '')}</div>`;
+    } else if (type === 'system') {
+      el.className = 'chat-msg system';
+      el.innerHTML = `<div class="system-msg">✦ ${escapeHTML(parsed.message || '')}</div>`;
+    }
+
+    messages.appendChild(el);
+    messages.scrollTop = messages.scrollHeight;
+
+    // 접힌 채팅창 1줄 미리보기 갱신
+    const previewEl = document.getElementById('chat-preview');
+    if (previewEl) {
+      let text = '';
+      if (type === 'chat') {
+        text = (parsed.message || '').replace(/^\[.+?\]:\s*/, '');
+      } else if (type === 'join') {
+        text = `${parsed.userId || ''}님이 입장했습니다`;
+      } else if (type === 'leave') {
+        text = `${parsed.userId || ''}님이 퇴장했습니다`;
+      } else if (type === 'game_result') {
+        text = parsed.message || '';
+      } else if (type === 'game_notice') {
+        text = parsed.message || '';
+      } else if (type === 'system') {
+        text = parsed.message || '';
+      }
+      if (text) {
+        previewEl.textContent = text.replace(/<[^>]+>/g, '').trim();
+      }
+    }
+  }
+
+  function sendChat() {
+    const input   = document.getElementById('chat-input');
+    const message = input.value.trim();
+    if (!message || !ws || ws.readyState !== WebSocket.OPEN || !currentRoomId) return;
+    sendRaw(JSON.stringify({ action: 'chat', payload: { message } }));
+    input.value = '';
+  }
+
+  function onChatKeyDown(e) {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendChat(); }
+  }
+
+  // ── Toast / Modal ──────────────────────────────────────────────────────────
+  function showToast(message, type = 'error') {
+    const container = document.getElementById('toast-container');
+    const el = document.createElement('div');
+    el.className = `toast toast-${type}`;
+    el.textContent = message;
+    el.onclick = () => dismissToast(el);
+    container.appendChild(el);
+    const timer = setTimeout(() => dismissToast(el), 4000);
+    el._timer = timer;
+  }
+  function dismissToast(el) {
+    if (!el.parentNode) return;
+    clearTimeout(el._timer);
+    el.classList.add('dismissing');
+    el.addEventListener('animationend', () => el.remove(), { once: true });
+  }
+  function showResultModal(message) {
+    document.getElementById('result-modal-msg').innerHTML = message.replace(/\n/g, '<br>');
+    const modal = document.getElementById('result-modal');
+    modal.classList.add('show');
+    clearTimeout(modal._autoClose);
+    modal._autoClose = setTimeout(closeResultModal, 7000);
+  }
+  function closeResultModal() {
+    const modal = document.getElementById('result-modal');
+    modal.classList.remove('show');
+    clearTimeout(modal._autoClose);
+  }
+
+  /** 현재 입장한 방의 접두사에 맞는 룰 모달을 표시합니다. */
+  function showCurrentRules() {
+    const prefix = currentRoomId.startsWith('omok')      ? 'omok'
+                 : currentRoomId.startsWith('blackjack') ? 'blackjack'
+                 : currentRoomId.startsWith('tictactoe') ? 'tictactoe'
+                 : currentRoomId.startsWith('connect4')  ? 'connect4'
+                 : currentRoomId.startsWith('indian')   ? 'indian'
+                 : currentRoomId.startsWith('holdem')   ? 'holdem'
+                 : currentRoomId.startsWith('sevenpoker') ? 'sevenpoker'
+                 : currentRoomId.startsWith('thief')    ? 'thief'
+                 : currentRoomId.startsWith('onecard')  ? 'onecard'
+                 : currentRoomId.startsWith('mahjong')   ? 'mahjong'
+                 : currentRoomId.startsWith('alkkagi')   ? 'alkkagi'
+                 : null;
+    if (prefix) showRules(prefix);
+  }
+
+  // ── Rules Modal ────────────────────────────────────────────────────────────
+  const RULES = {
+    omok: {
+      title: '🀱 오목 룰',
+      html: `
+        <h3>게임 개요</h3>
+        <ul>
+          <li>15×15 보드에서 <strong>가로·세로·대각선으로 5목</strong>을 먼저 완성하면 승리합니다.</li>
+          <li>2명이 입장하면 무작위로 흑(선공)/백(후공)이 결정됩니다.</li>
+        </ul>
+        <h3>렌주룰 (흑 금수)</h3>
+        <ul>
+          <li><strong>쌍삼(3-3)</strong>: 활삼이 두 방향 이상 동시에 완성되는 곳 금지</li>
+          <li><strong>쌍사(4-4)</strong>: 사(4목 위협)가 두 방향 이상 동시에 완성되는 곳 금지</li>
+          <li><strong>장목(6목+)</strong>: 6개 이상 연속 금지</li>
+          <li>백은 금수 없음, 6목 이상도 승리 인정</li>
+        </ul>
+        <h3>턴 타이머</h3>
+        <ul>
+          <li>한 턴당 <strong>15초</strong> 제한. 초과 시 시간 초과 패배.</li>
+        </ul>
+        <h3>리매치</h3>
+        <ul>
+          <li>게임 종료 후 <strong>🔄 한 판 더</strong> 버튼으로 리매치 가능. 흑/백을 교대하여 새 게임 시작.</li>
+        </ul>
+        <h3>전적 기록</h3>
+        <ul>
+          <li>게임 종료 시 승자에게 <strong>1승</strong>, 패자에게 <strong>1패</strong>가 전적에 기록됩니다.</li>
+        </ul>`
+    },
+    blackjack: {
+      title: '🃏 블랙잭 룰',
+      html: `
+        <h3>게임 개요</h3>
+        <ul>
+          <li>딜러 AI를 상대로 패의 합산이 <strong>21에 가장 가깝게</strong> 만드는 게임입니다.</li>
+          <li>21을 초과(버스트)하면 즉시 패배합니다.</li>
+        </ul>
+        <h3>카드 점수</h3>
+        <ul>
+          <li>숫자 카드: 해당 숫자</li>
+          <li>J, Q, K: 10점</li>
+          <li>A: 1 또는 11 (버스트 방지 자동 조정)</li>
+        </ul>
+        <h3>딜러 규칙</h3>
+        <ul>
+          <li>딜러는 패의 합이 <strong>16 이하</strong>이면 반드시 카드를 추가로 뽑습니다.</li>
+          <li>딜러 카드는 1장이 뒷면으로 숨겨져 있으며, Stand 후 공개됩니다.</li>
+        </ul>
+        <h3>전적 기록</h3>
+        <ul>
+          <li>승리 시: <strong>1승</strong> 기록</li>
+          <li>무승부(Push): <strong>1무</strong> 기록</li>
+          <li>패배 / 버스트: <strong>1패</strong> 기록</li>
+        </ul>`
+    },
+    tictactoe: {
+      title: '⭕ 틱택토 룰',
+      html: `
+        <h3>게임 개요</h3>
+        <ul>
+          <li>3×3 보드에서 <strong>가로·세로·대각선으로 3목</strong>을 먼저 완성하면 승리합니다.</li>
+          <li>2명이 입장하면 O(선공)와 X(후공)가 결정됩니다.</li>
+        </ul>
+        <h3>진행 방식</h3>
+        <ul>
+          <li>O와 X가 번갈아 가며 빈칸에 표시합니다.</li>
+          <li>9칸이 모두 채워지고 승부가 나지 않으면 <strong>무승부</strong>입니다.</li>
+        </ul>
+        <h3>턴 타이머</h3>
+        <ul>
+          <li>한 턴당 <strong>15초</strong> 제한. 초과 시 시간 초과 패배.</li>
+        </ul>
+        <h3>리매치</h3>
+        <ul>
+          <li>게임 종료 후 <strong>🔄 한 판 더</strong> 버튼으로 리매치 가능. 선후공(O/X) 교대하여 새 게임 시작.</li>
+        </ul>
+        <h3>전적 기록</h3>
+        <ul>
+          <li>승리 시: <strong>1승</strong> 기록</li>
+          <li>무승부: <strong>1무</strong> 기록</li>
+          <li>패배 시: <strong>1패</strong> 기록</li>
+        </ul>`
+    },
+    indian: {
+      title: '🃏 인디언 포커 룰',
+      html: `
+        <h3>게임 개요</h3>
+        <ul>
+          <li>자신의 카드는 볼 수 없고, <strong>상대방의 카드만 볼 수 있습니다.</strong></li>
+          <li>각 플레이어는 <strong>❤️×10 하트(인게임 체력)</strong>로 시작합니다. 하트는 라운드 진행을 위한 생명력이며, 0이 되면 매치에서 탈락합니다.</li>
+        </ul>
+        <h3>라운드 진행</h3>
+        <ul>
+          <li>매 라운드 각 플레이어는 카드를 1장 받습니다. 상대 카드를 보고 판단하세요.</li>
+          <li>선공이 먼저 선택합니다:</li>
+          <li>&nbsp;&nbsp;🏳️ <strong>포기</strong>: 선공 하트 -1. 라운드 종료.</li>
+          <li>&nbsp;&nbsp;⚔️ <strong>승부</strong>: 후공에게 차례가 넘어갑니다.</li>
+          <li>후공이 선택합니다:</li>
+          <li>&nbsp;&nbsp;🏳️ <strong>포기</strong>: 후공 하트 -1. 라운드 종료.</li>
+          <li>&nbsp;&nbsp;⚔️ <strong>승부(콜)</strong>: 카드를 공개하여 승패를 판정합니다.</li>
+        </ul>
+        <h3>라운드 내 하트 증감 (인게임 체력)</h3>
+        <ul>
+          <li>포기 시: 해당 플레이어 하트 -1.</li>
+          <li>승부(콜) 후: 승자 하트 +2, 패자 하트 -2.</li>
+          <li>숫자(2 < 3 < … < K < A)가 높은 쪽 승리. 동점 시 문양(♣ < ♦ < ♥ < ♠)으로 결정.</li>
+        </ul>
+        <h3>턴 타이머</h3>
+        <ul>
+          <li>한 턴당 <strong>30초</strong> 제한. 초과 시 <strong>포기</strong> 처리(하트 -1).</li>
+        </ul>
+        <h3>라운드마다 선후공 교체</h3>
+        <ul>
+          <li>매 라운드 선공과 후공이 교대합니다.</li>
+        </ul>
+        <h3>리매치</h3>
+        <ul>
+          <li>게임 완전 종료(누군가 하트 0개) 후 <strong>🔄 한 판 더</strong> 버튼으로 리매치 가능. 양쪽 하트를 10개로 리셋하여 새 게임 시작.</li>
+        </ul>
+        <h3>최종 전적 기록</h3>
+        <ul>
+          <li>누군가의 하트가 0이 되어 매치가 완전히 종료되면, 최종 생존자에게 <strong>1승</strong>, 탈락자에게 <strong>1패</strong>가 서버 전적에 기록됩니다.</li>
+        </ul>`
+    },
+    sevenpoker: {
+      title: '🃏 세븐 포커 룰',
+      html: `
+        <h3>게임 개요</h3>
+        <ul>
+          <li>최대 4인, 각 플레이어는 <strong>별(⭐)×10개</strong>로 시작합니다.</li>
+          <li>커뮤니티 카드 없이 <strong>각자 7장</strong>을 받는 3~7구 분배 방식입니다.</li>
+        </ul>
+        <h3>카드 분배 (3~7구)</h3>
+        <ul>
+          <li><strong>3구</strong>: 3장 분배 (1~2번째 카드 히든, 3번째 공개)</li>
+          <li><strong>4구</strong>: 4번째 카드 공개</li>
+          <li><strong>5구</strong>: 5번째 카드 공개</li>
+          <li><strong>6구</strong>: 6번째 카드 공개</li>
+          <li><strong>7구</strong>: 7번째 카드 히든 (쇼다운 전까지 비공개)</li>
+        </ul>
+        <h3>액션</h3>
+        <ul>
+          <li>✅ <strong>체크</strong>: 팟에 별 1개 지불 (별 0개면 무료 체크)</li>
+          <li>🏳️ <strong>폴드</strong>: 이번 라운드 포기</li>
+        </ul>
+        <h3>쇼다운 및 족보</h3>
+        <ul>
+          <li>7장 중 베스트 5장 족보로 승부.</li>
+          <li>동점 시 팟 분할, 나머지는 다음 라운드 이월.</li>
+        </ul>
+        <h3>📋 포커 족보 순서</h3>
+        <p>로티플 &gt; 스트레이트플러시 &gt; 포카드 &gt; 풀하우스 &gt; 플러시 &gt; 스트레이트 &gt; 트리플 &gt; 투페어 &gt; 원페어 &gt; 하이카드</p>
+        <h3>매치 종료</h3>
+        <ul>
+          <li>파산자(별 0개) ≥ 전체 유저 수/2 이면 매치 종료.</li>
+          <li>생존자 → 1승, 파산자 → 1패 전적 기록.</li>
+        </ul>`
+    },
+    holdem: {
+      title: '♠️ 텍사스 홀덤 룰',
+      html: `
+        <h3>게임 개요</h3>
+        <ul>
+          <li>최대 4인, 각 플레이어는 <strong>별(⭐)×10개</strong>로 시작합니다.</li>
+          <li>전통적인 칩 베팅(레이즈/올인) 없이, 캐주얼한 <strong>별 서바이벌 룰</strong>을 적용합니다.</li>
+        </ul>
+        <h3>페이즈</h3>
+        <ul>
+          <li><strong>프리플랍</strong>: 개인 카드 2장 배분 → 체크/폴드</li>
+          <li><strong>플랍</strong>: 커뮤니티 카드 3장 공개 → 체크/폴드</li>
+          <li><strong>턴</strong>: 커뮤니티 카드 +1장 → 체크/폴드</li>
+          <li><strong>리버</strong>: 커뮤니티 카드 +1장 → 체크/폴드</li>
+          <li><strong>쇼다운</strong>: 생존자들의 7장(개인 2장+공유 5장)으로 족보 판정, 최고 족보가 팟 획득</li>
+        </ul>
+        <h3>액션</h3>
+        <ul>
+          <li>✅ <strong>체크</strong>: 팟에 별 1개 지불하고 다음 페이즈 진행. (별 0개면 무료 체크)</li>
+          <li>🏳️ <strong>폴드</strong>: 이번 라운드 포기. (이미 낸 별은 돌려받지 못함)</li>
+        </ul>
+        <h3>쇼다운 및 족보</h3>
+        <ul>
+          <li>동점 시 팟을 n등분, 나머지는 다음 라운드로 이월</li>
+        </ul>
+        <h3>📋 포커 족보 순서</h3>
+        <p>로티플 &gt; 스트레이트플러시 &gt; 포카드 &gt; 풀하우스 &gt; 플러시 &gt; 스트레이트 &gt; 트리플 &gt; 투페어 &gt; 원페어 &gt; 하이카드</p>
+        <h3>매치 종료</h3>
+        <ul>
+          <li><strong>파산자 수 ≥ ceil(전체 유저 수 / 2)</strong>이면 매치 종료.</li>
+          <li>생존자(별 보유) → <strong>1승</strong>, 파산자 → <strong>1패</strong> 전적 기록.</li>
+        </ul>`
+    },
+    connect4: {
+      title: '🔴🟡 4목 (Connect 4) 룰',
+      html: `
+        <h3>게임 개요</h3>
+        <ul>
+          <li>6행 × 7열 보드에서 <strong>가로·세로·대각선으로 4개</strong>를 먼저 이으면 승리합니다.</li>
+          <li>2명이 입장하면 🔴 빨강(선공)과 🟡 노랑(후공)이 결정됩니다.</li>
+        </ul>
+        <h3>진행 방식</h3>
+        <ul>
+          <li>턴마다 열(1~7)을 하나 선택하면, 돌이 <strong>중력에 의해 해당 열의 가장 아래 빈 칸</strong>으로 떨어집니다.</li>
+          <li>열이 꽉 찼으면 해당 열을 선택할 수 없습니다.</li>
+          <li>42칸이 모두 차고 승부가 나지 않으면 <strong>무승부</strong>입니다.</li>
+        </ul>
+        <h3>턴 타이머</h3>
+        <ul>
+          <li>한 턴당 <strong>15초</strong> 제한. 초과 시 시간 초과 패배.</li>
+        </ul>
+        <h3>리매치</h3>
+        <ul>
+          <li>게임 종료 후 <strong>🔄 한 판 더</strong> 버튼으로 리매치 가능. 선후공(빨강/노랑) 교대하여 새 게임 시작.</li>
+        </ul>
+        <h3>전적 기록</h3>
+        <ul>
+          <li>승리 시: <strong>1승</strong> 기록</li>
+          <li>무승부: <strong>1무</strong> 기록</li>
+          <li>패배 시: <strong>1패</strong> 기록</li>
+        </ul>`
+    },
+    thief: {
+      title: '🃏 도둑잡기 (Thief) 룰',
+      html: `
+        <h3>게임 개요</h3>
+        <ul>
+          <li>2~4인, 52장+조커 1장 총 <strong>53장</strong>을 분배합니다.</li>
+          <li>분배 직후 같은 숫자의 카드(페어)를 자동으로 제거합니다.</li>
+        </ul>
+        <h3>턴 진행</h3>
+        <ul>
+          <li>내 차례일 때 <strong>다음 생존 플레이어</strong>의 패에서 카드 1장을 무작위로 뽑아 옵니다.</li>
+          <li>뽑은 직후 내 패에 같은 숫자가 생기면 즉시 페어로 버립니다.</li>
+        </ul>
+        <h3>승패</h3>
+        <ul>
+          <li>패가 0장이 되면 <strong>탈출(Win)</strong> — 턴에서 제외됩니다.</li>
+          <li>최종적으로 <strong>조커 1장만 들고 남은 1명</strong>이 패배(Lose)하며 게임 종료.</li>
+        </ul>`
+    },
+    onecard: {
+      title: '🃏 원카드 (One Card) 룰',
+      html: `
+        <h3>게임 개요</h3>
+        <ul>
+          <li>2~4인, 54장 덱(52장 + 흑백 조커 + 컬러 조커)에서 각 <strong>7장씩</strong> 분배.</li>
+          <li>덱이 비면 버린 카드를 셔플하여 재활용합니다.</li>
+        </ul>
+        <h3>턴 진행</h3>
+        <ul>
+          <li>바닥 카드와 <strong>문양</strong> 또는 <strong>숫자</strong>가 일치하는 카드만 낼 수 있습니다.</li>
+          <li>조커는 언제든 낼 수 있습니다.</li>
+          <li>낼 카드가 없으면 덱에서 드로우합니다.</li>
+        </ul>
+        <h3>공격 카드</h3>
+        <ul>
+          <li><strong>A</strong>: +3장</li>
+          <li><strong>흑백 조커(B)</strong>: +5장</li>
+          <li><strong>컬러 조커(C)</strong>: +7장</li>
+          <li>공격을 받으면 방어 카드로 막거나, 드로우를 선택해 패널티만큼 받습니다.</li>
+          <li>방어: A→A/조커, 흑백 조커→컬러 조커만, 컬러 조커는 방어 불가.</li>
+        </ul>
+        <h3>특수 카드</h3>
+        <ul>
+          <li><strong>J</strong>: 다음 사람 턴 스킵</li>
+          <li><strong>Q</strong>: 턴 진행 방향 반전</li>
+          <li><strong>K</strong>: 한 번 더! (내가 다시 카드를 냄)</li>
+          <li><strong>7</strong>: 다음 문양(♠♥♦♣) 강제 변경</li>
+        </ul>
+        <h3>원카드 콜</h3>
+        <ul>
+          <li>손패가 1장이 되면 <strong>원카드!</strong> 버튼이 활성화됩니다.</li>
+          <li>본인이 먼저 누르면 안전해지고, 타인이 먼저 누르면 1장인 유저가 벌칙 1장 드로우.</li>
+        </ul>
+        <h3>파산 & 승패</h3>
+        <ul>
+          <li>손패가 <strong>20장 초과</strong> 시 즉시 파산(패배).</li>
+          <li>패가 0장이 되면 <strong>승리</strong>, 나머지 <strong>패배</strong>.</li>
+        </ul>`
+    },
+    mahjong: {
+      title: '🀄 마작 (Mahjong) 룰 — Phase 1',
+      html: `
+        <h3>게임 개요</h3>
+        <ul>
+          <li><strong>4인 전용</strong>. 136장(수패 108장 + 자패 28장)을 사용합니다.</li>
+          <li>전원 Ready 후 게임이 시작됩니다.</li>
+        </ul>
+        <h3>패 분배</h3>
+        <ul>
+          <li>4명에게 각각 <strong>13장</strong>씩 분배합니다.</li>
+          <li>선(친)부터 턴이 시작되며, 턴 시작 시 <strong>쯔모</strong> 1장을 뽑아 14장이 됩니다.</li>
+        </ul>
+        <h3>타패 (Discard)</h3>
+        <ul>
+          <li>내 차례에 14장의 손패 중 1장을 선택해 버립니다.</li>
+          <li>버린 후 다음 플레이어로 턴이 넘어가고, 그 플레이어가 자동으로 1장 쯔모합니다.</li>
+        </ul>
+        <h3>Phase 1 범위</h3>
+        <ul>
+          <li>치/퐁/깡 및 역 계산은 아직 구현되지 않았습니다.</li>
+        </ul>`
+    },
+    alkkagi: {
+      title: '⚫ 알까기 (Alkkagi) 룰',
+      html: `
+        <h3>게임 개요</h3>
+        <ul>
+          <li><strong>2인 대전</strong>. 흑돌 4개 vs 백돌 4개.</li>
+          <li>돌을 튕겨 상대 알을 밀어내세요!</li>
+        </ul>
+        <h3>조작</h3>
+        <ul>
+          <li>내 차례에 돌을 드래그하여 당긴 뒤 놓으면 쏘아집니다. (향후 구현)</li>
+          <li>클라이언트 주도권: 각자의 브라우저가 물리 연산을 수행합니다.</li>
+        </ul>
+        <h3>승리 조건</h3>
+        <ul>
+          <li>상대 알을 모두 보드 밖으로 밀어내면 승리!</li>
+        </ul>`
+    }
+  };
+
+  function showRules(game) {
+    const rule = RULES[game];
+    if (!rule) return;
+    document.getElementById('rules-title').textContent  = rule.title;
+    document.getElementById('rules-content').innerHTML  = rule.html;
+    document.getElementById('rules-modal').classList.add('show');
+  }
+
+  /** 홀덤/세븐포커 전용 족보 순서 모달 */
+  const POKER_HAND_RANKINGS_HTML = `
+    <h3>📋 포커 족보 순서 (강 → 약)</h3>
+    <ol style="margin:12px 0; padding-left:20px; line-height:2;">
+      <li>로티플 (Royal Flush)</li>
+      <li>스트레이트 플러시 (Straight Flush)</li>
+      <li>포카드 (Four of a Kind)</li>
+      <li>풀하우스 (Full House)</li>
+      <li>플러시 (Flush)</li>
+      <li>스트레이트 (Straight)</li>
+      <li>트리플 (Three of a Kind)</li>
+      <li>투페어 (Two Pair)</li>
+      <li>원페어 (One Pair)</li>
+      <li>하이카드 (High Card)</li>
+    </ol>
+  `;
+  function closeRules() {
+    document.getElementById('rules-modal').classList.remove('show');
+  }
+
+  // ── Debug Panel ────────────────────────────────────────────────────────────
+  function toggleDebugPanel() {
+    document.getElementById('debug-panel').classList.toggle('open');
+    document.getElementById('debug-backdrop').classList.toggle('open');
+  }
+
+  // ── Log (debug only) ───────────────────────────────────────────────────────
+  function escapeHTML(str) {
+    return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+  function escapeForJsAttr(str) {
+    return String(str).replace(/\\/g,'\\\\').replace(/"/g,'\\"').replace(/'/g,"\\'");
+  }
+  function formatJSON(raw) {
+    try { return JSON.stringify(JSON.parse(raw), null, 2); } catch { return raw; }
+  }
+  function addLog(type, data) {
+    const now  = new Date();
+    const time = now.toLocaleTimeString('ko-KR', { hour12: false })
+               + '.' + String(now.getMilliseconds()).padStart(3,'0');
+    const LABELS = { sent:'↑ SENT', recv:'↓ RECV', error:'✖ ERROR', info:'ℹ INFO',
+                     system:'✦ SYS', chat:'💬 CHAT', 'join-log':'→ JOIN', 'leave-log':'← LEAVE',
+                     'game-result':'🎲 GAME', 'game-notice':'📢 NOTICE', 'board-update':'🀱 BOARD',
+                     record:'🏆 RECORD',
+                     'bj-state':'🃏 BJ', 'bj-dealer':'🤖 DEALER' };
+    const label = LABELS[type] || type.toUpperCase();
+    const entry = document.createElement('div');
+    entry.className = `log-entry ${type}`;
+    entry.innerHTML = `<span class="log-time">${time}</span> <strong>${label}</strong> ${escapeHTML(formatJSON(data)).slice(0,300)}`;
+    logOutput.appendChild(entry);
+    logOutput.scrollTop = logOutput.scrollHeight;
+  }
+  function clearLog() { logOutput.innerHTML = ''; }
+
+  // ── WebSocket ──────────────────────────────────────────────────────────────
+  function connect() {
+    if (reconnectTimer) { clearTimeout(reconnectTimer); reconnectTimer = null; }
+    // 하드코딩된 localhost 대신, 현재 접속한 브라우저의 도메인(또는 IP)을 자동으로 따라가게 변경
+    const url = (window.location.protocol === 'https:' ? 'wss://' : 'ws://') + window.location.host + '/ws';
+    if (ws && (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING)) return;
+    const dot = document.getElementById('conn-dot');
+    dot.className = 'connecting';
+    document.getElementById('conn-text').textContent = '연결 중...';
+    try {
+      ws = new WebSocket(url);
+      ws.onopen = () => {
+        isIntentionalLeave = false; // 연결 성공 시 플래그 초기화
+        setConnectionState(true);
+        addLog('info', `연결 성공 → ${url}`);
+        // 연결 직후 JWT를 서버로 전송하여 인증 (auth guard 통과 조건)
+        if (currentToken) {
+          sendRaw(JSON.stringify({ action: 'auth', payload: { token: currentToken } }));
+        }
+        // 인증 이후 server에서 auth_ok를 받으면 pendingJoin 처리됨 (아래 case 'auth_ok' 참조)
+      };
+      ws.onmessage = (event) => {
+        const raw = event.data;
+        try {
+          const parsed = JSON.parse(raw);
+          switch (parsed.type) {
+            case 'auth_ok':
+              addLog('info', raw);
+              if (parsed.userId) currentUserId = parsed.userId;
+              document.getElementById('btn-profile').style.display = '';
+              // 대기 중인 방 입장 또는 닉네임 설정
+              if (pendingJoin) {
+                sendJoin(pendingJoin.roomId);
+                pendingJoin = null;
+              } else if (pendingNickname) {
+                sendSetNickname(pendingNickname);
+                pendingNickname = null;
+              }
+              break;
+            case 'nickname_check':
+              if (typeof _onNicknameCheckDone === 'function') _onNicknameCheckDone(parsed.available);
+              break;
+            case 'opponent_record':
+              showOpponentRecordModal(parsed.userId, parsed.records);
+              break;
+            case 'system':
+              addLog('system', raw);
+              addChatMessage('system', parsed);
+              break;
+            case 'error': {
+              addLog('error', raw);
+              const errMsg = parsed.message || '서버 오류가 발생했습니다.';
+              showToast(errMsg, 'error');
+              // 꽉 찬 방 감지 → 자동으로 로비로 퇴장 (Auto-kick)
+              const fullKeywords = ['이미 2명', '1인 전용', '가득 찼습니다', '정원 초과', '인원이 가득', '방이 해산'];
+              if (fullKeywords.some(kw => errMsg.includes(kw))) {
+                leaveRoom(true);
+              }
+              break;
+            }
+            case 'chat':
+              addLog('chat', raw);
+              addChatMessage('chat', parsed);
+              break;
+            case 'join':
+              addLog('join-log', raw);
+              addChatMessage('join', parsed);
+              if (parsed.userId === currentUserId) {
+                setRoomState(parsed.userId, parsed.roomId);
+              }
+              break;
+            case 'leave':
+              addLog('leave-log', raw);
+              addChatMessage('leave', parsed);
+              if (parsed.userId === currentUserId) {
+                setRoomState('', '');
+              }
+              break;
+            case 'board_update':
+              addLog('board-update', JSON.stringify({ type: parsed.type, turn: parsed.data?.turn }));
+              document.getElementById('btn-takeover').style.display = 'none';
+              ['status-turn-user', 'ttt-status', 'c4-status'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) { el.style.color = ''; el.style.fontWeight = ''; }
+              });
+              showGomokuBoard();
+              renderBoard(parsed.data);
+              break;
+            case 'timer_tick':
+              updateGameTimer(parsed.turnUser, parsed.remaining);
+              break;
+            case 'game_paused': {
+              const playerIds = parsed.playerIds || [];
+              const isPlayer = playerIds.includes(currentUserId);
+              const statusEls = ['status-turn-user', 'ttt-status', 'c4-status', 'indian-status', 'holdem-status', 'sevenpoker-status', 'thief-status', 'onecard-status'];
+              statusEls.forEach(id => {
+                const el = document.getElementById(id);
+                if (el) {
+                  el.textContent = '🚨 플레이어 퇴장. 난입 대기 중...';
+                  el.style.color = 'var(--danger, #dc2626)';
+                  el.style.fontWeight = '700';
+                }
+              });
+              const btnTakeover = document.getElementById('btn-takeover');
+              if (btnTakeover) btnTakeover.style.display = isPlayer ? 'none' : '';
+              break;
+            }
+            case 'game_result':
+              addLog('game-result', raw);
+              addChatMessage('game_result', parsed);
+              showResultModal(parsed.message || '게임이 종료되었습니다');
+              if (parsed.data && parsed.data.board) {
+                showGomokuBoard();
+                renderBoard({ board: parsed.data.board, turn: '', colors: parsed.data.colors || {}, lastMove: parsed.data.lastMove || [-1,-1] });
+                setGomokuEnded();
+              }
+              if (parsed.rematchEnabled) {
+                const total = parsed.data?.totalCount ?? 2;
+                document.getElementById('rematch-count').textContent = `0/${total}`;
+                document.getElementById('btn-rematch').disabled = false;
+                const rematchArea = document.getElementById('rematch-area');
+                rematchArea.style.display = 'flex';
+                rematchArea.classList.add('visible');
+              }
+              break;
+            case 'game_notice':
+              addLog('game-notice', raw);
+              addChatMessage('game_notice', parsed);
+              break;
+            case 'ready_update': {
+              const ready = parsed.readyCount ?? 0;
+              const total = parsed.totalCount ?? 0;
+              document.getElementById('ready-count').textContent = `${ready}/${total}`;
+              if (ready >= total && total > 1) {
+                document.getElementById('ready-area').style.display = 'none';
+                document.getElementById('btn-ready').disabled = false;
+              }
+              break;
+            }
+            case 'rematch_update': {
+              const ready = parsed.readyCount ?? 0;
+              const total = parsed.totalCount ?? 2;
+              document.getElementById('rematch-count').textContent = `${ready}/${total}`;
+              if (ready >= total && total > 1) {
+                document.getElementById('rematch-area').style.display = 'none';
+                document.getElementById('rematch-area').classList.remove('visible');
+                document.getElementById('btn-rematch').disabled = false;
+                if (currentRoomId.startsWith('omok')) {
+                  gomokuEnded = false;
+                  document.getElementById('gomoku-spectator-msg').style.display = 'none';
+                }
+              }
+              break;
+            }
+            case 'blackjack_state':
+              addLog('bj-state', raw);
+              showBlackjackUI();
+              renderBlackjackState(parsed.data);
+              break;
+            case 'thief_hover':
+              if (parsed.targetId != null && typeof parsed.index === 'number') {
+                thiefHoveredTargetId = parsed.targetId;
+                thiefHoveredIndex = parsed.index;
+                if (lastThiefState) renderThief(lastThiefState);
+              }
+              break;
+            case 'tictactoe_state': case 'connect4_state': case 'indian_state': case 'holdem_state': case 'sevenpoker_state': case 'thief_state': case 'onecard_state': case 'mahjong_state': case 'alkkagi_state': {
+              document.getElementById('btn-takeover').style.display = 'none';
+              ['status-turn-user', 'ttt-status', 'c4-status', 'indian-status', 'thief-status', 'onecard-status', 'mahjong-status', 'alkkagi-status'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) { el.style.color = ''; el.style.fontWeight = ''; }
+              });
+              if (parsed.type === 'thief_state') { thiefHoveredTargetId = ''; thiefHoveredIndex = -1; }
+              const h = GAME_STATE_HANDLERS[parsed.type];
+              if (h) { addLog(h.logKey, raw); h.show(); h.render(parsed.data); }
+              if (parsed.data?.canTakeover) {
+                document.getElementById('btn-takeover').style.display = '';
+              }
+              break;
+            }
+            case 'indian_showdown_result':
+              addLog('indian-showdown', raw);
+              showIndianShowdownOverlay(parsed.data);
+              break;
+            case 'poker_showdown_result':
+              addLog('poker-showdown', raw);
+              showPokerShowdownOverlay(parsed.data);
+              break;
+            case 'dealer_action':
+              addLog('bj-dealer', raw);
+              renderBlackjackState(parsed.data);
+              break;
+            case 'record_update': {
+              addLog('record', raw);
+              updateRecords(parsed.records);
+              break;
+            }
+            default:
+              addLog('recv', raw);
+          }
+        } catch {
+          addLog('recv', raw);
+        }
+      };
+      ws.onerror = () => {
+        addLog('error', '연결 오류. 서버가 실행 중인지 확인하세요.');
+        document.getElementById('conn-dot').className  = '';
+        document.getElementById('conn-text').textContent = '연결 오류';
+      };
+      ws.onclose = (event) => {
+        setConnectionState(false);
+        addLog('info', `연결 종료 (code: ${event.code})`);
+        ws = null;
+        // 로비에서 의도적 퇴장이 아닐 때만 3초 후 자동 재연결
+        if (currentToken && currentMode !== 'room' && !isIntentionalLeave) {
+          reconnectTimer = setTimeout(() => {
+            addLog('info', '서버에 재연결을 시도합니다...');
+            connect();
+          }, 3000);
+        }
+      };
+    } catch (e) {
+      addLog('error', `WebSocket 생성 실패: ${e.message}`);
+    }
+  }
+
+  function disconnect() {
+    if (ws) ws.close(1000, 'User disconnected');
+  }
+
+  // ── Join / Leave ───────────────────────────────────────────────────────────
+
+  /** 6자리 영문+숫자 난수 코드 생성 (예: A1B2C3) */
+  function genRoomCode() {
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // 혼동 문자(0,O,1,I) 제외
+    return Array.from({ length: 6 }, () => chars[Math.floor(Math.random() * chars.length)]).join('');
+  }
+
+  /** ➕ 방 만들기: 새 6자리 코드를 생성해 즉시 입장 */
+  function createRoom(prefix) {
+    if (!currentUserId) { showToast('먼저 로그인하세요.', 'error'); return; }
+    const code   = genRoomCode();
+    const roomId = prefix + '_' + code;
+    if (!ws || ws.readyState !== WebSocket.OPEN) {
+      pendingJoin = { roomId };
+      connect();
+    } else {
+      sendJoin(roomId);
+    }
+  }
+
+  /** 코드로 입장: 사용자가 입력한 6자리 코드로 입장 */
+  function joinWithCode(prefix, inputId) {
+    if (!currentUserId) { showToast('먼저 로그인하세요.', 'error'); return; }
+    const input = document.getElementById(inputId);
+    const code  = (input.value || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+    input.value = code;
+    if (code.length !== 6) {
+      showToast('코드는 영문+숫자 6자리를 입력하세요.', 'error');
+      input.focus();
+      return;
+    }
+    const roomId = prefix + '_' + code;
+    input.value  = '';
+    if (!ws || ws.readyState !== WebSocket.OPEN) {
+      pendingJoin = { roomId };
+      connect();
+    } else {
+      sendJoin(roomId);
+    }
+  }
+
+  function sendJoin(roomId) {
+    // UserID는 서버에서 auth 시점에 이미 설정되어 있음. payload에도 전달 (방 입장 메시지 표시용)
+    sendRaw(JSON.stringify({ action: 'join', payload: { roomId, userId: currentUserId } }));
+  }
+
+  /** AI 봇 추가 요청 (오목/4목/틱택토 방에서만 유효) */
+  function requestAddBot() {
+    if (!ws || ws.readyState !== WebSocket.OPEN) {
+      showToast('연결이 끊어졌습니다.', 'error');
+      return;
+    }
+    sendRaw(JSON.stringify({ action: 'add_bot', payload: {} }));
+    showToast('AI 봇 추가 요청을 보냈습니다.', 'info');
+  }
+
+  /** 방 코드 클립보드 복사 */
+  function copyRoomCode() {
+    const code = document.getElementById('room-code-text').textContent.trim();
+    if (!code || code === '------') return;
+    navigator.clipboard.writeText(code).then(() => {
+      showToast('방 코드가 복사되었습니다!', 'success');
+    }).catch(() => {
+      // fallback for non-https
+      const ta = document.createElement('textarea');
+      ta.value = code;
+      ta.style.cssText = 'position:fixed;opacity:0';
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
+      ta.remove();
+      showToast('방 코드가 복사되었습니다!', 'success');
+    });
+  }
+
+  function leaveRoom(skipConfirm) {
+    isIntentionalLeave = true;
+    if (!skipConfirm && !confirm('게임 진행 중에 나가면 패배로 기록될 수 있습니다.\n정말 나가시겠습니까?')) {
+      isIntentionalLeave = false;
+      return;
+    }
+    sendRaw(JSON.stringify({ action: 'leave', payload: {} }));
+    setRoomState('', '');
+  }
+
+  // ── Debug panel manual join ────────────────────────────────────────────────
+  function debugJoinRoom() {
+    const userId = inputUserId.value.trim();
+    const roomId = inputRoomId.value.trim();
+    if (!userId || !roomId) return;
+    currentUserId = userId;
+    sendRaw(JSON.stringify({ action: 'join', payload: { roomId, userId } }));
+    toggleDebugPanel();
+  }
+
+  // ── Raw send (used by debug panel) ────────────────────────────────────────
+  function sendRaw(text) {
+    if (!text || !ws || ws.readyState !== WebSocket.OPEN) return;
+    ws.send(text);
+    addLog('sent', text);
+  }
+
+  /** 게임 액션 전송 (광클 방지: 0.4초 쿨다운 적용) */
+  function sendGameAction(payload) {
+    if (!ws || ws.readyState !== WebSocket.OPEN) return;
+    if (actionCooldown) return;
+    actionCooldown = true;
+    setTimeout(() => { actionCooldown = false; }, 400);
+    sendRaw(JSON.stringify({ action: 'game_action', payload }));
+  }
+
+  function sendMessage() {
+    const text = msgInput.value.trim();
+    if (!text) return;
+    try { JSON.parse(text); } catch { addLog('error', '잘못된 JSON'); return; }
+    sendRaw(text);
+  }
+
+  msgInput.addEventListener('keydown', (e) => {
+    if (e.ctrlKey && e.key === 'Enter') sendMessage();
+  });
+
+  // ── 오목 리매치 ────────────────────────────────────────────────────────────
+
+  /** 오목 리매치 요청 */
+  function sendReady() {
+    if (!ws || ws.readyState !== WebSocket.OPEN) return;
+    sendGameAction({ cmd: 'ready' });
+    document.getElementById('btn-ready').disabled = true;
+  }
+
+  function sendRematch() {
+    if (!ws || ws.readyState !== WebSocket.OPEN) return;
+    sendGameAction({ cmd: 'rematch' });
+    document.getElementById('btn-rematch').disabled = true;
+  }
+
+  function sendTakeover() {
+    if (!ws || ws.readyState !== WebSocket.OPEN) return;
+    sendGameAction({ cmd: 'takeover' });
+  }
+
+  // ── 게임 뷰 전환 (DRY) ─────────────────────────────────────────────────────
+  const GAME_VIEW_IDS = ['board-placeholder', 'gomoku-container', 'blackjack-container', 'tictactoe-container', 'connect4-container', 'indian-container', 'holdem-container', 'sevenpoker-container', 'thief-container', 'onecard-container', 'mahjong-container', 'alkkagi-container'];
+  const PREFIX_TO_CONTAINER = { omok: 'gomoku-container', blackjack: 'blackjack-container', tictactoe: 'tictactoe-container', connect4: 'connect4-container', indian: 'indian-container', holdem: 'holdem-container', sevenpoker: 'sevenpoker-container', thief: 'thief-container', onecard: 'onecard-container', mahjong: 'mahjong-container', alkkagi: 'alkkagi-container' };
+
+  const GAME_STATE_HANDLERS = {
+    tictactoe_state:  { logKey: 'ttt-state',       show: showTicTacToeUI,  render: renderTicTacToe },
+    connect4_state:   { logKey: 'c4-state',       show: showConnect4UI,   render: renderConnect4 },
+    indian_state:     { logKey: 'indian-state',   show: showIndianUI,     render: renderIndian },
+    holdem_state:     { logKey: 'holdem-state',   show: showHoldemUI,     render: renderHoldem },
+    sevenpoker_state: { logKey: 'sevenpoker-state', show: showSevenPokerUI, render: renderSevenPoker },
+    thief_state:      { logKey: 'thief-state',    show: showThiefUI,      render: renderThief },
+    onecard_state:    { logKey: 'onecard-state',  show: showOneCardUI,     render: renderOneCard },
+    mahjong_state:    { logKey: 'mahjong-state',  show: showMahjongUI,     render: renderMahjong },
+    alkkagi_state:    { logKey: 'alkkagi-state',  show: showAlkkagiUI,     render: renderAlkkagi },
+  };
+
+  function switchGameView(prefix) {
+    const showId = PREFIX_TO_CONTAINER[prefix] || 'board-placeholder';
+    GAME_VIEW_IDS.forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.style.display = id === showId ? 'flex' : 'none';
+    });
+    const rematchEl = document.getElementById('rematch-area');
+    if (rematchEl) rematchEl.style.display = 'none';
+  }
+
+  // ── Gomoku Board UI ────────────────────────────────────────────────────────
+  function showGomokuBoard() {
+    switchGameView('omok');
+    if (!gomokuBoardReady) { createGomokuBoard(); gomokuBoardReady = true; }
+    scaleBoardToFit();
+  }
+
+  /** 모바일에서 오목 보드가 화면 너비를 넘지 않도록 transform: scale() 적용 */
+  function scaleBoardToFit() {
+    const board   = document.getElementById('gomoku-board');
+    const scaler  = document.getElementById('gomoku-board-scaler');
+    if (!board || !scaler) return;
+    const boardW  = 490; // 보드 실제 크기 + 여백 고려
+    const available = window.innerWidth - 20;
+    if (available < boardW) {
+      const ratio = available / boardW;
+      board.style.transform       = `scale(${ratio})`;
+      board.style.transformOrigin = 'top center';
+      // scaler 높이를 축소된 보드 높이에 맞춤 (레이아웃 붕괴 방지)
+      board.style.marginBottom    = `-${Math.round(boardW * (1 - ratio))}px`;
+    } else {
+      board.style.transform    = '';
+      board.style.marginBottom = '';
+    }
+  }
+  window.addEventListener('resize', scaleBoardToFit);
+
+  function createGomokuBoard() {
+    const el = document.getElementById('gomoku-board');
+    el.innerHTML = '';
+    for (let r = 0; r < 15; r++) {
+      for (let c = 0; c < 15; c++) {
+        const cell = document.createElement('div');
+        cell.className = 'gomoku-cell';
+        cell.dataset.r = r; cell.dataset.c = c;
+        if (r === 0)  cell.classList.add('edge-top');
+        if (r === 14) cell.classList.add('edge-bottom');
+        if (c === 0)  cell.classList.add('edge-left');
+        if (c === 14) cell.classList.add('edge-right');
+        if (STAR_POINTS.has(`${r},${c}`)) cell.classList.add('star-point');
+        cell.addEventListener('click', () => onGomokuCellClick(r, c));
+        el.appendChild(cell);
+      }
+    }
+  }
+
+  function renderBoard(data) {
+    if (!gomokuBoardReady) return;
+    const board = data.board;
+    const prev = gomokuPrevBoard;
+    const cells = document.querySelectorAll('.gomoku-cell');
+    cells.forEach(cell => {
+      const r = +cell.dataset.r, c = +cell.dataset.c;
+      const stone = board[r][c];
+      const wasEmpty = prev && prev[r][c] === 0;
+      const isNew = wasEmpty && (stone === 1 || stone === 2);
+      cell.querySelector('.gomoku-stone')?.remove();
+      cell.classList.remove('can-place');
+      if (stone === 1 || stone === 2) {
+        const s = document.createElement('div');
+        s.className = `gomoku-stone ${stone === 1 ? 'black' : 'white'}${isNew ? ' animate-pop' : ''}`;
+        cell.appendChild(s);
+      }
+    });
+    gomokuPrevBoard = board.map(row => [...row]);
+    const lm = data.lastMove;
+    if (lm && lm[0] >= 0) {
+      document.querySelector(`.gomoku-cell[data-r="${lm[0]}"][data-c="${lm[1]}"]`)
+              ?.querySelector('.gomoku-stone')?.classList.add('last-move');
+    }
+    if (data.colors) {
+      gomokuColorMap = data.colors;
+      if (data.colors[currentUserId]) gomokuMyColor = data.colors[currentUserId];
+    }
+    gomokuTurnUserId = data.turn;
+    if (data.turn === currentUserId) {
+      cells.forEach(cell => {
+        const r = +cell.dataset.r, c = +cell.dataset.c;
+        if (data.board[r][c] === 0) cell.classList.add('can-place');
+      });
+    }
+
+    // 관전자 판별: colors 맵에 내 ID가 없으면 관전자
+    if (data.colors && Object.keys(data.colors).length > 0) {
+      const isSpectator = !data.colors[currentUserId];
+      if (isSpectator) {
+        document.getElementById('rematch-area').classList.remove('visible');
+        document.getElementById('gomoku-spectator-msg').style.display = 'block';
+      } else {
+        document.getElementById('gomoku-spectator-msg').style.display = 'none';
+        // 리매치 버튼은 game_result 이벤트가 별도로 처리
+      }
+    }
+    updateStatusBar(data.turn);
+    updateColorInfo(data.colors);
+  }
+
+  function updateStatusBar(turnUserId) {
+    const stoneEl = document.getElementById('status-stone-icon');
+    const userEl  = document.getElementById('status-turn-user');
+    if (!stoneEl || !userEl) return;
+    if (turnUserId) {
+      const col = gomokuColorMap[turnUserId];
+      stoneEl.textContent = col === 1 ? '⚫' : col === 2 ? '⚪' : '●';
+      const isMine = turnUserId === currentUserId;
+      const suffix = isMine ? ' (나)' : '';
+      userEl.innerHTML = `<span class="clickable-nickname" onclick="requestOpponentRecord('${escapeForJsAttr(turnUserId)}')" title="전적 보기">${escapeHTML(turnUserId)}</span>${suffix}`;
+      userEl.style.color = isMine ? '#3fb950' : 'var(--text-primary)';
+    }
+  }
+
+  /** currentRoomId 접두사에 맞는 타이머 요소를 찾아 업데이트 (5초 이하 시 urgent 클래스) */
+  const PREFIX_TO_TIMER = { omok: ['status-seconds', 'status-timer-block'], tictactoe: ['ttt-seconds', 'ttt-timer-block'], connect4: ['c4-seconds', 'c4-timer-block'], indian: ['indian-seconds', 'indian-timer-block'], holdem: ['holdem-seconds', 'holdem-timer-block'], sevenpoker: ['sevenpoker-seconds', 'sevenpoker-timer-block'], thief: ['thief-seconds', 'thief-timer-block'], onecard: ['onecard-seconds', 'onecard-timer-block'], mahjong: ['mahjong-seconds', 'mahjong-timer-block'] };
+
+  function updateGameTimer(turnUser, remaining) {
+    const prefix = currentRoomId.startsWith('omok') ? 'omok'
+                 : currentRoomId.startsWith('tictactoe') ? 'tictactoe'
+                 : currentRoomId.startsWith('connect4') ? 'connect4'
+                 : currentRoomId.startsWith('indian') ? 'indian'
+                 : currentRoomId.startsWith('holdem') ? 'holdem'
+                 : currentRoomId.startsWith('sevenpoker') ? 'sevenpoker'
+                 : currentRoomId.startsWith('thief') ? 'thief'
+                 : currentRoomId.startsWith('onecard') ? 'onecard'
+                 : currentRoomId.startsWith('mahjong') ? 'mahjong'
+                 : null;
+    if (!prefix || !PREFIX_TO_TIMER[prefix]) return;
+    const [secsId, blockId] = PREFIX_TO_TIMER[prefix];
+    const secsEl  = document.getElementById(secsId);
+    const blockEl = document.getElementById(blockId);
+    if (!secsEl) return;
+    secsEl.textContent = remaining !== null && remaining !== undefined ? remaining : '--';
+    if (blockEl) blockEl.classList.toggle('urgent', remaining !== null && remaining <= 5);
+  }
+
+  function updateColorInfo(colors) {
+    const el = document.getElementById('gomoku-color-info');
+    if (!colors || !Object.keys(colors).length) return;
+    el.innerHTML = Object.entries(colors)
+      .map(([uid, col]) => `${col === 1 ? '⚫' : '⚪'} <span class="clickable-nickname" onclick="requestOpponentRecord('${escapeForJsAttr(uid)}')" title="전적 보기">${escapeHTML(uid)}</span>`)
+      .join('  vs  ');
+  }
+
+  function setGomokuEnded() {
+    gomokuTurnUserId = '';
+    gomokuEnded      = true;
+    const userEl = document.getElementById('status-turn-user');
+    if (userEl) userEl.textContent = '게임 종료';
+    const stoneEl = document.getElementById('status-stone-icon');
+    if (stoneEl) stoneEl.textContent = '🏁';
+    const secsEl = document.getElementById('status-seconds');
+    if (secsEl) secsEl.textContent = '--';
+    document.getElementById('status-timer-block')?.classList.remove('urgent');
+    document.querySelectorAll('.gomoku-cell').forEach(c => c.classList.remove('can-place'));
+  }
+
+  function onGomokuCellClick(r, c) {
+    if (!currentRoomId || !ws || ws.readyState !== WebSocket.OPEN) return;
+    if (gomokuTurnUserId !== currentUserId) return;
+    sendGameAction({ cmd: 'place', x: r, y: c });
+  }
+
+  // ── Blackjack UI ───────────────────────────────────────────────────────────
+  function showBlackjackUI() {
+    switchGameView('blackjack');
+  }
+
+  function renderBlackjackState(data) {
+    if (!data) return;
+    renderBJHand('bj-dealer-hand', 'bj-dealer-score', data.dealerHand);
+    renderBJHand('bj-player-hand', 'bj-player-score', data.playerHand);
+    const msgEl = document.getElementById('bj-message');
+    const bannerEl = document.getElementById('bj-result-banner');
+    if (data.message) msgEl.textContent = data.message;
+
+    const showResult = (data.phase === 'settlement' || data.state === 'game_over') && data.message;
+    if (showResult) {
+      bannerEl.style.display = 'flex';
+      bannerEl.innerHTML = `<div class="result-title">${escapeHTML(data.message)}</div>`;
+      bannerEl.className = 'game-result-banner';
+      if (/승리|Win|이겼|블랙잭/i.test(data.message)) bannerEl.classList.add('win');
+      else if (/패배|Lose|졌|버스트|Bust/i.test(data.message)) bannerEl.classList.add('lose');
+      else bannerEl.classList.add('push');
+    } else {
+      bannerEl.style.display = 'none';
+    }
+
+    const startBtns    = document.getElementById('bj-start-buttons');
+    const gameBtns     = document.getElementById('bj-game-buttons');
+    const spectatorMsg = document.getElementById('bj-spectator-msg');
+
+    // 관전자 판별: mainPlayerId가 있고 나와 다르면 관전자
+    const isSpectator = data.mainPlayerId && data.mainPlayerId !== currentUserId;
+    if (isSpectator) {
+      startBtns.style.display    = 'none';
+      gameBtns.style.display     = 'none';
+      spectatorMsg.style.display = 'block';
+    } else {
+      spectatorMsg.style.display = 'none';
+      if (data.phase === 'betting' || data.phase === 'settlement') {
+        startBtns.style.display = 'flex'; gameBtns.style.display = 'none';
+      } else if (data.phase === 'player_turn') {
+        startBtns.style.display = 'none'; gameBtns.style.display = 'flex';
+      } else {
+        startBtns.style.display = 'none'; gameBtns.style.display = 'none';
+      }
+    }
+  }
+
+  function renderBJHand(handElId, scoreElId, handInfo) {
+    const handEl  = document.getElementById(handElId);
+    const scoreEl = document.getElementById(scoreElId);
+    if (!handInfo || !handInfo.cards || handInfo.cards.length === 0) {
+      handEl.innerHTML = ''; scoreEl.textContent = ''; scoreEl.className = 'bj-score'; return;
+    }
+    handEl.innerHTML = handInfo.cards.map(card => {
+      if (card.hidden) return `<div class="bj-card hidden"></div>`;
+      const isRed = card.suit === '♥' || card.suit === '♦';
+      return `<div class="bj-card ${isRed ? 'red' : 'black'}">
+        <span class="bj-card-top">${card.value}</span>
+        <span class="bj-card-center">${card.suit}</span>
+        <span class="bj-card-bot">${card.value}</span>
+      </div>`;
+    }).join('');
+    const score = handInfo.score;
+    scoreEl.textContent = score > 0 ? `${score}` : '';
+    scoreEl.className   = score > 21 ? 'bj-score bust' : 'bj-score';
+  }
+
+  function bjStart() {
+    if (!ws || ws.readyState !== WebSocket.OPEN || !currentRoomId) return;
+    sendGameAction({ cmd: 'start' });
+  }
+  function bjHit() {
+    if (!ws || ws.readyState !== WebSocket.OPEN) return;
+    sendGameAction({ cmd: 'hit' });
+  }
+  function bjStand() {
+    if (!ws || ws.readyState !== WebSocket.OPEN) return;
+    sendGameAction({ cmd: 'stand' });
+  }
+
+  // ── Tictactoe UI ───────────────────────────────────────────────────────────
+
+  let tttMyColor = 0;    // 1=O, 2=X (0=미정)
+  let tttTurnId  = '';   // 현재 차례인 유저 ID
+
+  function showTicTacToeUI() {
+    switchGameView('tictactoe');
+  }
+
+  function renderTicTacToe(data) {
+    if (!data) return;
+    tttTurnId = data.turn || '';
+
+    // 내 색 확인
+    if (data.colors && data.colors[currentUserId]) {
+      tttMyColor = data.colors[currentUserId];
+    }
+
+    // 상태 바 텍스트
+    const statusEl = document.getElementById('ttt-status');
+    if (statusEl) {
+      if (tttTurnId === currentUserId) {
+        const sym = tttMyColor === 1 ? '⭕' : '❌';
+        statusEl.textContent = `${sym} 내 차례입니다!`;
+        statusEl.style.color = 'var(--accent)';
+      } else if (tttTurnId) {
+        statusEl.innerHTML = `⏳ <span class="clickable-nickname" onclick="requestOpponentRecord('${escapeForJsAttr(tttTurnId)}')" title="전적 보기">${escapeHTML(tttTurnId)}</span>의 차례...`;
+        statusEl.style.color = 'var(--text-secondary)';
+      }
+    }
+
+    // 색상 정보
+    const infoEl = document.getElementById('ttt-color-info');
+    if (infoEl && data.colors) {
+      infoEl.innerHTML = Object.entries(data.colors)
+        .map(([uid, col]) => `${col === 1 ? '⭕ O' : '❌ X'}: <span class="clickable-nickname" onclick="requestOpponentRecord('${escapeForJsAttr(uid)}')" title="전적 보기">${escapeHTML(uid)}</span>`)
+        .join('  |  ');
+    }
+
+    // 3×3 보드 렌더링 (그리드 유지 + diffing)
+    const boardEl = document.getElementById('ttt-board');
+    if (!boardEl || !data.board) return;
+    const board = data.board;
+    const prev = tttPrevBoard;
+    const isMyTurn = tttTurnId === currentUserId;
+
+    if (!tttBoardReady) {
+      tttBoardReady = true;
+      boardEl.innerHTML = '';
+      for (let r = 0; r < 3; r++) {
+        for (let c = 0; c < 3; c++) {
+          const cell = document.createElement('div');
+          cell.className = 'ttt-cell';
+          cell.dataset.r = r;
+          cell.dataset.c = c;
+          boardEl.appendChild(cell);
+        }
+      }
+    }
+
+    const cells = boardEl.querySelectorAll('.ttt-cell');
+    cells.forEach(cell => {
+      const r = +cell.dataset.r, c = +cell.dataset.c;
+      const val = board[r][c];
+      const wasEmpty = prev && prev[r][c] === 0;
+      const isNew = wasEmpty && (val === 1 || val === 2);
+      cell.classList.remove('ttt-o', 'ttt-x', 'ttt-can-place');
+      cell.innerHTML = '';
+      cell.onclick = null;
+      if (val === 1) {
+        cell.classList.add('ttt-o');
+        const inner = document.createElement('span');
+        inner.className = 'ttt-cell-inner' + (isNew ? ' animate-pop' : '');
+        inner.textContent = '⭕';
+        cell.appendChild(inner);
+      } else if (val === 2) {
+        cell.classList.add('ttt-x');
+        const inner = document.createElement('span');
+        inner.className = 'ttt-cell-inner' + (isNew ? ' animate-pop' : '');
+        inner.textContent = '❌';
+        cell.appendChild(inner);
+      } else if (isMyTurn) {
+        cell.classList.add('ttt-can-place');
+      }
+      cell.onclick = (val === 0 && isMyTurn) ? () => onTttCellClick(r, c) : null;
+    });
+    tttPrevBoard = board.map(row => [...row]);
+  }
+
+  function onTttCellClick(r, c) {
+    if (!ws || ws.readyState !== WebSocket.OPEN) return;
+    if (tttTurnId !== currentUserId) return;
+    sendGameAction({ cmd: 'place', r, c });
+  }
+
+  // ── Connect 4 UI ───────────────────────────────────────────────────────────
+
+  let c4MyColor = 0;  // 1=빨강, 2=노랑 (0=미정)
+  let c4TurnId  = ''; // 현재 차례인 유저 ID
+
+  function showConnect4UI() {
+    switchGameView('connect4');
+  }
+
+  function renderConnect4(data) {
+    if (!data) return;
+    c4TurnId = data.turn || '';
+
+    // 내 색 확인
+    if (data.colors && data.colors[currentUserId]) {
+      c4MyColor = data.colors[currentUserId];
+    }
+
+    const isMyTurn = c4TurnId === currentUserId;
+
+    // 상태 바
+    const statusEl = document.getElementById('c4-status');
+    if (statusEl) {
+      if (isMyTurn) {
+        const sym = c4MyColor === 1 ? '🔴' : '🟡';
+        statusEl.textContent = `${sym} 내 차례입니다! 열을 선택하세요.`;
+        statusEl.style.color = 'var(--accent)';
+      } else if (c4TurnId) {
+        statusEl.innerHTML = `⏳ <span class="clickable-nickname" onclick="requestOpponentRecord('${escapeForJsAttr(c4TurnId)}')" title="전적 보기">${escapeHTML(c4TurnId)}</span>의 차례...`;
+        statusEl.style.color = 'var(--text-secondary)';
+      }
+    }
+
+    // 색상 정보
+    const infoEl = document.getElementById('c4-color-info');
+    if (infoEl && data.colors) {
+      infoEl.innerHTML = Object.entries(data.colors)
+        .map(([uid, col]) => `${col === 1 ? '🔴 빨강' : '🟡 노랑'}: <span class="clickable-nickname" onclick="requestOpponentRecord('${escapeForJsAttr(uid)}')" title="전적 보기">${escapeHTML(uid)}</span>`)
+        .join('  |  ');
+    }
+
+    // 열 선택 버튼 렌더링
+    const colBtnsEl = document.getElementById('c4-col-btns');
+    if (colBtnsEl) {
+      colBtnsEl.innerHTML = '';
+      for (let c = 0; c < 7; c++) {
+        const btn = document.createElement('button');
+        btn.className = 'c4-col-btn';
+        btn.textContent = '▼';
+        btn.disabled = !isMyTurn;
+        if (isMyTurn) {
+          btn.addEventListener('click', () => onC4ColClick(c));
+        }
+        colBtnsEl.appendChild(btn);
+      }
+    }
+
+    // 6×7 보드 렌더링 (그리드 유지 + diffing)
+    const boardEl = document.getElementById('c4-board');
+    if (!boardEl || !data.board) return;
+    const board = data.board;
+    const prev = c4PrevBoard;
+
+    if (!c4BoardReady) {
+      c4BoardReady = true;
+      boardEl.innerHTML = '';
+      for (let r = 0; r < 6; r++) {
+        for (let c = 0; c < 7; c++) {
+          const cell = document.createElement('div');
+          cell.className = 'c4-cell';
+          cell.dataset.r = r;
+          cell.dataset.c = c;
+          boardEl.appendChild(cell);
+        }
+      }
+    }
+
+    const cells = boardEl.querySelectorAll('.c4-cell');
+    cells.forEach(cell => {
+      const r = +cell.dataset.r, c = +cell.dataset.c;
+      const val = board[r][c];
+      const wasEmpty = prev && prev[r][c] === 0;
+      const isNew = wasEmpty && (val === 1 || val === 2);
+      const isLast = r === data.lastRow && c === data.lastCol;
+      cell.querySelector('.c4-piece')?.remove();
+      cell.classList.remove('c4-last');
+      if (val === 1 || val === 2) {
+        const piece = document.createElement('div');
+        piece.className = `c4-piece ${val === 1 ? 'c4-red' : 'c4-yellow'}${isNew ? ' animate-drop' : ''}`;
+        cell.appendChild(piece);
+        if (isLast) cell.classList.add('c4-last');
+      }
+    });
+    c4PrevBoard = board.map(row => [...row]);
+  }
+
+  function onC4ColClick(col) {
+    if (!ws || ws.readyState !== WebSocket.OPEN) return;
+    if (c4TurnId !== currentUserId) return;
+    sendGameAction({ cmd: 'place', col });
+  }
+
+  // ── Indian Poker UI ────────────────────────────────────────────────────────
+
+  function showIndianUI() {
+    switchGameView('indian');
+  }
+
+  /** 하트 바 HTML 생성 (기본 10칸, 10개 초과 시 최대 20개까지 아이콘 확장) */
+  function renderHeartsBar(count) {
+    const MAX_ICONS = 20; // 아이콘으로 표시할 최대 개수
+    const displayMax = Math.max(10, count); // 기본 10칸 유지, 넘으면 그만큼 슬롯 확장
+
+    let html = '';
+    const iconCount = Math.min(count, MAX_ICONS);
+    const totalSlots = Math.min(displayMax, MAX_ICONS);
+
+    for (let i = 0; i < totalSlots; i++) {
+      html += `<span class="indian-heart${i >= iconCount ? ' lost' : ''}">❤️</span>`;
+    }
+    if (count > MAX_ICONS) {
+      html += `<span class="indian-hearts-count">+${count - MAX_ICONS}</span>`;
+    }
+    return html;
+  }
+
+  /** 카드 HTML 생성 */
+  function renderIndianCard(card) {
+    if (!card || card.hidden) {
+      // 뒷면
+      return `<div class="indian-card-back">🃏</div>`;
+    }
+    const isRed = card.suit === '♥' || card.suit === '♦';
+    return `
+      <div class="indian-card-face ${isRed ? 'red-suit' : 'black-suit'}">
+        <div class="indian-card-val-top">${card.value}</div>
+        <div class="indian-card-suit-center">${card.suit}</div>
+        <div class="indian-card-val-bot">${card.value}</div>
+      </div>`;
+  }
+
+  function renderIndian(data) {
+    if (!data) return;
+
+    const isMyTurn = data.turn === currentUserId;
+    const isSpectator = data.myName !== currentUserId && data.opponentName !== currentUserId;
+
+    // 라운드 바
+    const roundEl = document.getElementById('indian-round-bar');
+    if (roundEl) roundEl.textContent = `라운드 ${data.round}`;
+
+    // 상태 바
+    const statusEl = document.getElementById('indian-status');
+    if (statusEl) {
+      if (data.phase === 'waiting') {
+        statusEl.textContent = '상대방을 기다리는 중...';
+      } else if (isMyTurn && !isSpectator) {
+        statusEl.textContent = data.phase === 'first_action'
+          ? '🎯 내 차례 — 승부 또는 포기를 선택하세요!'
+          : '🎯 내 차례 — 콜(승부) 또는 포기를 선택하세요!';
+        statusEl.style.color = 'var(--accent)';
+      } else {
+        statusEl.innerHTML = `⏳ <span class="clickable-nickname" onclick="requestOpponentRecord('${escapeForJsAttr(data.turn)}')" title="전적 보기">${escapeHTML(data.turn)}</span>의 선택을 기다리는 중...`;
+        statusEl.style.color = 'var(--text-secondary)';
+      }
+    }
+
+    // 상대방 정보
+    const oppName = data.opponentName || '—';
+    document.getElementById('indian-opp-name').innerHTML = oppName !== '—'
+      ? `<span class="clickable-nickname" onclick="requestOpponentRecord('${escapeForJsAttr(oppName)}')" title="전적 보기">${escapeHTML(oppName)}</span>`
+      : '—';
+    document.getElementById('indian-opp-hearts').innerHTML = renderHeartsBar(data.opponentHearts);
+    document.getElementById('indian-opp-card-wrap').innerHTML = renderIndianCard(data.opponentCard);
+
+    // 내 정보
+    const myName = data.myName || '—';
+    document.getElementById('indian-my-name').innerHTML = myName !== '—'
+      ? `<span class="clickable-nickname" onclick="requestOpponentRecord('${escapeForJsAttr(myName)}')" title="전적 보기">${escapeHTML(myName)}</span>`
+      : '—';
+    document.getElementById('indian-my-hearts').innerHTML = renderHeartsBar(data.myHearts);
+    document.getElementById('indian-my-card-wrap').innerHTML = renderIndianCard(data.myCard);
+
+    // 현재 턴 유저 래퍼에 active-turn 강조
+    const oppArea = document.querySelector('.indian-player-area.opponent-area');
+    const myArea = document.querySelector('.indian-player-area.my-area');
+    if (oppArea) oppArea.classList.toggle('active-turn', data.turn === data.opponentName);
+    if (myArea) myArea.classList.toggle('active-turn', data.turn === data.myName);
+
+    // 액션 버튼 활성화 (내 턴이고 관전자가 아닐 때)
+    const canAct = isMyTurn && !isSpectator && data.phase !== 'waiting';
+    document.getElementById('btn-indian-showdown').disabled = !canAct;
+    document.getElementById('btn-indian-giveup').disabled   = !canAct;
+  }
+
+  function indianShowdown() {
+    if (!ws || ws.readyState !== WebSocket.OPEN) return;
+    sendGameAction({ cmd: 'showdown' });
+  }
+
+  function indianGiveUp() {
+    if (!ws || ws.readyState !== WebSocket.OPEN) return;
+    sendGameAction({ cmd: 'give_up' });
+  }
+
+  // ── Thief (도둑잡기) UI ────────────────────────────────────────────────────
+
+  let thiefHoveredIndex = -1;
+  let thiefHoveredTargetId = '';
+  let lastThiefState = null;
+
+  function showThiefUI() {
+    switchGameView('thief');
+    thiefHoveredIndex = -1;
+    thiefHoveredTargetId = '';
+  }
+
+  function renderThiefCard(card, hoverFinger, isDiscarding) {
+    if (!card) return '';
+    const isRed = card.suit === '♥' || card.suit === '♦';
+    const discardClass = isDiscarding ? ' discarding-pair' : '';
+    const suit = card.suit || '🃏';
+    const val = card.value || '?';
+    const fingerClass = hoverFinger ? ' hover-finger' : '';
+    return `<div class="thief-card ${isRed ? 'red-suit' : 'black-suit'}${fingerClass}${discardClass}"><span>${val}</span><span>${suit}</span></div>`;
+  }
+
+  const TABLE_SEAT_ORDER = ['seat-top', 'seat-left', 'seat-right'];
+  let lastThiefHandJson = '';
+
+  function renderThief(data) {
+    if (!data) return;
+    lastThiefState = data;
+    const isMyTurn = data.turn === currentUserId;
+    document.getElementById('thief-status').textContent = isMyTurn
+      ? '🎯 내 차례 — 상대방 카드를 클릭하여 뽑으세요!'
+      : `⏳ ${escapeHTML(data.turn || '—')}의 차례`;
+    document.getElementById('thief-escaped').textContent = data.escaped && data.escaped.length
+      ? `탈출: ${data.escaped.join(', ')}`
+      : '';
+
+    const players = data.players || [];
+    const opponents = players.filter(p => p.userId !== currentUserId);
+    const playersEl = document.getElementById('thief-players');
+    if (playersEl) {
+      playersEl.innerHTML = opponents.map((p, idx) => {
+        const seatClass = TABLE_SEAT_ORDER[idx] || 'seat-top';
+        const isTarget = data.targetUserId === p.userId;
+        const cardCount = p.cardCount || 0;
+        let targetCardsHtml = '';
+        if (isTarget && cardCount > 0) {
+          targetCardsHtml = '<div class="table-seat-target-cards">' + Array.from({ length: cardCount }, (_, i) => {
+            const hovered = thiefHoveredTargetId === p.userId && thiefHoveredIndex === i;
+            return `<div class="thief-target-card${hovered ? ' hovered' : ''}" data-target-id="${escapeHTML(p.userId)}" data-index="${i}">🃏</div>`;
+          }).join('') + '</div>';
+        }
+        const isTheirTurn = data.turn === p.userId;
+        return `<div class="table-seat ${seatClass} ${isTheirTurn ? 'my-turn' : ''}" data-user-id="${escapeHTML(p.userId)}">
+          <span class="table-seat-name">${escapeHTML(p.userId)}</span>
+          <span class="table-seat-count">🃏 ${cardCount}장</span>
+          ${targetCardsHtml}
+        </div>`;
+      }).join('');
+      playersEl.querySelectorAll('.thief-target-card').forEach(el => {
+        el.onclick = () => {
+          const targetId = el.dataset.targetId;
+          const index = parseInt(el.dataset.index, 10);
+          thiefOnTargetCardClick(targetId, index, el);
+        };
+      });
+    }
+
+    const handEl = document.getElementById('thief-hand');
+    if (handEl && data.hand) {
+      const discardingSet = new Set((data.discardingPairs || []));
+      const handJson = JSON.stringify(data.hand);
+      if (handJson !== lastThiefHandJson) {
+        lastThiefHandJson = handJson;
+        const hoverOnMyCard = thiefHoveredTargetId === currentUserId;
+        handEl.innerHTML = data.hand.map((c, i) => renderThiefCard(c, hoverOnMyCard && thiefHoveredIndex === i, discardingSet.has(i))).join('');
+      } else {
+        const hoverOnMyCard = thiefHoveredTargetId === currentUserId;
+        handEl.querySelectorAll('.thief-card').forEach((el, i) => {
+          el.classList.toggle('hover-finger', hoverOnMyCard && thiefHoveredIndex === i);
+          el.classList.toggle('discarding-pair', discardingSet.has(i));
+        });
+      }
+    }
+
+    setTimeout(() => {
+      document.querySelectorAll('.table-seat').forEach(el => el.classList.remove('target-seat'));
+      if (data.targetUserId) {
+        document.querySelectorAll('.table-seat').forEach(el => {
+          if (el.getAttribute('data-user-id') === data.targetUserId) {
+            el.classList.add('target-seat');
+          }
+        });
+      }
+    }, 50);
+  }
+
+  function thiefOnTargetCardClick(targetId, index, el) {
+    if (!ws || ws.readyState !== WebSocket.OPEN) return;
+    if (thiefHoveredTargetId === targetId && thiefHoveredIndex === index) {
+      if (window.isDrawing) return;
+      window.isDrawing = true;
+      setTimeout(() => { window.isDrawing = false; }, 500);
+      sendGameAction({ cmd: 'draw', targetId: targetId, index: index });
+      thiefHoveredIndex = -1;
+      thiefHoveredTargetId = '';
+    } else {
+      sendGameAction({ cmd: 'hover', targetId: targetId, index: index });
+      thiefHoveredIndex = index;
+      thiefHoveredTargetId = targetId;
+      document.querySelectorAll('#thief-players .thief-target-card').forEach(c => c.classList.remove('hovered'));
+      if (el) el.classList.add('hovered');
+    }
+  }
+
+  function thiefDraw() {
+    if (!ws || ws.readyState !== WebSocket.OPEN) return;
+    sendGameAction({ cmd: 'draw' });
+  }
+
+  // ── OneCard (원카드) UI ────────────────────────────────────────────────────
+
+  function showOneCardUI() {
+    switchGameView('onecard');
+  }
+
+  function renderOneCardCard(card, playable) {
+    if (!card) return '';
+    const isRed = card.suit === '♥' || card.suit === '♦';
+    const suit = card.suit || '🃏';
+    let val = card.value || '?';
+    if (val === 'B_JOKER') val = 'B';
+    if (val === 'C_JOKER') val = 'C';
+    return `<div class="onecard-card ${isRed ? 'red-suit' : 'black-suit'} ${playable ? 'playable' : ''}" data-index="${card._index ?? ''}"><span>${val}</span><span>${suit}</span></div>`;
+  }
+
+  function onecardCanDefend(attackCard, card) {
+    if (!attackCard || !card) return false;
+    const av = attackCard.value || '';
+    const cv = card.value || '';
+    if (av === 'A') return cv === 'A' || cv === 'B_JOKER' || cv === 'C_JOKER';
+    if (av === 'B_JOKER') return cv === 'C_JOKER';
+    if (av === 'C_JOKER') return false;
+    return false;
+  }
+  function onecardIsPlayable(data, card) {
+    const top = data.topCard || {};
+    const suit = data.targetSuit || top.suit || '';
+    const attackPenalty = data.attackPenalty || 0;
+    if (attackPenalty > 0) return onecardCanDefend(top, card);
+    const cv = card.value || '';
+    if (cv === 'B_JOKER' || cv === 'C_JOKER') return true;
+    return (card.suit === suit || card.value === top.value);
+  }
+
+  let onecardPendingPlayIndex = -1;
+
+  let spChoiceDiscard = -1;
+  let spChoiceOpen = -1;
+  let spChoiceMyCards = [];
+
+  function renderOneCard(data) {
+    if (!data) return;
+    const isMyTurn = data.turn === currentUserId;
+    const top = data.topCard || {};
+    const attackPenalty = data.attackPenalty || 0;
+    const oneCardVuln = data.oneCardVulnerable || '';
+
+    document.getElementById('onecard-status').textContent = isMyTurn
+      ? (attackPenalty > 0 ? '🛡️ 방어 카드를 내거나 드로우하세요!' : '🎯 내 차례 — 카드를 내거나 드로우하세요!')
+      : `⏳ ${escapeHTML(data.turn || '—')}의 차례`;
+    document.getElementById('onecard-direction').textContent = (data.direction === -1 ? '↺ 반시계' : '↻ 시계') + ' 방향';
+
+    const attackBanner = document.getElementById('onecard-attack-banner');
+    const attackCount = document.getElementById('onecard-attack-count');
+    if (attackBanner && attackCount) {
+      attackCount.textContent = attackPenalty;
+      attackBanner.classList.toggle('show', attackPenalty > 0);
+    }
+
+    const btnCall = document.getElementById('btn-onecard-call');
+    if (btnCall) {
+      btnCall.disabled = !oneCardVuln || !ws || ws.readyState !== WebSocket.OPEN;
+    }
+
+    const playersEl = document.getElementById('onecard-players');
+    if (playersEl && data.players) {
+      const opponents = (data.players || []).filter(p => p.userId !== currentUserId);
+      playersEl.innerHTML = opponents.map((p, idx) => {
+        const seatClass = TABLE_SEAT_ORDER[idx] || 'seat-top';
+        return `<div class="table-seat onecard-player-box ${seatClass} ${p.isTurn ? 'my-turn' : ''}" data-user-id="${escapeHTML(p.userId)}">
+          <span class="table-seat-name">${escapeHTML(p.userId)}</span>
+          <span class="table-seat-count">🃏 ${p.cardCount || 0}장</span>
+        </div>`;
+      }).join('');
+    }
+
+    const topEl = document.getElementById('onecard-top-card');
+    if (topEl) topEl.innerHTML = top.suit ? renderOneCardCard(top, false).replace(' data-index=""', '') : '';
+    const deckEl = document.getElementById('onecard-deck');
+    if (deckEl) {
+      const total = (data.deckCount || 0) + (data.discardCount || 0);
+      deckEl.textContent = total > 0 ? `🃏 ${data.deckCount || 0}` : '';
+      deckEl.style.cursor = isMyTurn && total > 0 ? 'pointer' : 'default';
+      deckEl.onclick = (total > 0 && isMyTurn) ? onecardDraw : null;
+    }
+    const handEl = document.getElementById('onecard-hand');
+    if (handEl && data.hand) {
+      const canPlay = isMyTurn && top.suit;
+      handEl.innerHTML = data.hand.map((c, i) => {
+        const playable = canPlay && onecardIsPlayable(data, c);
+        const cardWithIdx = { ...c, _index: i };
+        return renderOneCardCard(cardWithIdx, playable);
+      }).join('');
+      handEl.querySelectorAll('.onecard-card.playable').forEach(el => {
+        el.style.cursor = 'pointer';
+        el.onclick = () => {
+          const idx = parseInt(el.dataset.index, 10);
+          if (isNaN(idx)) return;
+          const card = data.hand[idx];
+          if (card && card.value === '7') {
+            onecardPendingPlayIndex = idx;
+            document.getElementById('onecard-suit-modal').classList.add('show');
+          } else {
+            onecardPlay(idx);
+          }
+        };
+      });
+    }
+  }
+
+  function closeOneCardSuitModal() {
+    document.getElementById('onecard-suit-modal').classList.remove('show');
+    onecardPendingPlayIndex = -1;
+  }
+  function onecardPickSuit(suit) {
+    if (onecardPendingPlayIndex < 0) return;
+    onecardPlay(onecardPendingPlayIndex, suit);
+    closeOneCardSuitModal();
+  }
+
+  function onecardDraw() {
+    if (!ws || ws.readyState !== WebSocket.OPEN) return;
+    sendGameAction({ cmd: 'draw' });
+  }
+
+  function onecardPlay(index, targetSuit) {
+    if (!ws || ws.readyState !== WebSocket.OPEN) return;
+    const payload = { cmd: 'play', index };
+    if (targetSuit) payload.targetSuit = targetSuit;
+    sendGameAction(payload);
+  }
+
+  function onecardCallOneCard() {
+    if (!ws || ws.readyState !== WebSocket.OPEN) return;
+    sendGameAction({ cmd: 'call_onecard' });
+  }
+
+  // ── Mahjong (마작) UI ───────────────────────────────────────────────────────
+
+  function showMahjongUI() {
+    switchGameView('mahjong');
+  }
+
+  function getMahjongTileHTML(type, value, isHidden = false) {
+    if (isHidden) return '<div class="mahjong-tile hidden">🀫</div>';
+    const dict = {
+      'man': ['','🀇','🀈','🀉','🀊','🀋','🀌','🀍','🀎','🀏'],
+      'pin': ['','🀙','🀚','🀛','🀜','🀝','🀞','🀟','🀠','🀡'],
+      'sou': ['','🀐','🀑','🀒','🀓','🀔','🀕','🀖','🀗','🀘'],
+      'honor': ['','🀀','🀁','🀂','🀃','🀆','🀅','🀄']
+    };
+    const char = dict[type] ? dict[type][value] : '🀫';
+    return `<div class="mahjong-tile">${char}</div>`;
+  }
+
+  function mahjongTileChar(tile) {
+    if (!tile || !tile.type) return '🀫';
+    const man = ['', '🀇','🀈','🀉','🀊','🀋','🀌','🀍','🀎','🀏'];
+    const pin = ['', '🀙','🀚','🀛','🀜','🀝','🀞','🀟','🀠','🀡'];
+    const sou = ['', '🀐','🀑','🀒','🀓','🀔','🀕','🀖','🀗','🀘'];
+    const honor = ['', '🀀','🀁','🀂','🀃','🀄','🀅','🀆'];
+    const v = tile.value || 0;
+    if (tile.type === 'man' && v >= 1 && v <= 9) return man[v];
+    if (tile.type === 'pin' && v >= 1 && v <= 9) return pin[v];
+    if (tile.type === 'sou' && v >= 1 && v <= 9) return sou[v];
+    if (tile.type === 'honor' && v >= 1 && v <= 7) return honor[v];
+    return '🀫';
+  }
+
+  function renderMahjong(data) {
+    if (!data) return;
+    const isMyTurn = data.currentTurn === currentUserId;
+    const myHand = data.myHand || [];
+    const canDiscard = isMyTurn && myHand.length === 14;
+
+    document.getElementById('mahjong-status').textContent = isMyTurn
+      ? '🎯 내 차례 — 패를 클릭해 버리세요!'
+      : `⏳ ${escapeHTML(data.currentTurn || '—')}의 차례`;
+    document.getElementById('mahjong-wall-info').textContent = `🀄 남은 패: ${data.wallCount ?? 0}장`;
+
+    const playersEl = document.getElementById('mahjong-players');
+    if (playersEl && data.players) {
+      const myIdx = data.players.findIndex(p => p && p.userId === currentUserId);
+      const opponentIndices = myIdx >= 0 ? [(myIdx + 2) % 4, (myIdx + 3) % 4, (myIdx + 1) % 4] : [0, 1, 2];
+      const opponents = opponentIndices.map(i => data.players[i]).filter(p => p && p.userId);
+      playersEl.innerHTML = opponents.map((p, idx) => {
+        const seatClass = TABLE_SEAT_ORDER[idx] || 'seat-top';
+        const discardsHtml = (p.discards || []).map(t => getMahjongTileHTML(t.type || t.Type, t.value ?? t.Value ?? 0, false)).join('');
+        const handHtml = Array(p.handCount || 0).fill(0).map(() => getMahjongTileHTML('', 0, true)).join('');
+        return `<div class="table-seat mahjong-player-box ${seatClass} ${p.isTurn ? 'my-turn' : ''}" data-user-id="${escapeHTML(p.userId)}">
+          <span class="table-seat-name">${escapeHTML(p.userId)}</span>
+          <div class="mahjong-discards mahjong-discards-row">${discardsHtml}</div>
+          <div class="mahjong-hand">${handHtml}</div>
+        </div>`;
+      }).join('');
+    }
+
+    const discardsMeEl = document.getElementById('mahjong-discards-me');
+    const mePlayer = data.players?.find(p => p.userId === currentUserId);
+    if (discardsMeEl && mePlayer) {
+      discardsMeEl.innerHTML = (mePlayer.discards || []).map(t => getMahjongTileHTML(t.type || t.Type, t.value ?? t.Value ?? 0, false)).join('');
+    }
+
+    const handEl = document.getElementById('mahjong-hand');
+    if (handEl && myHand) {
+      handEl.innerHTML = myHand.map((t, i) => {
+        const discardable = canDiscard ? ' discardable' : '';
+        const type = t.type || t.Type;
+        const value = t.value ?? t.Value ?? 0;
+        return `<div class="mahjong-tile${discardable}" data-index="${i}">${getMahjongTileHTML(type, value, false).replace(/^<div[^>]*>|<\/div>$/g, '')}</div>`;
+      }).join('');
+      if (canDiscard) {
+        handEl.querySelectorAll('.mahjong-tile.discardable').forEach(el => {
+          el.style.cursor = 'pointer';
+          el.onclick = () => {
+            const idx = parseInt(el.dataset.index, 10);
+            if (!isNaN(idx)) mahjongDiscard(idx);
+          };
+        });
+      }
+    }
+  }
+
+  function mahjongDiscard(index) {
+    if (!ws || ws.readyState !== WebSocket.OPEN) return;
+    sendGameAction({ cmd: 'discard', index });
+  }
+
+  // ── Alkkagi UI (Matter.js 물리 보드) ────────────────────────────────────────
+
+  let alkkagiEngine = null;
+  let alkkagiRender = null;
+  let alkkagiRunner = null;
+  let alkkagiWorld = null;
+  let alkkagiBodies = {};  // id -> Matter.Body
+  let alkkagiInitialized = false;
+
+  function showAlkkagiUI() {
+    switchGameView('alkkagi');
+  }
+
+  function renderAlkkagi(data) {
+    if (!data) return;
+    const statusEl = document.getElementById('alkkagi-status');
+    if (statusEl) {
+      const turn = data.currentTurn || '';
+      statusEl.textContent = turn === currentUserId
+        ? '🎯 내 차례 — 돌을 튕겨 상대 알을 밀어내세요!'
+        : turn ? `⏳ ${escapeHTML(turn)}의 차례` : '알까기 — 상대방을 기다리는 중...';
+    }
+
+    const wrap = document.getElementById('alkkagi-board-wrap');
+    if (!wrap || typeof Matter === 'undefined') return;
+
+    if (!alkkagiInitialized) {
+      alkkagiInitialized = true;
+      initAlkkagiPhysics(wrap, data);
+    } else {
+      syncAlkkagiStones(data.stones || []);
+    }
+  }
+
+  function initAlkkagiPhysics(container, data) {
+    const M = Matter;
+    const W = 420, H = 420;
+    const wallThick = 15;
+
+    const engine = M.Engine.create();
+    engine.gravity.x = 0;
+    engine.gravity.y = 0;
+
+    const world = engine.world;
+
+    // 4면 벽 (정적 바디)
+    const walls = [
+      M.Bodies.rectangle(W/2, -wallThick/2, W + wallThick*2, wallThick, { isStatic: true, render: { fillStyle: '#7a5010' } }),
+      M.Bodies.rectangle(W/2, H + wallThick/2, W + wallThick*2, wallThick, { isStatic: true, render: { fillStyle: '#7a5010' } }),
+      M.Bodies.rectangle(-wallThick/2, H/2, wallThick, H + wallThick*2, { isStatic: true, render: { fillStyle: '#7a5010' } }),
+      M.Bodies.rectangle(W + wallThick/2, H/2, wallThick, H + wallThick*2, { isStatic: true, render: { fillStyle: '#7a5010' } }),
+    ];
+    M.World.add(world, walls);
+
+    const stoneRadius = 18;
+    const stoneOpts = { friction: 0.01, frictionAir: 0.008, restitution: 0.6, density: 0.001 };
+
+    const stones = data.stones || [];
+    stones.forEach(s => {
+      const fill = s.color === 1 ? '#111' : '#f5f5f5';
+      const stroke = s.color === 1 ? '#333' : '#ccc';
+      const body = M.Bodies.circle(s.x || 100, s.y || 100, stoneRadius, {
+        ...stoneOpts,
+        render: { fillStyle: fill, strokeStyle: stroke, lineWidth: 2 },
+      });
+      body.alkkagiId = s.id;
+      body.alkkagiColor = s.color;
+      alkkagiBodies[s.id] = body;
+      M.World.add(world, body);
+    });
+
+    const render = M.Render.create({
+      element: container,
+      engine: engine,
+      options: {
+        width: W + wallThick*2,
+        height: H + wallThick*2,
+        wireframes: false,
+        background: '#c8a45a',
+      },
+    });
+    M.Render.run(render);
+
+    const mouseConstraint = M.MouseConstraint.create(engine, {
+      element: render.canvas,
+      constraint: { stiffness: 0.2, render: { visible: false } },
+    });
+    M.World.add(world, mouseConstraint);
+
+    const runner = M.Runner.create();
+    M.Runner.run(runner, engine);
+
+    alkkagiEngine = engine;
+    alkkagiRender = render;
+    alkkagiRunner = runner;
+    alkkagiWorld = world;
+  }
+
+  function syncAlkkagiStones(stones) {
+    if (!alkkagiWorld || !alkkagiBodies) return;
+    stones.forEach(s => {
+      const body = alkkagiBodies[s.id];
+      if (body) {
+        Matter.Body.setPosition(body, { x: s.x, y: s.y });
+        Matter.Body.setVelocity(body, { x: s.velX || 0, y: s.velY || 0 });
+      }
+    });
+  }
+
+  // ── Texas Holdem UI ───────────────────────────────────────────────────────
+
+  function showHoldemUI() {
+    switchGameView('holdem');
+  }
+
+  function renderHoldemCard(card) {
+    if (!card || card.hidden) {
+      return `<div class="holdem-card hidden">🃏</div>`;
+    }
+    const isRed = card.suit === '♥' || card.suit === '♦';
+    return `<div class="holdem-card ${isRed ? 'red-suit' : 'black-suit'}">
+      <span class="holdem-card-top">${card.value}</span>
+      <span class="holdem-card-suit">${card.suit}</span>
+      <span class="holdem-card-bot">${card.value}</span>
+    </div>`;
+  }
+
+  function renderHoldem(data) {
+    if (!data) return;
+
+    const isMyTurn = data.currentTurn === currentUserId;
+    const isPlayer = data.players && data.players.some(p => p.userId === currentUserId);
+
+    document.getElementById('holdem-round-bar').textContent = `라운드 ${data.round || 0}`;
+    document.getElementById('holdem-pot-bar').textContent = `팟 ⭐×${data.pot || 0}`;
+
+    const communityEl = document.getElementById('holdem-community-cards');
+    if (communityEl && data.communityCards) {
+      communityEl.innerHTML = data.communityCards.map(c => renderHoldemCard(c)).join('');
+    }
+
+    const playersEl = document.getElementById('holdem-players');
+    if (playersEl && data.players) {
+      playersEl.innerHTML = data.players.map(p => {
+        const isMe = p.userId === currentUserId;
+        const isTurn = p.userId === data.currentTurn;
+        const folded = p.status === 'fold';
+        const cardsHtml = (p.cards || []).map(c => renderHoldemCard(c)).join('');
+        const nameHtml = !isMe
+          ? `<span class="clickable-nickname" onclick="requestOpponentRecord('${escapeForJsAttr(p.userId)}')" title="전적 보기">${escapeHTML(p.userId)}</span>`
+          : escapeHTML(p.userId) + ' (나)';
+        return `
+          <div class="holdem-player-box ${isTurn ? 'my-turn' : ''} ${folded ? 'folded' : ''}">
+            <div class="holdem-player-name">${nameHtml}</div>
+            <div class="holdem-player-stars">⭐×${p.stars}</div>
+            <div class="holdem-player-status">${folded ? '🏳️ 폴드' : p.status === 'check' ? '✅ 체크' : ''}</div>
+            <div class="holdem-player-cards">${cardsHtml}</div>
+          </div>`;
+      }).join('');
+    }
+
+    const canAct = isMyTurn && isPlayer && data.phase !== 'waiting' && data.phase !== 'showdown';
+    document.getElementById('btn-holdem-check').disabled = !canAct;
+    document.getElementById('btn-holdem-fold').disabled = !canAct;
+
+    const holdemGuide = document.querySelector('#holdem-container .poker-hand-guide-grid');
+    if (holdemGuide) {
+      holdemGuide.querySelectorAll('.poker-hand-item').forEach(el => el.classList.remove('active'));
+      const myHand = (data.myHandName || '').trim();
+      if (myHand) {
+        holdemGuide.querySelectorAll('.poker-hand-item').forEach(el => {
+          const nameEl = el.querySelector('.poker-hand-name');
+          if (nameEl && nameEl.textContent.trim() === myHand) el.classList.add('active');
+        });
+      }
+    }
+  }
+
+  function holdemCheck() {
+    if (!ws || ws.readyState !== WebSocket.OPEN) return;
+    sendGameAction({ cmd: 'check' });
+  }
+
+  function holdemFold() {
+    if (!ws || ws.readyState !== WebSocket.OPEN) return;
+    sendGameAction({ cmd: 'fold' });
+  }
+
+  // ── Seven Poker UI ────────────────────────────────────────────────────────
+
+  function showSevenPokerUI() {
+    switchGameView('sevenpoker');
+  }
+
+  function renderSevenPoker(data) {
+    if (!data) return;
+
+    const isMyTurn = data.currentTurn === currentUserId;
+    const isPlayer = data.players && data.players.some(p => p.userId === currentUserId);
+
+    document.getElementById('sevenpoker-round-bar').textContent = `라운드 ${data.round || 0}`;
+    document.getElementById('sevenpoker-pot-bar').textContent = `팟 ⭐×${data.pot || 0}`;
+
+    const playersEl = document.getElementById('sevenpoker-players');
+    if (playersEl && data.players) {
+      playersEl.innerHTML = data.players.map(p => {
+        const isMe = p.userId === currentUserId;
+        const isTurn = p.userId === data.currentTurn;
+        const folded = p.status === 'fold';
+        const cardsHtml = (p.cards || []).map(c => {
+          if (isMe && c.hidden) {
+            let html = renderHoldemCard({ ...c, hidden: false });
+            return html.replace('class="holdem-card', 'class="holdem-card my-secret-card');
+          } else {
+            return renderHoldemCard(c);
+          }
+        }).join('');
+        const nameHtml = !isMe
+          ? `<span class="clickable-nickname" onclick="requestOpponentRecord('${escapeForJsAttr(p.userId)}')" title="전적 보기">${escapeHTML(p.userId)}</span>`
+          : escapeHTML(p.userId) + ' (나)';
+        return `
+          <div class="sevenpoker-player-box ${isTurn ? 'my-turn' : ''} ${folded ? 'folded' : ''}">
+            <div class="sevenpoker-player-name">${nameHtml}</div>
+            <div class="sevenpoker-player-stars">⭐×${p.stars}</div>
+            <div class="sevenpoker-player-status">${folded ? '🏳️ 폴드' : p.status === 'check' ? '✅ 체크' : ''}</div>
+            <div class="sevenpoker-player-cards">${cardsHtml}</div>
+          </div>`;
+      }).join('');
+    }
+
+    const canAct = isMyTurn && isPlayer && data.phase !== 'waiting' && data.phase !== 'showdown' && data.phase !== 'choice';
+    document.getElementById('btn-sevenpoker-check').disabled = !canAct;
+    document.getElementById('btn-sevenpoker-fold').disabled = !canAct;
+
+    const choiceBox = document.getElementById('sevenpoker-choice-box');
+    if (choiceBox) {
+      const showChoice = data.phase === 'choice' && isPlayer && !data.myChoiceDone;
+      choiceBox.style.display = showChoice ? 'block' : 'none';
+      if (showChoice) {
+        spChoiceDiscard = -1; spChoiceOpen = -1;
+        const me = data.players.find(p => p.userId === currentUserId);
+        if (me && me.cards) { spChoiceMyCards = me.cards; renderSpChoiceUI(); }
+      }
+    }
+
+    const sevenGuide = document.querySelector('#sevenpoker-container .poker-hand-guide-grid');
+    if (sevenGuide) {
+      sevenGuide.querySelectorAll('.poker-hand-item').forEach(el => el.classList.remove('active'));
+      const myHand = (data.myHandName || '').trim();
+      if (myHand) {
+        sevenGuide.querySelectorAll('.poker-hand-item').forEach(el => {
+          const nameEl = el.querySelector('.poker-hand-name');
+          if (nameEl && nameEl.textContent.trim() === myHand) el.classList.add('active');
+        });
+      }
+    }
+  }
+
+  function sevenpokerCheck() {
+    if (!ws || ws.readyState !== WebSocket.OPEN) return;
+    sendGameAction({ cmd: 'check' });
+  }
+
+  function sevenpokerFold() {
+    if (!ws || ws.readyState !== WebSocket.OPEN) return;
+    sendGameAction({ cmd: 'fold' });
+  }
+
+  window.setSpChoice = function(type, idx) {
+    if (type === 'discard') { spChoiceDiscard = idx; if (spChoiceOpen === idx) spChoiceOpen = -1; }
+    if (type === 'open') { spChoiceOpen = idx; if (spChoiceDiscard === idx) spChoiceDiscard = -1; }
+    renderSpChoiceUI();
+  };
+  window.renderSpChoiceUI = function() {
+    const container = document.getElementById('sp-choice-cards');
+    if (!container) return;
+    container.innerHTML = spChoiceMyCards.map((c, i) => {
+      const isDiscard = spChoiceDiscard === i;
+      const isOpen = spChoiceOpen === i;
+      const style = isDiscard ? 'opacity:0.4; border-color:var(--danger);' : (isOpen ? 'border-color:var(--accent); box-shadow:0 0 8px var(--accent);' : '');
+      let cardHtml = renderHoldemCard({...c, hidden: false});
+      if (style) cardHtml = cardHtml.replace(/^<div /, '<div style="' + style + '" ');
+      return `
+        <div style="display:flex; flex-direction:column; gap:6px; align-items:center;">
+          ${cardHtml}
+          <div style="display:flex; gap:4px;">
+            <button onclick="setSpChoice('discard', ${i})" style="padding:4px 6px; font-size:11px; background:${isDiscard?'var(--danger)':'var(--bg-tertiary)'}; color:#fff; border:1px solid var(--border); border-radius:4px; cursor:pointer;">❌</button>
+            <button onclick="setSpChoice('open', ${i})" style="padding:4px 6px; font-size:11px; background:${isOpen?'var(--accent)':'var(--bg-tertiary)'}; color:#fff; border:1px solid var(--border); border-radius:4px; cursor:pointer;">👁️</button>
+          </div>
+        </div>
+      `;
+    }).join('');
+    const btn = document.getElementById('btn-sp-choice-submit');
+    if (btn) btn.disabled = (spChoiceDiscard === -1 || spChoiceOpen === -1);
+  };
+  window.sendSevenPokerChoice = function() {
+    if (!ws || ws.readyState !== WebSocket.OPEN) return;
+    if (spChoiceDiscard === -1 || spChoiceOpen === -1) return;
+    sendGameAction({ cmd: 'choice', discardIdx: spChoiceDiscard, openIdx: spChoiceOpen });
+    spChoiceDiscard = -1; spChoiceOpen = -1;
+  };
+
+  /** 인디언 포커 승부 결과 오버레이 — 4초간 표시 후 자동 닫힘 */
+  let indianShowdownTimeout = null;
+  function showIndianShowdownOverlay(data) {
+    if (!data) return;
+    const box   = document.getElementById('indian-showdown-box');
+    const vsEl  = document.getElementById('indian-showdown-vs');
+    const resEl = document.getElementById('indian-showdown-result');
+    const overlay = document.getElementById('indian-showdown-overlay');
+
+    const myVal = data.myCard?.value || '?';
+    const oppVal = data.opponentCard?.value || '?';
+    const mySuit = data.myCard?.suit || '';
+    const oppSuit = data.opponentCard?.suit || '';
+    const isWin = data.result === 'win';
+    const delta = data.heartDelta || 0;
+    const deltaStr = delta >= 0 ? `+${delta}` : `${delta}`;
+
+    vsEl.textContent = `내 카드 ${myVal}${mySuit}  vs  상대 ${oppVal}${oppSuit}`;
+    resEl.textContent = isWin ? `승리! (${deltaStr} 하트)` : `패배 (${deltaStr} 하트)`;
+    resEl.className = 'indian-showdown-result ' + (isWin ? 'win' : 'lose');
+    box.className = 'indian-showdown-box ' + (isWin ? 'win' : 'lose');
+
+    if (indianShowdownTimeout) clearTimeout(indianShowdownTimeout);
+    overlay.classList.add('show');
+    indianShowdownTimeout = setTimeout(() => {
+      overlay.classList.remove('show');
+      indianShowdownTimeout = null;
+    }, 4000);
+  }
+
+  function closeIndianOverlay() {
+    const overlay = document.getElementById('indian-showdown-overlay');
+    if (overlay) overlay.classList.remove('show');
+    if (indianShowdownTimeout) {
+      clearTimeout(indianShowdownTimeout);
+      indianShowdownTimeout = null;
+    }
+  }
+
+  /** 포커(홀덤/세븐포커) 쇼다운 결과 오버레이 — 5초간 표시 후 자동 닫힘 */
+  let pokerShowdownTimeout = null;
+  function showPokerShowdownOverlay(data) {
+    if (!data) return;
+    const winnerEl = document.getElementById('poker-showdown-winner');
+    const partEl = document.getElementById('poker-showdown-participants');
+    const overlay = document.getElementById('poker-showdown-overlay');
+
+    const winnerId = data.winnerId || '';
+    const winningHand = data.winningHand || '';
+    const participants = data.participants || [];
+    winnerEl.textContent = winningHand ? `승자: ${winnerId} (${winningHand})` : `승자: ${winnerId}`;
+
+    let html = '';
+    participants.forEach(p => {
+      html += `<div class="poker-showdown-row"><span>${escapeHTML(p.userId || '')}</span><span>${escapeHTML(p.handName || '-')}</span></div>`;
+    });
+    partEl.innerHTML = html || '<div class="poker-showdown-row">—</div>';
+
+    if (pokerShowdownTimeout) clearTimeout(pokerShowdownTimeout);
+    overlay.classList.add('show');
+    pokerShowdownTimeout = setTimeout(() => {
+      overlay.classList.remove('show');
+      pokerShowdownTimeout = null;
+    }, 5000);
+  }
+
+  function closePokerShowdownOverlay() {
+    const overlay = document.getElementById('poker-showdown-overlay');
+    if (overlay) overlay.classList.remove('show');
+    if (pokerShowdownTimeout) {
+      clearTimeout(pokerShowdownTimeout);
+      pokerShowdownTimeout = null;
+    }
+  }
+</script>
+>>>>>>> parent of ed2fc56 (260224_1739)
 </body>
 </html>

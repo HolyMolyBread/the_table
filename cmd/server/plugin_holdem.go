@@ -35,7 +35,6 @@ type HoldemData struct {
 	CommunityCards []Card            `json:"communityCards"`
 	Players        []HoldemPlayerInfo `json:"players"`
 	CurrentTurn    string             `json:"currentTurn"`
-	DealerId       string             `json:"dealerId,omitempty"`
 	Message        string             `json:"message,omitempty"`
 	CanTakeover    bool               `json:"canTakeover,omitempty"`
 	MyHandName     string             `json:"myHandName,omitempty"`
@@ -981,11 +980,6 @@ func (g *HoldemGame) buildHoldemDataForPlayer(viewerIdx int) HoldemData {
 		currentTurn = g.players[g.currentPlayerIdx].UserID
 	}
 
-	dealerId := ""
-	if g.players[g.dealerIdx] != nil {
-		dealerId = g.players[g.dealerIdx].UserID
-	}
-
 	canTakeover := false
 	if viewerIdx < 0 && phase == "waiting" && !g.gameStarted {
 		for i := 0; i < holdemMaxPlayers; i++ {
@@ -1023,7 +1017,6 @@ func (g *HoldemGame) buildHoldemDataForPlayer(viewerIdx int) HoldemData {
 		CommunityCards: communityCards,
 		Players:        players,
 		CurrentTurn:    currentTurn,
-		DealerId:       dealerId,
 		CanTakeover:    canTakeover,
 		MyHandName:     myHandName,
 	}

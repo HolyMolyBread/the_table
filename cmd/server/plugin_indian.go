@@ -285,19 +285,13 @@ func (g *IndianGame) handleGiveUp(client *Client) {
 	prev := g.hearts[idx]
 	g.hearts[idx]--
 
-	notice, _ := json.Marshal(ServerResponse{
-		Type:    "game_notice",
-		Message: fmt.Sprintf("🏳️ [%s] 포기 (하트 -1)", client.UserID),
-		RoomID:  g.room.ID,
-	})
-	g.room.broadcastAll(notice)
 	chatMsg, _ := json.Marshal(ServerResponse{
 		Type: "system", Message: fmt.Sprintf("[%s]님이 포기했습니다.", client.UserID),
 		RoomID: g.room.ID,
 	})
 	g.room.broadcastAll(chatMsg)
 	time.Sleep(1200 * time.Millisecond)
-	notice2, _ := json.Marshal(ServerResponse{
+	notice, _ := json.Marshal(ServerResponse{
 		Type: "game_notice",
 		Message: fmt.Sprintf(
 			"[%s]이 🏳️ 포기했습니다. ❤️ %d → %d",
@@ -305,7 +299,7 @@ func (g *IndianGame) handleGiveUp(client *Client) {
 		),
 		RoomID: g.room.ID,
 	})
-	g.room.broadcastAll(notice2)
+	g.room.broadcastAll(notice)
 	log.Printf("[INDIAN] room:[%s] 포기: [%s] hearts=%d", g.room.ID, client.UserID, g.hearts[idx])
 	g.stopTurnTimerLocked()
 
