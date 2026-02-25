@@ -285,6 +285,8 @@ func (g *IndianGame) handleGiveUp(client *Client) {
 	prev := g.hearts[idx]
 	g.hearts[idx]--
 
+	g.sendShowdownResultLocked(1-idx, idx, true)
+
 	chatMsg, _ := json.Marshal(ServerResponse{
 		Type: "system", Message: fmt.Sprintf("[%s]님이 포기했습니다.", client.UserID),
 		RoomID: g.room.ID,
@@ -302,9 +304,6 @@ func (g *IndianGame) handleGiveUp(client *Client) {
 	g.room.broadcastAll(notice)
 	log.Printf("[INDIAN] room:[%s] 포기: [%s] hearts=%d", g.room.ID, client.UserID, g.hearts[idx])
 	g.stopTurnTimerLocked()
-
-	g.sendShowdownResultLocked(1-idx, idx, true)
-	time.Sleep(1500 * time.Millisecond)
 
 	if g.hearts[idx] <= 0 {
 		g.endGameLocked(1-idx, idx)
@@ -661,6 +660,8 @@ func (g *IndianGame) handleTimeOver(timedOutPlayer *Client) {
 	prev := g.hearts[idx]
 	g.hearts[idx]--
 
+	g.sendShowdownResultLocked(1-idx, idx, true)
+
 	notice, _ := json.Marshal(ServerResponse{
 		Type: "game_notice",
 		Message: fmt.Sprintf(
@@ -671,9 +672,7 @@ func (g *IndianGame) handleTimeOver(timedOutPlayer *Client) {
 	})
 	g.room.broadcastAll(notice)
 	log.Printf("[INDIAN] room:[%s] 시간초과(포기): [%s] hearts=%d", g.room.ID, timedOutPlayer.UserID, g.hearts[idx])
-
-	g.sendShowdownResultLocked(1-idx, idx, true)
-	time.Sleep(1500 * time.Millisecond)
+	g.stopTurnTimerLocked()
 
 	if g.hearts[idx] <= 0 {
 		g.endGameLocked(1-idx, idx)

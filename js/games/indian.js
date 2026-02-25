@@ -123,11 +123,12 @@
     const vsEl  = document.getElementById('indian-showdown-vs');
     const resEl = document.getElementById('indian-showdown-result');
     const overlay = document.getElementById('indian-showdown-overlay');
+    if (!box || !vsEl || !resEl || !overlay) return;
 
-    const myVal = data.myCard?.value || '?';
-    const oppVal = data.opponentCard?.value || '?';
-    const mySuit = data.myCard?.suit || '';
-    const oppSuit = data.opponentCard?.suit || '';
+    const myVal = data.myCard?.value ?? '?';
+    const oppVal = data.opponentCard?.value ?? '?';
+    const mySuit = data.myCard?.suit ?? '';
+    const oppSuit = data.opponentCard?.suit ?? '';
     const result = data.result || '';
     const delta = data.heartDelta ?? 0;
     const deltaStr = delta >= 0 ? `+${delta}` : `${delta}`;
