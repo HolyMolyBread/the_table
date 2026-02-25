@@ -513,7 +513,14 @@ header {
 }
 .bj-area { padding: 14px 18px 10px; }
 .bj-area + .bj-area { border-top: 1px dashed #1a4a28; }
-.bj-area-title { font-size: 11px; text-transform: uppercase; letter-spacing: 1.2px; color: #86efac; margin-bottom: 8px; font-weight: 600; }
+.bj-area-header {
+  display: flex; align-items: center; gap: 12px; margin-bottom: 8px; flex-wrap: wrap;
+}
+.bj-area-title { font-size: 11px; text-transform: uppercase; letter-spacing: 1.2px; color: #86efac; font-weight: 600; }
+.bj-hearts-bar {
+  display: inline-flex; flex-wrap: wrap; gap: 2px; font-size: 14px;
+}
+.bj-hearts-bar .indian-heart { font-size: 14px; }
 .bj-hand { display: flex; flex-wrap: wrap; gap: 6px; min-height: 70px; align-items: flex-start; }
 .bj-score { margin-top: 6px; font-size: 20px; font-weight: 700; color: #f0f6fc; }
 .bj-score.bust { color: var(--danger); }
@@ -1169,6 +1176,32 @@ header {
 .sevenpoker-player-stars { font-size: 14px; font-weight: 700; color: var(--gold); }
 .sevenpoker-player-status { font-size: 11px; color: var(--text-muted); }
 .sevenpoker-player-cards { display: flex; gap: 4px; flex-wrap: wrap; }
+
+/* 상대방 카드: 겹쳐서 보여주기 (Compact Mode) */
+.sevenpoker-player-box.is-opponent .holdem-card {
+  margin-left: -30px;
+  transition: margin-left 0.3s ease, transform 0.2s ease;
+  box-shadow: -2px 0 5px rgba(0,0,0,0.3);
+}
+.sevenpoker-player-box.is-opponent .holdem-card:first-child {
+  margin-left: 0;
+}
+.sevenpoker-player-box.is-opponent .sevenpoker-player-cards:hover .holdem-card {
+  margin-left: 4px;
+  z-index: 10;
+  transform: translateY(-5px);
+}
+
+/* 내 카드: 넓게 펼쳐서 보여주기 (Focus Mode) */
+.sevenpoker-player-box.is-me .holdem-card {
+  margin-left: 4px;
+}
+
+/* 내 영역 강조 */
+.sevenpoker-player-box.is-me {
+  border-color: var(--accent);
+  background: rgba(88, 166, 255, 0.05);
+}
 
 /* ══ DEBUG PANEL (slide-in from right) ══════════════════════════════════ */
 #debug-backdrop {

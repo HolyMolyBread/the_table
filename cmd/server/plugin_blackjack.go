@@ -50,11 +50,14 @@ type BJHandInfo struct {
 
 // BJData는 블랙잭 게임 상태 스냅샷입니다.
 type BJData struct {
-	Phase        string     `json:"phase"`        // betting | player_turn | dealer_turn | settlement
+	Phase        string     `json:"phase"`        // betting | player_turn | dealer_turn | settlement | game_over
 	PlayerHand   BJHandInfo `json:"playerHand"`
 	DealerHand   BJHandInfo `json:"dealerHand"`
-	Message      string     `json:"message,omitempty"`
-	MainPlayerID string     `json:"mainPlayerId,omitempty"` // 실제 플레이어 ID (관전자 판별용)
+	PlayerHearts int        `json:"playerHearts"` // 플레이어 하트 수 (10개 서바이벌)
+	DealerHearts int        `json:"dealerHearts"` // 딜러 하트 수
+	Message        string `json:"message,omitempty"`
+	MainPlayerID   string `json:"mainPlayerId,omitempty"`   // 실제 플레이어 ID (관전자 판별용)
+	GameOverPlayerWin bool `json:"gameOverPlayerWin,omitempty"` // game_over 시 플레이어 승리 여부
 }
 
 // BJResponse는 서버→클라이언트 블랙잭 메시지 최상위 구조입니다.
@@ -74,21 +77,26 @@ const (
 	BJPlayerTurn BJPhase = "player_turn"
 	BJDealerTurn BJPhase = "dealer_turn"
 	BJSettlement BJPhase = "settlement"
+	BJGameOver   BJPhase = "game_over"
 )
 
 // ── BlackjackGame 구조체 ──────────────────────────────────────────────────────
 
+const bjStartHearts = 10 // 하트 서바이벌: 시작 시 플레이어·딜러 각 10개
+
 // BlackjackGame은 1인 플레이어 vs 딜러 AI PVE 블랙잭 플러그인입니다.
-// 전적(승/무/패)은 코어의 RecordResult에 위임합니다.
+// 하트 10개 서바이벌: 승 +1/-1, 패 -1/+1, 블랙잭 +2/-2, 무승부 0. 한쪽 0 이하 시 게임 종료.
 type BlackjackGame struct {
 	room *Room
 	mu   sync.Mutex
 
-	player     *Client
-	phase      BJPhase
-	deck       []Card
-	playerHand []Card
-	dealerHand []Card
+	player       *Client
+	phase        BJPhase
+	deck         []Card
+	playerHand   []Card
+	dealerHand   []Card
+	playerHearts int
+	dealerHearts int
 
 	stopDealer chan struct{} // 딜러 AI 고루틴 중단 신호
 }
@@ -111,8 +119,10 @@ func (g *BlackjackGame) OnJoin(client *Client) {
 	if g.player == nil {
 		// 첫 번째 입장자 = 플레이어
 		g.player = client
-		log.Printf("[BJ] room:[%s] [%s] 플레이어 입장", g.room.ID, client.UserID)
-		g.broadcastStateLocked("🃏 블랙잭 테이블에 오신 것을 환영합니다! [게임 시작] 버튼을 누르세요.")
+		g.playerHearts = bjStartHearts
+		g.dealerHearts = bjStartHearts
+		log.Printf("[BJ] room:[%s] [%s] 플레이어 입장 (하트 %d vs %d)", g.room.ID, client.UserID, bjStartHearts, bjStartHearts)
+		g.broadcastStateLocked("🃏 블랙잭 테이블에 오신 것을 환영합니다! 하트 10개 서바이벌. [게임 시작] 버튼을 누르세요.")
 	} else if g.player == client {
 		// 재입장 — 현재 상태 재전송
 		g.broadcastStateLocked("")
@@ -172,6 +182,8 @@ func (g *BlackjackGame) HandleAction(client *Client, _ string, payload json.RawM
 		g.handleHit(client)
 	case "stand":
 		g.handleStand(client)
+	case "rematch":
+		g.handleRematch(client)
 	default:
 		client.SendJSON(ServerResponse{Type: "error", Message: "알 수 없는 명령: " + p.Cmd})
 	}
@@ -194,9 +206,18 @@ func (g *BlackjackGame) handleStart(client *Client) {
 		client.SendJSON(ServerResponse{Type: "error", Message: "지금은 게임을 시작할 수 없습니다."})
 		return
 	}
-	// settlement에서 재시작 시 이전 라운드 상태를 정리합니다.
+	if g.phase == BJGameOver {
+		g.mu.Unlock()
+		client.SendJSON(ServerResponse{Type: "error", Message: "게임이 종료되었습니다. [한 판 더] 버튼으로 리매치하세요."})
+		return
+	}
+	// settlement에서 재시작 시 이전 라운드 상태를 정리합니다 (하트는 유지).
 	if g.phase == BJSettlement {
-		g.resetLocked() // stopDealerLocked 포함, phase → BJBetting
+		g.stopDealerLocked()
+		g.phase = BJBetting
+		g.deck = nil
+		g.playerHand = nil
+		g.dealerHand = nil
 	}
 
 	// 덱 셔플 및 딜 (딜러 두 번째 카드는 블라인드)
@@ -237,10 +258,17 @@ func (g *BlackjackGame) handleHit(client *Client) {
 	log.Printf("[BJ] room:[%s] [%s] Hit → %s%s (합:%d)", g.room.ID, client.UserID, card.Suit, card.Value, score)
 
 	if score > 21 {
+		g.playerHearts--
+		g.dealerHearts++
 		g.phase = BJSettlement
-		g.broadcastStateLocked(fmt.Sprintf("💥 버스트! %d점 초과 — 패배. 다시 시작하려면 [게임 시작] 버튼을 누르세요.", score))
-		g.mu.Unlock()
 		client.RecordResult("blackjack", "lose")
+		if g.playerHearts <= 0 || g.dealerHearts <= 0 {
+			g.finishGameOverLocked()
+			g.mu.Unlock()
+			return
+		}
+		g.broadcastStateLocked(fmt.Sprintf("💥 버스트! %d점 초과 — 패배. ❤️ %d vs %d. [게임 시작]으로 다음 라운드.", score, g.playerHearts, g.dealerHearts))
+		g.mu.Unlock()
 		return
 	}
 	g.broadcastStateLocked(fmt.Sprintf("Hit! 현재 합계: %d", score))
@@ -327,7 +355,7 @@ func (g *BlackjackGame) runDealerAI() {
 
 // ── 정산 ────────────────────────────────────────────────────────────────────
 
-// settle은 최종 승패를 계산하고 전적을 갱신합니다.
+// settle은 최종 승패를 계산하고 하트를 증감한 뒤 전적을 갱신합니다.
 func (g *BlackjackGame) settle(stopCh chan struct{}) {
 	g.mu.Lock()
 	player := g.player
@@ -343,49 +371,105 @@ func (g *BlackjackGame) settle(stopCh chan struct{}) {
 
 	var result string
 	var msg string
-
-	const restartHint = " [게임 시작] 버튼으로 다음 라운드를 시작하세요."
+	var pDelta, dDelta int
 
 	switch {
 	case playerBJ && dealerBJ:
 		result = "draw"
-		msg = "🤝 블랙잭 vs 블랙잭 — 무승부(Push)!" + restartHint
+		pDelta, dDelta = 0, 0
+		msg = "🤝 블랙잭 vs 블랙잭 — 무승부(Push)!"
 	case playerBJ:
 		result = "win"
-		msg = "🎴 블랙잭! 승리!" + restartHint
+		pDelta, dDelta = 2, -2
+		msg = "🎴 블랙잭! 승리! (+2 하트)"
 	case dScore > 21:
 		result = "win"
-		msg = "🎉 딜러 버스트! 승리!" + restartHint
+		pDelta, dDelta = 1, -1
+		msg = "🎉 딜러 버스트! 승리! (+1 하트)"
 	case pScore > dScore:
 		result = "win"
-		msg = fmt.Sprintf("🏆 승리! (나 %d vs 딜러 %d)%s", pScore, dScore, restartHint)
+		pDelta, dDelta = 1, -1
+		msg = fmt.Sprintf("🏆 승리! (나 %d vs 딜러 %d) (+1 하트)", pScore, dScore)
 	case pScore == dScore:
 		result = "draw"
-		msg = fmt.Sprintf("🤝 무승부(Push)! (둘 다 %d점)%s", pScore, restartHint)
+		pDelta, dDelta = 0, 0
+		msg = fmt.Sprintf("🤝 무승부(Push)! (둘 다 %d점)", pScore)
 	default:
 		result = "lose"
-		msg = fmt.Sprintf("😞 패배. 딜러 %d vs 나 %d%s", dScore, pScore, restartHint)
+		pDelta, dDelta = -1, 1
+		msg = fmt.Sprintf("😞 패배. 딜러 %d vs 나 %d (-1 하트)", dScore, pScore)
 	}
 
+	g.playerHearts += pDelta
+	g.dealerHearts += dDelta
 	g.phase = BJSettlement
-	g.mu.Unlock()
 
-	select {
-	case <-stopCh:
-		return
-	default:
-	}
-
-	// 전적 갱신 (코어 위임)
 	player.RecordResult("blackjack", result)
 
-	g.mu.Lock()
+	// 게임 오버 체크
+	if g.playerHearts <= 0 || g.dealerHearts <= 0 {
+		g.finishGameOverLocked()
+		g.mu.Unlock()
+		log.Printf("[BJ] room:[%s] 게임 오버 — p:%d d:%d result:%s", g.room.ID, g.playerHearts, g.dealerHearts, result)
+		return
+	}
+
+	msg += fmt.Sprintf(" [게임 시작]으로 다음 라운드. ❤️ %d vs %d", g.playerHearts, g.dealerHearts)
 	g.broadcastStateLocked(msg)
 	g.mu.Unlock()
 
-	log.Printf("[BJ] room:[%s] 정산 — p:%d d:%d result:%s", g.room.ID, pScore, dScore, result)
-	// ※ 자동 재시작 없음 — 유저가 [게임 시작]을 눌러야 다음 라운드 시작
+	log.Printf("[BJ] room:[%s] 정산 — p:%d d:%d result:%s hearts %d vs %d", g.room.ID, pScore, dScore, result, g.playerHearts, g.dealerHearts)
 }
+
+// finishGameOverLocked는 하트 0 이하 시 게임 종료를 선언합니다. g.mu 보유 상태에서 호출.
+func (g *BlackjackGame) finishGameOverLocked() {
+	player := g.player
+	if player == nil {
+		return
+	}
+	g.phase = BJGameOver
+	g.stopDealerLocked()
+	g.deck = nil
+	g.playerHand = nil
+	g.dealerHand = nil
+
+	winner := "딜러"
+	if g.playerHearts > 0 {
+		winner = player.UserID
+		player.RecordResult("blackjack", "win")
+	} else {
+		player.RecordResult("blackjack", "lose")
+	}
+	msg := fmt.Sprintf("🏆 게임 종료! [%s] 승리! (❤️ 플레이어 %d vs 딜러 %d)", winner, g.playerHearts, g.dealerHearts)
+	data, _ := json.Marshal(GameResultResponse{
+		Type:           "game_result",
+		Message:        msg,
+		RoomID:         g.room.ID,
+		RematchEnabled: true,
+		Data:           map[string]any{"totalCount": 1},
+	})
+	g.room.broadcastAll(data)
+	g.broadcastStateLocked(msg)
+}
+
+// handleRematch는 게임 오버 후 리매치 요청을 처리합니다.
+func (g *BlackjackGame) handleRematch(client *Client) {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	if g.player != client {
+		client.SendJSON(ServerResponse{Type: "error", Message: "이 테이블의 플레이어가 아닙니다."})
+		return
+	}
+	if g.phase != BJGameOver {
+		client.SendJSON(ServerResponse{Type: "error", Message: "지금은 리매치할 수 없습니다."})
+		return
+	}
+	g.playerHearts = bjStartHearts
+	g.dealerHearts = bjStartHearts
+	g.phase = BJBetting
+	g.broadcastStateLocked("🔄 리매치! 하트 10개로 다시 시작. [게임 시작] 버튼을 누르세요.")
+}
+
 
 // ── 내부 헬퍼 ────────────────────────────────────────────────────────────────
 
@@ -407,7 +491,7 @@ func (g *BlackjackGame) stopDealerLocked() {
 	}
 }
 
-// resetLocked는 게임 상태를 초기화합니다. g.mu 보유 상태에서 호출.
+// resetLocked는 라운드 상태만 초기화합니다. 하트는 유지됩니다. g.mu 보유 상태에서 호출.
 func (g *BlackjackGame) resetLocked() {
 	g.stopDealerLocked()
 	g.phase = BJBetting
@@ -422,12 +506,16 @@ func (g *BlackjackGame) makeBJDataLocked(msg string) BJData {
 	if g.player != nil {
 		mainPlayerID = g.player.UserID
 	}
+	playerWin := g.phase == BJGameOver && g.playerHearts > 0
 	return BJData{
-		Phase:        string(g.phase),
-		PlayerHand:   BJHandInfo{Cards: g.playerHand, Score: handScore(g.playerHand)},
-		DealerHand:   BJHandInfo{Cards: g.dealerHand, Score: handScore(g.dealerHand)},
-		Message:      msg,
-		MainPlayerID: mainPlayerID,
+		Phase:              string(g.phase),
+		PlayerHand:         BJHandInfo{Cards: g.playerHand, Score: handScore(g.playerHand)},
+		DealerHand:         BJHandInfo{Cards: g.dealerHand, Score: handScore(g.dealerHand)},
+		PlayerHearts:       g.playerHearts,
+		DealerHearts:       g.dealerHearts,
+		Message:            msg,
+		MainPlayerID:       mainPlayerID,
+		GameOverPlayerWin:  playerWin,
 	}
 }
 

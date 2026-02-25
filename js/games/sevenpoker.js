@@ -35,7 +35,7 @@
           ? `<span class="clickable-nickname" onclick="requestOpponentRecord('${escapeForJsAttr(p.userId)}')" title="전적 보기">${escapeHTML(p.userId)}</span>`
           : escapeHTML(p.userId) + ' (나)';
         return `
-          <div class="sevenpoker-player-box ${isTurn ? 'my-turn' : ''} ${folded ? 'folded' : ''}">
+          <div class="sevenpoker-player-box ${isMe ? 'is-me' : 'is-opponent'} ${isTurn ? 'my-turn' : ''} ${folded ? 'folded' : ''}">
             <div style="display:flex; align-items:center; gap:4px;"><div class="sevenpoker-player-name" style="flex:1; min-width:0;">${nameHtml}</div></div>
             <div class="sevenpoker-player-stars">⭐×${p.stars}</div>
             <div class="sevenpoker-player-status">${folded ? '🏳️ 폴드' : p.status === 'check' ? '✅ 체크' : ''}</div>

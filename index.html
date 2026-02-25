@@ -204,27 +204,8 @@
         </div>
       </div>
       <div class="lobby-category">
-        <h3>카드게임</h3>
+        <h3>카드 게임 (Card Games)</h3>
         <div class="category-cards">
-      <div class="game-card">
-        <div class="card-icon">🃏</div>
-        <div class="card-title">블랙잭</div>
-        <div class="card-desc">딜러 AI를 상대로 21에 가장 가깝게! 승무패(W/L/D) 전적이 기록됩니다.</div>
-        <div class="card-badge pve">PVE</div>
-        <div class="card-actions-bottom">
-          <div class="card-top-actions">
-            <button class="card-btn-rule"   onclick="showRules('blackjack')">📖 룰</button>
-            <button class="card-btn-create" onclick="createRoom('blackjack')">➕ 방 만들기</button>
-          </div>
-          <div class="card-join-row">
-            <input type="text" class="card-code-input" id="code-input-blackjack"
-                   maxlength="6" placeholder="코드 6자리"
-                   autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false"
-                   onkeydown="if(event.key==='Enter') joinWithCode('blackjack','code-input-blackjack')" />
-            <button class="card-btn-join-code" onclick="joinWithCode('blackjack','code-input-blackjack')">입장</button>
-          </div>
-        </div>
-      </div>
       <div class="game-card">
         <div class="card-icon">♠️</div>
         <div class="card-title">텍사스 홀덤</div>
@@ -260,6 +241,25 @@
                    autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false"
                    onkeydown="if(event.key==='Enter') joinWithCode('sevenpoker','code-input-sevenpoker')" />
             <button class="card-btn-join-code" onclick="joinWithCode('sevenpoker','code-input-sevenpoker')">입장</button>
+          </div>
+        </div>
+      </div>
+      <div class="game-card">
+        <div class="card-icon">🃏</div>
+        <div class="card-title">블랙잭</div>
+        <div class="card-desc">딜러 AI를 상대로 21에 가장 가깝게! 하트 10개 서바이벌. 블랙잭 시 +2 하트 보너스!</div>
+        <div class="card-badge pve">PVE</div>
+        <div class="card-actions-bottom">
+          <div class="card-top-actions">
+            <button class="card-btn-rule"   onclick="showRules('blackjack')">📖 룰</button>
+            <button class="card-btn-create" onclick="createRoom('blackjack')">➕ 방 만들기</button>
+          </div>
+          <div class="card-join-row">
+            <input type="text" class="card-code-input" id="code-input-blackjack"
+                   maxlength="6" placeholder="코드 6자리"
+                   autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false"
+                   onkeydown="if(event.key==='Enter') joinWithCode('blackjack','code-input-blackjack')" />
+            <button class="card-btn-join-code" onclick="joinWithCode('blackjack','code-input-blackjack')">입장</button>
           </div>
         </div>
       </div>
@@ -320,6 +320,11 @@
           </div>
         </div>
       </div>
+        </div>
+      </div>
+      <div class="lobby-category">
+        <h3>타일 게임 (Tile Games)</h3>
+        <div class="category-cards">
       <div class="game-card">
         <div class="card-icon">🀄</div>
         <div class="card-title">마작 (Mahjong)</div>
@@ -406,14 +411,20 @@
 
         <!-- Blackjack container -->
         <div id="blackjack-container">
-          <div id="bj-status-bar">🃏 블랙잭 vs 딜러 AI</div>
+          <div id="bj-status-bar">🃏 블랙잭 vs 딜러 AI (❤️ 하트 서바이벌)</div>
           <div class="bj-area">
-            <div class="bj-area-title">🤖 딜러</div>
+            <div class="bj-area-header">
+              <span class="bj-area-title">🤖 딜러</span>
+              <span id="bj-dealer-hearts" class="bj-hearts-bar"></span>
+            </div>
             <div id="bj-dealer-hand" class="bj-hand"></div>
             <div id="bj-dealer-score" class="bj-score"></div>
           </div>
           <div class="bj-area">
-            <div class="bj-area-title">👤 나</div>
+            <div class="bj-area-header">
+              <span class="bj-area-title">👤 나</span>
+              <span id="bj-player-hearts" class="bj-hearts-bar"></span>
+            </div>
             <div id="bj-player-hand" class="bj-hand"></div>
             <div id="bj-player-score" class="bj-score"></div>
           </div>
