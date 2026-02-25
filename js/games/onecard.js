@@ -73,16 +73,22 @@
 
     const topEl = document.getElementById('onecard-top-card');
     if (topEl) topEl.innerHTML = top.suit ? renderOneCardCard(top, false).replace(' data-index=""', '') : '';
+    const canPlay = isMyTurn && top.suit;
+    const hasPlayableCard = canPlay && (data.hand || []).some(c => onecardIsPlayable(data, c));
     const deckEl = document.getElementById('onecard-deck');
     if (deckEl) {
       const total = (data.deckCount || 0) + (data.discardCount || 0);
       deckEl.textContent = total > 0 ? `🃏 ${data.deckCount || 0}` : '';
       deckEl.style.cursor = isMyTurn && total > 0 ? 'pointer' : 'default';
       deckEl.onclick = (total > 0 && isMyTurn) ? onecardDraw : null;
+      if (isMyTurn && !hasPlayableCard && total > 0) {
+        deckEl.classList.add('highlight-deck');
+      } else {
+        deckEl.classList.remove('highlight-deck');
+      }
     }
     const handEl = document.getElementById('onecard-hand');
     if (handEl && data.hand) {
-      const canPlay = isMyTurn && top.suit;
       handEl.innerHTML = data.hand.map((c, i) => {
         const playable = canPlay && onecardIsPlayable(data, c);
         const cardWithIdx = { ...c, _index: i };

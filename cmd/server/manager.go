@@ -289,6 +289,7 @@ func (m *RoomManager) HandleMessage(client *Client, rawMsg []byte) {
 			return
 		}
 		client.UserUUID = uuid
+		client.Token = p.Token
 
 		// 닉네임 조회: profiles에 있으면 UserID=닉네임, 없으면 이메일 ID부분(골뱅이 앞) 임시 설정
 		nickname := db.GetProfileByUUID(uuid)
@@ -312,7 +313,7 @@ func (m *RoomManager) HandleMessage(client *Client, rawMsg []byte) {
 
 		// 전적 복구 (비동기)
 		go func() {
-			loaded := db.LoadUserRecords(uuid)
+			loaded := db.LoadUserRecords(uuid, p.Token)
 			if loaded != nil {
 				client.Records = loaded
 				client.SendJSON(RecordUpdateResponse{Type: "record_update", Records: client.Records})
@@ -436,7 +437,7 @@ func (m *RoomManager) HandleMessage(client *Client, rawMsg []byte) {
 			return
 		}
 		go func() {
-			loaded := db.LoadUserRecords(client.UserUUID)
+			loaded := db.LoadUserRecords(client.UserUUID, client.Token)
 			if loaded != nil {
 				client.Records = loaded
 				client.SendJSON(RecordUpdateResponse{Type: "record_update", Records: client.Records})

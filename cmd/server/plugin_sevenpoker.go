@@ -27,6 +27,7 @@ type SevenPokerPlayerInfo struct {
 	Status   string `json:"status"`   // "check" | "fold" | ""
 	Cards    []Card `json:"cards"`    // 본인은 앞면, 타인은 Hidden=true
 	IsActive bool   `json:"isActive"` // 이번 라운드 생존
+	IsDealer bool   `json:"isDealer"` // 딜러(D) 버튼 표시
 }
 
 // SevenPokerData는 sevenpoker_state 응답의 data 필드입니다.
@@ -66,6 +67,7 @@ type SevenPokerGame struct {
 	foldedThisRound  [sevenPokerMaxPlayers]bool
 	actedThisPhase   [sevenPokerMaxPlayers]bool
 	choiceDone       [sevenPokerMaxPlayers]bool
+	dealerIdx        int
 	currentPlayerIdx int
 	gameStarted      bool
 	playerCount      int
@@ -755,6 +757,7 @@ func (g *SevenPokerGame) endMatchLocked() {
 	g.round = 0
 	g.pot = 0
 	g.potCarryOver = 0
+	g.dealerIdx = 0
 	for i := 0; i < sevenPokerMaxPlayers; i++ {
 		g.stars[i] = 0
 		g.cards[i] = [sevenPokerCards]Card{}
@@ -775,6 +778,15 @@ func (g *SevenPokerGame) startRoundLocked() {
 	if activeCount < 2 {
 		g.sendStateToAllLocked()
 		return
+	}
+
+	// 딜러 버튼 이동 (다음 생존 플레이어)
+	for i := 1; i <= sevenPokerMaxPlayers; i++ {
+		idx := (g.dealerIdx + i) % sevenPokerMaxPlayers
+		if g.players[idx] != nil && g.stars[idx] > 0 {
+			g.dealerIdx = idx
+			break
+		}
 	}
 
 	g.round++
@@ -1047,6 +1059,7 @@ func (g *SevenPokerGame) resetForLeaveLocked() {
 	g.round = 0
 	g.pot = 0
 	g.potCarryOver = 0
+	g.dealerIdx = 0
 	g.deck = nil
 	for i := 0; i < sevenPokerMaxPlayers; i++ {
 		g.cards[i] = [sevenPokerCards]Card{}
@@ -1118,6 +1131,7 @@ func (g *SevenPokerGame) buildSevenPokerDataForPlayer(viewerIdx int) SevenPokerD
 			Status:   status,
 			Cards:    cards,
 			IsActive: !g.foldedThisRound[i],
+			IsDealer: i == g.dealerIdx,
 		})
 	}
 

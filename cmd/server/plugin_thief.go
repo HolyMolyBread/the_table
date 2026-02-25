@@ -172,7 +172,7 @@ func (g *ThiefGame) OnLeave(client *Client, remainingCount int) {
 	// 퇴장자가 현재 차례였다면 타이머 정지 후 턴 진행
 	if idx == g.currentTurn {
 		g.stopTurnTimerLocked()
-		g.advanceTurnLocked()
+		g.advanceTurnFromLeaveLocked()
 	}
 
 	// 생존자(패 보유 또는 탈출) 수
@@ -432,7 +432,7 @@ func (g *ThiefGame) handleDraw(client *Client, targetID string, drawIndex int) {
 			return
 		}
 
-		g.advanceTurnLocked()
+		g.advanceTurnAfterDrawLocked()
 		g.startTurnTimerLocked()
 		g.sendStateToAllLocked()
 	})
@@ -478,26 +478,41 @@ func (g *ThiefGame) removePairsLocked(playerIdx int) {
 	g.hands[playerIdx] = hand
 }
 
-// advanceTurnLocked는 (currentTurn + i) % maxPlayers 방식으로 시계방향 다음 생존자를 찾습니다.
-// 타겟은 무조건 현재 턴에서 시계방향으로 가장 가까운 살아있는 다음 플레이어로 고정됩니다.
-func (g *ThiefGame) advanceTurnLocked() {
-	maxPlayers := thiefMaxPlayers
-	// 1. 다음 턴 유저: (currentTurn + i) % maxPlayers 로 시계방향 첫 생존자
-	for i := 1; i <= maxPlayers; i++ {
-		idx := (g.currentTurn + i) % maxPlayers
-		if g.players[idx] != nil && len(g.hands[idx]) > 0 {
-			g.currentTurn = idx
-			break
+// getNextActivePlayer는 idx 다음 시계방향으로 첫 번째 생존 플레이어(패 보유, 미탈출)를 반환합니다.
+func (g *ThiefGame) getNextActivePlayer(idx int) int {
+	for i := 1; i <= thiefMaxPlayers; i++ {
+		next := (idx + i) % thiefMaxPlayers
+		if g.players[next] != nil && !g.escaped[next] && len(g.hands[next]) > 0 {
+			return next
 		}
 	}
-	// 2. 타겟: 현재 턴의 시계방향 가장 가까운 살아있는 다음 플레이어
-	g.targetIdx = -1
-	for i := 1; i <= maxPlayers; i++ {
-		tIdx := (g.currentTurn + i) % maxPlayers
-		if g.players[tIdx] != nil && len(g.hands[tIdx]) > 0 {
-			g.targetIdx = tIdx
-			break
-		}
+	return -1
+}
+
+// advanceTurnLocked는 턴을 넘깁니다.
+// draw 직후: targetIdx(뺏긴 사람)가 다음 턴. 그 외(퇴장 등): 시계방향 다음 생존자가 턴.
+func (g *ThiefGame) advanceTurnLocked() {
+	g.advanceTurnFromLeaveLocked()
+}
+
+// advanceTurnAfterDrawLocked는 카드 뽑기 직후 호출됩니다. targetIdx(뺏긴 사람)가 다음 턴이 됩니다.
+func (g *ThiefGame) advanceTurnAfterDrawLocked() {
+	nextTurn := g.targetIdx
+	if nextTurn < 0 || g.players[nextTurn] == nil || g.escaped[nextTurn] || len(g.hands[nextTurn]) == 0 {
+		nextTurn = g.getNextActivePlayer(g.currentTurn)
+	}
+	if nextTurn >= 0 {
+		g.currentTurn = nextTurn
+		g.targetIdx = g.getNextActivePlayer(nextTurn)
+	}
+}
+
+// advanceTurnFromLeaveLocked는 플레이어 퇴장 시 호출됩니다. 시계방향 다음 생존자가 턴이 됩니다.
+func (g *ThiefGame) advanceTurnFromLeaveLocked() {
+	nextTurn := g.getNextActivePlayer(g.currentTurn)
+	if nextTurn >= 0 {
+		g.currentTurn = nextTurn
+		g.targetIdx = g.getNextActivePlayer(nextTurn)
 	}
 }
 

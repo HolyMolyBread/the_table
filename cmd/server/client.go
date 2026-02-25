@@ -39,6 +39,7 @@ type Client struct {
 
 	UserID   string
 	UserUUID string // Supabase auth.users.id (auth 액션 이후 설정)
+	Token    string // 유저 JWT (auth 액션 이후 설정, DB RLS 통과용)
 	RoomID   string
 	Records  map[string]*GameRecord // 게임별 + 총합 전적 ("total", "omok", "blackjack")
 
@@ -144,12 +145,12 @@ func (c *Client) RecordResult(gamePrefix, result string) {
 	log.Printf("[RECORD] [%s] %s → %s (총 %dW/%dL/%dD)",
 		c.UserID, gamePrefix, result, total.Wins, total.Losses, total.Draws)
 
-	// DB 동기 upsert — UserUUID가 설정된 경우에만 실행. 승패가 반드시 DB에 기록되도록 동기 호출.
-	if db != nil && c.UserUUID != "" {
+	// DB 동기 upsert — UserUUID·Token이 설정된 경우에만 실행. 승패가 반드시 DB에 기록되도록 동기 호출.
+	if db != nil && c.UserUUID != "" && c.Token != "" {
 		uuid := c.UserUUID
 		gameRec := *c.Records[gamePrefix]
 		dbName, isPVE := gameDBName(gamePrefix)
-		db.UpsertGameRecord(uuid, dbName, isPVE, gameRec.Wins, gameRec.Losses, gameRec.Draws)
+		db.UpsertGameRecord(uuid, dbName, isPVE, gameRec.Wins, gameRec.Losses, gameRec.Draws, c.Token)
 	}
 }
 

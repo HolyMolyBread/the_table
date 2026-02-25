@@ -249,9 +249,10 @@ func (d *DBClient) GetOrCreateProfile(username string) (string, error) {
 // LoadUserRecords는 game_records 테이블에서 유저의 모든 전적을 읽어
 // client.Records 형태(map[string]*GameRecord)로 반환합니다.
 // "total" 전적은 모든 게임 전적의 합계로 계산됩니다.
-func (d *DBClient) LoadUserRecords(userUUID string) map[string]*GameRecord {
+// token: 유저 JWT — RLS 정책 통과를 위해 Authorization 헤더에 사용
+func (d *DBClient) LoadUserRecords(userUUID string, token string) map[string]*GameRecord {
 	path := "/game_records?user_id=eq." + url.QueryEscape(userUUID)
-	resp, err := d.do("GET", path, nil, nil)
+	resp, err := d.do("GET", path, nil, map[string]string{"Authorization": "Bearer " + token})
 	if err != nil {
 		log.Printf("[DB] LoadUserRecords 실패 [%s]: %v", userUUID, err)
 		return nil
@@ -287,11 +288,11 @@ func (d *DBClient) LoadUserRecords(userUUID string) map[string]*GameRecord {
 }
 
 // UpsertGameRecord는 game_records 테이블에 해당 유저+게임의 전적을 upsert(삽입 또는 갱신)합니다.
-// Supabase PostgREST: POST + Prefer: resolution=merge-duplicates (ON CONFLICT DO UPDATE)
-// (user_id, game_name, is_pve) UNIQUE 제약이 있어야 정상 동작합니다.
+// Supabase PostgREST: POST + on_conflict=user_id,game_name + Prefer: resolution=merge-duplicates (ON CONFLICT DO UPDATE)
+// token: 유저 JWT — RLS 정책 통과를 위해 Authorization 헤더에 사용 (Anon Key 대신)
 // 실패 시 최대 2회 재시도하여 DB 저장을 보장합니다.
 // 여러 고루틴이 동시에 호출해도 mu로 직렬화하여 한 명씩 순서대로 저장합니다.
-func (d *DBClient) UpsertGameRecord(userUUID, gameName string, isPVE bool, wins, losses, draws int) {
+func (d *DBClient) UpsertGameRecord(userUUID, gameName string, isPVE bool, wins, losses, draws int, token string) {
 	d.mu.Lock()
 	defer d.mu.Unlock()
 
@@ -304,8 +305,9 @@ func (d *DBClient) UpsertGameRecord(userUUID, gameName string, isPVE bool, wins,
 		Draws:    draws,
 	}
 	for attempt := 0; attempt < 3; attempt++ {
-		resp, err := d.do("POST", "/game_records", body, map[string]string{
-			"Prefer": "resolution=merge-duplicates,return=minimal",
+		resp, err := d.do("POST", "/game_records?on_conflict=user_id,game_name", body, map[string]string{
+			"Prefer":        "resolution=merge-duplicates,return=minimal",
+			"Authorization": "Bearer " + token,
 		})
 		if err != nil {
 			log.Printf("[DB] UpsertGameRecord 실패 [%s/%s] attempt %d: %v", userUUID[:min(8, len(userUUID))], gameName, attempt+1, err)

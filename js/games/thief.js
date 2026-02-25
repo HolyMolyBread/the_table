@@ -20,7 +20,8 @@
     return `<div class="thief-card ${isRed ? 'red-suit' : 'black-suit'}${fingerClass}${discardClass}"><span>${val}</span><span>${suit}</span></div>`;
   }
 
-  const TABLE_SEAT_ORDER = ['seat-top', 'seat-left', 'seat-right'];
+  // 시계방향 좌석 매핑: 상대 인덱스 1=왼쪽, 2=위, 3=오른쪽 (내 다음 사람이 왼쪽에 표시)
+  const RELATIVE_INDEX_TO_SEAT = { 1: 'seat-left', 2: 'seat-top', 3: 'seat-right' };
   let lastThiefHandJson = '';
 
   function renderThief(data) {
@@ -35,11 +36,16 @@
       : '';
 
     const players = data.players || [];
-    const opponents = players.filter(p => p.userId !== currentUserId);
+    const numPlayers = players.length;
+    const myIdx = players.findIndex(p => p.userId === currentUserId);
+    const opponents = players
+      .map((p, playerIdx) => ({ ...p, playerIdx }))
+      .filter(p => p.userId !== currentUserId);
     const playersEl = document.getElementById('thief-players');
     if (playersEl) {
-      playersEl.innerHTML = opponents.map((p, idx) => {
-        const seatClass = TABLE_SEAT_ORDER[idx] || 'seat-top';
+      playersEl.innerHTML = opponents.map((p) => {
+        const relativeIdx = (p.playerIdx - myIdx + numPlayers) % numPlayers;
+        const seatClass = RELATIVE_INDEX_TO_SEAT[relativeIdx] || 'seat-top';
         const isTarget = data.targetUserId === p.userId;
         const cardCount = p.cardCount || 0;
         let targetCardsHtml = '';
