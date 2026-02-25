@@ -48,7 +48,7 @@ type IndianShowdownResultResponse struct {
 type IndianShowdownResultData struct {
 	MyCard       Card   `json:"myCard"`       // 본인 카드 (공개)
 	OpponentCard Card   `json:"opponentCard"` // 상대 카드 (공개)
-	Result       string `json:"result"`       // "win" | "lose"
+	Result       string `json:"result"`       // "win" | "lose" | "giveup"
 	HeartDelta   int    `json:"heartDelta"`   // +2 또는 -2
 }
 
@@ -303,6 +303,9 @@ func (g *IndianGame) handleGiveUp(client *Client) {
 	log.Printf("[INDIAN] room:[%s] 포기: [%s] hearts=%d", g.room.ID, client.UserID, g.hearts[idx])
 	g.stopTurnTimerLocked()
 
+	g.sendShowdownResultLocked(1-idx, idx, true)
+	time.Sleep(1500 * time.Millisecond)
+
 	if g.hearts[idx] <= 0 {
 		g.endGameLocked(1-idx, idx)
 		return
@@ -355,7 +358,7 @@ func (g *IndianGame) resolveShowdownLocked() {
 	)
 
 	// 각 플레이어에게 개인화된 승부 결과 오버레이 전송 (모바일/PC 중앙 토스트용)
-	g.sendShowdownResultLocked(winnerIdx, loserIdx)
+	g.sendShowdownResultLocked(winnerIdx, loserIdx, false)
 	g.stopTurnTimerLocked()
 
 	if g.hearts[loserIdx] <= 0 {
@@ -464,8 +467,9 @@ func (g *IndianGame) sendStateToBothLocked() {
 }
 
 // sendShowdownResultLocked은 승부 후 각 플레이어에게 개인화된 결과 오버레이를 전송합니다.
+// isGiveUp이 true이면 포기/시간초과 결과: 승자 "win"(HeartDelta 0), 패자 "giveup"(HeartDelta -1)
 // g.mu 보유 상태에서 호출합니다.
-func (g *IndianGame) sendShowdownResultLocked(winnerIdx, loserIdx int) {
+func (g *IndianGame) sendShowdownResultLocked(winnerIdx, loserIdx int, isGiveUp bool) {
 	for i := 0; i < 2; i++ {
 		if g.players[i] == nil {
 			continue
@@ -478,12 +482,22 @@ func (g *IndianGame) sendShowdownResultLocked(winnerIdx, loserIdx int) {
 
 		var result string
 		var heartDelta int
-		if i == winnerIdx {
-			result = "win"
-			heartDelta = 2
+		if isGiveUp {
+			if i == winnerIdx {
+				result = "win"
+				heartDelta = 0
+			} else {
+				result = "giveup"
+				heartDelta = -1
+			}
 		} else {
-			result = "lose"
-			heartDelta = -2
+			if i == winnerIdx {
+				result = "win"
+				heartDelta = 2
+			} else {
+				result = "lose"
+				heartDelta = -2
+			}
 		}
 
 		g.players[i].SendJSON(IndianShowdownResultResponse{
@@ -657,6 +671,9 @@ func (g *IndianGame) handleTimeOver(timedOutPlayer *Client) {
 	})
 	g.room.broadcastAll(notice)
 	log.Printf("[INDIAN] room:[%s] 시간초과(포기): [%s] hearts=%d", g.room.ID, timedOutPlayer.UserID, g.hearts[idx])
+
+	g.sendShowdownResultLocked(1-idx, idx, true)
+	time.Sleep(1500 * time.Millisecond)
 
 	if g.hearts[idx] <= 0 {
 		g.endGameLocked(1-idx, idx)

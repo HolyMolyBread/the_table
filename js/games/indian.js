@@ -128,12 +128,23 @@
     const oppVal = data.opponentCard?.value || '?';
     const mySuit = data.myCard?.suit || '';
     const oppSuit = data.opponentCard?.suit || '';
-    const isWin = data.result === 'win';
-    const delta = data.heartDelta || 0;
+    const result = data.result || '';
+    const delta = data.heartDelta ?? 0;
     const deltaStr = delta >= 0 ? `+${delta}` : `${delta}`;
 
     vsEl.textContent = `내 카드 ${myVal}${mySuit}  vs  상대 ${oppVal}${oppSuit}`;
-    resEl.textContent = isWin ? `승리! (${deltaStr} 하트)` : `패배 (${deltaStr} 하트)`;
+    let resText, isWin;
+    if (result === 'giveup') {
+      resText = '포기 (-1 하트)';
+      isWin = false;
+    } else if (result === 'win' && delta === 0) {
+      resText = '상대방 포기 (+0 하트)';
+      isWin = true;
+    } else {
+      resText = result === 'win' ? `승리! (${deltaStr} 하트)` : `패배 (${deltaStr} 하트)`;
+      isWin = result === 'win';
+    }
+    resEl.textContent = resText;
     resEl.className = 'indian-showdown-result ' + (isWin ? 'win' : 'lose');
     box.className = 'unified-result-box ' + (isWin ? 'win' : 'lose');
 
