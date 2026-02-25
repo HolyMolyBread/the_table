@@ -75,8 +75,10 @@ func SpawnBot(m *RoomManager, room *Room, gamePrefix string) error {
 	data, _ := json.Marshal(resp)
 	room.broadcastAll(data)
 
-	// 프론트엔드에 방 인원 상태(pCount) 갱신 트리거
-	m.broadcastRoomUpdate(room)
+	// 마작은 플러그인 OnJoin에서 ready_update를 전송하므로 여기서 보내지 않음 (ReadyCount 0으로 꼬이는 버그 방지)
+	if prefix != "mahjong" {
+		m.broadcastRoomUpdate(room)
+	}
 
 	if room.Plugin != nil {
 		room.Plugin.OnJoin(bot)

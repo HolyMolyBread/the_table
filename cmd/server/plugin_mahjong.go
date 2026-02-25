@@ -247,7 +247,7 @@ func (g *MahjongGame) handleReady(client *Client) {
 		}
 	}
 	if total < mahjongMaxPlayers {
-		client.SendJSON(ServerResponse{Type: "error", Message: "4명이 모두 모여야 시작할 수 있습니다."})
+		client.SendJSON(ServerResponse{Type: "error", Message: "4인 대전 전용 게임입니다. 인원을 기다려주세요."})
 		return
 	}
 	g.startReady[client] = true
@@ -261,7 +261,7 @@ func (g *MahjongGame) handleReady(client *Client) {
 		Type: "ready_update", RoomID: g.room.ID, ReadyCount: ready, TotalCount: mahjongMaxPlayers,
 	})
 	g.room.broadcastAll(upd)
-	if ready == mahjongMaxPlayers {
+	if ready == mahjongMaxPlayers && total == mahjongMaxPlayers {
 		g.startReady = make(map[*Client]bool)
 		g.gameStarted = true
 		g.startRoundLocked()
