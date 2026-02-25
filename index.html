@@ -3,12 +3,9 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>The Table ??蹂대뱶寃뚯엫 ?뚮옯??/title>
+  <title>The Table — 보드게임 플랫폼</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"></script>
-<<<<<<< HEAD
-  <link rel="stylesheet" href="css/style.css">
-=======
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -780,12 +777,6 @@
       width: 100%; max-width: 520px;
     }
     #thief-status { font-size: 15px; font-weight: 700; text-align: center; }
-    .thief-tooltip {
-      position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
-      font-size: 14px; font-weight: 600; color: rgba(255,255,255,0.9);
-      background: rgba(0,0,0,0.65); padding: 10px 18px; border-radius: 10px;
-      pointer-events: none; z-index: 5; white-space: nowrap;
-    }
     /* 원탁 테이블 레이아웃 */
     .table-layout-wrap {
       position: relative; width: 100%; min-height: 340px;
@@ -881,12 +872,7 @@
     }
     .table-center-area { display: flex; align-items: center; justify-content: center; gap: 16px; }
     /* 중앙 보드와 내 패 사이 물리적 여백 강제 확보 */
-    .onecard-table {
-      margin-bottom: 250px !important;
-      transform: translateY(-30px) !important;
-      z-index: 1 !important;
-    }
-    #onecard-me-slot { margin-top: 120px !important; }
+    .onecard-table { z-index: 1 !important; }
     #onecard-status { font-size: 15px; font-weight: 700; text-align: center; }
     .onecard-card {
       width: 56px; height: 80px; background: #fff; border: 1px solid #ccc;
@@ -1100,6 +1086,14 @@
     .holdem-player-name {
       font-size: 12px; font-weight: 600; color: var(--text-secondary);
       white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .holdem-dealer-btn {
+      width: 18px; height: 18px; border-radius: 50%;
+      background: #f3f4f6; color: #000;
+      font-size: 11px; font-weight: 900;
+      display: flex; align-items: center; justify-content: center;
+      border: 2px solid #9ca3af; box-shadow: 0 2px 4px rgba(0,0,0,0.5);
+      flex-shrink: 0;
     }
     .holdem-player-stars { font-size: 14px; font-weight: 700; color: var(--gold); }
     .holdem-player-status { font-size: 11px; color: var(--text-muted); }
@@ -1329,6 +1323,22 @@
     @keyframes pulse  { 0%,100%{opacity:1} 50%{opacity:0.4} }
     @keyframes fadeIn { from { opacity:0; } to { opacity:1; } }
 
+    /* ══ 통합 결과창 규격 (Showdown, Game Over 등) ═══════════════════════════════ */
+    .unified-result-box {
+      background: linear-gradient(135deg, #1a1f2e 0%, #0d1117 100%) !important;
+      border: 2px solid var(--gold) !important;
+      border-radius: 16px !important;
+      padding: 28px 36px !important;
+      text-align: center !important;
+      max-width: 420px !important;
+      width: 90% !important;
+      box-shadow: 0 0 50px rgba(255,215,0,0.25), 0 8px 32px rgba(0,0,0,0.6) !important;
+      animation: popIn 0.3s cubic-bezier(0.34,1.56,0.64,1) !important;
+    }
+    .unified-result-box.win  { border-color: var(--success) !important; box-shadow: 0 0 40px rgba(63,185,80,0.2) !important; color: var(--success) !important; }
+    .unified-result-box.lose { border-color: var(--danger) !important; box-shadow: 0 0 40px rgba(248,81,73,0.2) !important; color: var(--danger) !important; }
+    .unified-result-box.push { border-color: var(--gold) !important; box-shadow: 0 0 40px rgba(255,215,0,0.2) !important; color: var(--gold) !important; }
+
     /* ══ Indian Poker 승부 결과 오버레이 (토스트) ═══════════════════════════════ */
     #indian-showdown-overlay {
       display: none; position: fixed; inset: 0; z-index: 9999;
@@ -1482,10 +1492,10 @@
     /* ── room-controls: 준비/리매치 버튼 화면 중앙 고정 (홀덤·세븐포커 등) ── */
     .room-controls {
       position: fixed !important;
-      top: 50% !important;
+      top: 65% !important;
       left: 50% !important;
       transform: translate(-50%, -50%) !important;
-      z-index: 999999 !important;
+      z-index: 8000 !important;
       background-color: rgba(0, 0, 0, 0.8) !important;
       padding: 20px 40px !important;
       border-radius: 15px !important;
@@ -1498,117 +1508,163 @@
       padding: 10px 20px !important;
       cursor: pointer !important;
     }
+
+    /* 원카드 중앙 보드 가림 절대 방지 */
+    #onecard-table-wrap {
+      margin-bottom: 60px !important;
+    }
+    #onecard-center {
+      top: 35% !important;
+    }
+    #onecard-me-slot {
+      bottom: -40px !important;
+    }
+
+    /* 마작 테이블 중앙 시야 확보 */
+    #mahjong-table-wrap {
+      min-height: 440px !important;
+      margin-bottom: 60px !important;
+    }
+    #mahjong-center {
+      top: 38% !important;
+    }
+    #mahjong-me-slot {
+      bottom: -40px !important;
+    }
+
+    /* 내 패 간격 좁히기 (다닥다닥 붙임) */
+    .table-seat.seat-bottom .mahjong-hand {
+      gap: 0 !important;
+    }
+    .mahjong-tile {
+      margin: 0 -1px !important;
+    }
+
+    /* 상대방 패 압축 (크기 축소 및 강하게 겹침) */
+    .opponent-hand {
+      gap: 0 !important;
+      padding: 4px !important;
+    }
+    .opponent-hand .mahjong-tile {
+      width: 24px !important;
+      height: 36px !important;
+      font-size: 22px !important;
+      margin-left: -14px !important;
+      box-shadow: -2px 0 4px rgba(0,0,0,0.4) !important;
+    }
+    .opponent-hand .mahjong-tile:first-child {
+      margin-left: 0 !important;
+    }
   </style>
->>>>>>> parent of ed2fc56 (260224_1739)
 </head>
 <body>
 
-<!-- ?? Header ???????????????????????????????????????????????????????????????? -->
+<!-- ── Header ──────────────────────────────────────────────────────────────── -->
 <header>
   <div class="header-left">
-    <div class="logo">?렡 The Table</div>
+    <div class="logo">🎲 The Table</div>
     <div id="conn-indicator">
       <div id="conn-dot"></div>
-      <span id="conn-text">?곌껐 以?..</span>
+      <span id="conn-text">연결 중...</span>
     </div>
   </div>
   <div class="header-right">
     <div id="record-badge-wrapper" onclick="toggleRecordPopup(event)">
-      <div id="record-badge-total">?룇 <span id="record-total">0??0??0臾?/span></div>
+      <div id="record-badge-total">🏆 <span id="record-total">0승 0패 0무</span></div>
       <div id="record-popup">
         <div class="record-popup-row">
-          <span class="record-game-label">???ㅻぉ</span>
-          <span id="record-omok" class="record-val">0??0??0臾?/span>
+          <span class="record-game-label">🀱 오목</span>
+          <span id="record-omok" class="record-val">0승 0패 0무</span>
         </div>
         <div class="record-popup-row">
-          <span class="record-game-label">?깗 釉붾옓??/span>
-          <span id="record-blackjack" class="record-val">0??0??0臾?/span>
+          <span class="record-game-label">🃏 블랙잭</span>
+          <span id="record-blackjack" class="record-val">0승 0패 0무</span>
         </div>
         <div class="record-popup-row">
-          <span class="record-game-label">狩뺚쓬 ?깊깮??/span>
-          <span id="record-tictactoe" class="record-val">0??0??0臾?/span>
+          <span class="record-game-label">⭕❌ 틱택토</span>
+          <span id="record-tictactoe" class="record-val">0승 0패 0무</span>
         </div>
         <div class="record-popup-row">
-          <span class="record-game-label">?뵶?윞 4紐?/span>
-          <span id="record-connect4" class="record-val">0??0??0臾?/span>
+          <span class="record-game-label">🔴🟡 4목</span>
+          <span id="record-connect4" class="record-val">0승 0패 0무</span>
         </div>
         <div class="record-popup-row">
-          <span class="record-game-label">?깗 ?몃뵒???ъ빱</span>
-          <span id="record-indian" class="record-val">0??0??0臾?/span>
+          <span class="record-game-label">🃏 인디언 포커</span>
+          <span id="record-indian" class="record-val">0승 0패 0무</span>
         </div>
         <div class="record-popup-row">
-          <span class="record-game-label">?좑툘 ?띿궗?????/span>
-          <span id="record-holdem" class="record-val">0??0??0臾?/span>
+          <span class="record-game-label">♠️ 텍사스 홀덤</span>
+          <span id="record-holdem" class="record-val">0승 0패 0무</span>
         </div>
         <div class="record-popup-row">
-          <span class="record-game-label">?깗 ?몃툙 ?ъ빱</span>
-          <span id="record-sevenpoker" class="record-val">0??0??0臾?/span>
+          <span class="record-game-label">🃏 세븐 포커</span>
+          <span id="record-sevenpoker" class="record-val">0승 0패 0무</span>
         </div>
         <div class="record-popup-row">
-          <span class="record-game-label">?깗 ?꾨몣?↔린</span>
-          <span id="record-thief" class="record-val">0??0??0臾?/span>
+          <span class="record-game-label">🃏 도둑잡기</span>
+          <span id="record-thief" class="record-val">0승 0패 0무</span>
         </div>
         <div class="record-popup-row">
-          <span class="record-game-label">?깗 ?먯뭅??/span>
-          <span id="record-onecard" class="record-val">0??0??0臾?/span>
+          <span class="record-game-label">🃏 원카드</span>
+          <span id="record-onecard" class="record-val">0승 0패 0무</span>
         </div>
         <div class="record-popup-row">
-          <span class="record-game-label">??留덉옉</span>
-          <span id="record-mahjong" class="record-val">0??0??0臾?/span>
+          <span class="record-game-label">🀄 마작</span>
+          <span id="record-mahjong" class="record-val">0승 0패 0무</span>
         </div>
         <div class="record-popup-row">
-          <span class="record-game-label">???뚭퉴湲?/span>
-          <span id="record-alkkagi" class="record-val">0??0??0臾?/span>
+          <span class="record-game-label">⚫ 알까기</span>
+          <span id="record-alkkagi" class="record-val">0승 0패 0무</span>
         </div>
       </div>
     </div>
-    <button class="header-btn danger" id="btn-leave" style="display:none" onclick="leaveRoom()">?슞 ?섍?湲?/button>
-    <button class="header-btn" id="btn-profile" onclick="openProfileModal()" title="?꾨줈???섏젙" style="display:none;">?뫀</button>
+    <button class="header-btn danger" id="btn-leave" style="display:none" onclick="leaveRoom()">🚪 나가기</button>
+    <button class="header-btn" id="btn-profile" onclick="openProfileModal()" title="프로필 수정" style="display:none;">👤</button>
   </div>
 </header>
 
-<!-- ?? App Container ?????????????????????????????????????????????????????????? -->
+<!-- ── App Container ────────────────────────────────────────────────────────── -->
 <div id="app">
 
-  <!-- ?먥븧 LOBBY VIEW ?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧 -->
+  <!-- ══ LOBBY VIEW ══════════════════════════════════════════════════════════ -->
   <div id="lobby-view">
     <div id="lobby-hero">
-      <h1>The Table???ㅼ떊 寃껋쓣 ?섏쁺?⑸땲??/h1>
-      <p>?뚮젅?댄븷 寃뚯엫???좏깮?섍퀬 諛붾줈 ?낆옣?섏꽭??/p>
-      <!-- 濡쒓렇???? ?대찓??鍮꾨?踰덊샇 ??-->
+      <h1>The Table에 오신 것을 환영합니다</h1>
+      <p>플레이할 게임을 선택하고 바로 입장하세요</p>
+      <!-- 로그인 전: 이메일/비밀번호 폼 -->
       <div id="auth-panel">
         <div class="auth-warning">
-          ?좑툘 媛쒖씤 ?꾨줈?앺듃??<strong>?뚯뒪???쒕쾭</strong>?낅땲??<br>
-          ?됱냼 ?곕뒗 ?ㅼ젣 鍮꾨?踰덊샇 ????몄슦湲??ъ슫 鍮꾨?踰덊샇瑜??ъ슜??二쇱꽭??
+          ⚠️ 개인 프로젝트용 <strong>테스트 서버</strong>입니다.<br>
+          평소 쓰는 실제 비밀번호 대신 외우기 쉬운 비밀번호를 사용해 주세요!
         </div>
-        <h3 id="auth-panel-title">?뵍 濡쒓렇??/h3>
-        <input class="auth-input" type="email"    id="auth-email"    placeholder="?대찓??二쇱냼" autocomplete="email" onkeydown="onAuthKeyDown(event)" />
-        <input class="auth-input" type="password" id="auth-password" placeholder="鍮꾨?踰덊샇" autocomplete="current-password" onkeydown="onAuthKeyDown(event)" />
+        <h3 id="auth-panel-title">🔐 로그인</h3>
+        <input class="auth-input" type="email"    id="auth-email"    placeholder="이메일 주소" autocomplete="email" onkeydown="onAuthKeyDown(event)" />
+        <input class="auth-input" type="password" id="auth-password" placeholder="비밀번호" autocomplete="current-password" onkeydown="onAuthKeyDown(event)" />
         <div id="auth-confirm-group">
-          <input class="auth-input" type="password" id="auth-password-confirm" placeholder="鍮꾨?踰덊샇 ?뺤씤" autocomplete="new-password" onkeydown="onAuthKeyDown(event)" />
+          <input class="auth-input" type="password" id="auth-password-confirm" placeholder="비밀번호 확인" autocomplete="new-password" onkeydown="onAuthKeyDown(event)" />
         </div>
         <div id="auth-nickname-group" style="display:none;">
           <div style="display:flex;gap:8px;align-items:center;">
-            <input class="auth-input" type="text" id="auth-nickname" placeholder="?됰꽕?? autocomplete="username" style="flex:1;" maxlength="20" onkeydown="onAuthKeyDown(event)" oninput="resetNicknameCheck('signup')" />
-            <button type="button" class="header-btn" id="btn-check-nickname" onclick="checkNickname()">以묐났?뺤씤</button>
+            <input class="auth-input" type="text" id="auth-nickname" placeholder="닉네임" autocomplete="username" style="flex:1;" maxlength="20" onkeydown="onAuthKeyDown(event)" oninput="resetNicknameCheck('signup')" />
+            <button type="button" class="header-btn" id="btn-check-nickname" onclick="checkNickname()">중복확인</button>
           </div>
           <div id="auth-nickname-status" style="font-size:11px;color:var(--text-muted);margin-top:4px;"></div>
         </div>
-        <!-- 濡쒓렇??紐⑤뱶 踰꾪듉 -->
+        <!-- 로그인 모드 버튼 -->
         <div id="auth-login-btn-row" class="auth-btn-row">
-          <button id="btn-auth-login" onclick="authLogin()">濡쒓렇??/button>
+          <button id="btn-auth-login" onclick="authLogin()">로그인</button>
         </div>
         <div id="auth-login-switch" class="auth-switch-row">
-          怨꾩젙???놁쑝?좉???
-          <button class="auth-mode-link" onclick="toggleAuthMode('signup')">?뚯썝媛??/button>
+          계정이 없으신가요?
+          <button class="auth-mode-link" onclick="toggleAuthMode('signup')">회원가입</button>
         </div>
-        <!-- ?뚯썝媛??紐⑤뱶 踰꾪듉 -->
+        <!-- 회원가입 모드 버튼 -->
         <div id="auth-signup-btn-row" class="auth-btn-row" style="display:none">
-          <button id="btn-auth-signup" onclick="authSignup()">?뚯썝媛??/button>
+          <button id="btn-auth-signup" onclick="authSignup()">회원가입</button>
         </div>
         <div id="auth-signup-switch" class="auth-switch-row" style="display:none">
-          ?대? 怨꾩젙???덉쑝?좉???
-          <button class="auth-mode-link" onclick="toggleAuthMode('login')">濡쒓렇??/button>
+          이미 계정이 있으신가요?
+          <button class="auth-mode-link" onclick="toggleAuthMode('login')">로그인</button>
         </div>
         <div id="auth-status"></div>
       </div>
@@ -1616,111 +1672,322 @@
 
     <div id="game-cards">
       <div class="lobby-category">
-        <h3>蹂대뱶寃뚯엫</h3>
-        <div id="board-games" class="category-cards"></div>
+        <h3>보드게임</h3>
+        <div id="board-games" class="category-cards">
+      <div class="game-card">
+        <div class="card-icon">🀱</div>
+        <div class="card-title">오목</div>
+        <div class="card-desc">15×15 보드에서 5목을 먼저 완성하면 승리. 흑에게는 쌍삼·쌍사·장목 금수 적용</div>
+        <div class="card-badge pvp">PVP</div>
+        <div class="card-actions-bottom">
+          <div class="card-top-actions">
+            <button class="card-btn-rule"   onclick="showRules('omok')">📖 룰</button>
+            <button class="card-btn-create" onclick="createRoom('omok')">➕ 방 만들기</button>
+          </div>
+          <div class="card-join-row">
+            <input type="text" class="card-code-input" id="code-input-omok"
+                   maxlength="6" placeholder="코드 6자리"
+                   autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false"
+                   onkeydown="if(event.key==='Enter') joinWithCode('omok','code-input-omok')" />
+            <button class="card-btn-join-code" onclick="joinWithCode('omok','code-input-omok')">입장</button>
+          </div>
+        </div>
+      </div>
+      <div class="game-card">
+        <div class="card-icon">🔴🟡</div>
+        <div class="card-title">4목 (Connect 4)</div>
+        <div class="card-desc">6×7 보드에서 교대로 열을 선택해 돌을 떨어뜨려 가로·세로·대각선 4개를 먼저 이으면 승리!</div>
+        <div class="card-badge pvp">PVP</div>
+        <div class="card-actions-bottom">
+          <div class="card-top-actions">
+            <button class="card-btn-rule"   onclick="showRules('connect4')">📖 룰</button>
+            <button class="card-btn-create" onclick="createRoom('connect4')">➕ 방 만들기</button>
+          </div>
+          <div class="card-join-row">
+            <input type="text" class="card-code-input" id="code-input-connect4"
+                   maxlength="6" placeholder="코드 6자리"
+                   autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false"
+                   onkeydown="if(event.key==='Enter') joinWithCode('connect4','code-input-connect4')" />
+            <button class="card-btn-join-code" onclick="joinWithCode('connect4','code-input-connect4')">입장</button>
+          </div>
+        </div>
+      </div>
+      <div class="game-card">
+        <div class="card-icon">⭕❌</div>
+        <div class="card-title">틱택토 (Tic-Tac-Toe)</div>
+        <div class="card-desc">3×3 보드에서 가로·세로·대각선 3목을 먼저 완성하면 승리! 승무패(W/L/D) 전적이 기록됩니다.</div>
+        <div class="card-badge pvp">PVP</div>
+        <div class="card-actions-bottom">
+          <div class="card-top-actions">
+            <button class="card-btn-rule"   onclick="showRules('tictactoe')">📖 룰</button>
+            <button class="card-btn-create" onclick="createRoom('tictactoe')">➕ 방 만들기</button>
+          </div>
+          <div class="card-join-row">
+            <input type="text" class="card-code-input" id="code-input-tictactoe"
+                   maxlength="6" placeholder="코드 6자리"
+                   autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false"
+                   onkeydown="if(event.key==='Enter') joinWithCode('tictactoe','code-input-tictactoe')" />
+            <button class="card-btn-join-code" onclick="joinWithCode('tictactoe','code-input-tictactoe')">입장</button>
+          </div>
+        </div>
+      </div>
+      <div class="game-card">
+        <div class="card-icon">⚫</div>
+        <div class="card-title">알까기 (Alkkagi)</div>
+        <div class="card-desc">흑돌과 백돌을 튕겨 상대 알을 밀어내세요! Matter.js 물리 엔진 기반 2인 대전.</div>
+        <div class="card-badge pvp">PVP</div>
+        <div class="card-actions-bottom">
+          <div class="card-top-actions">
+            <button class="card-btn-rule"   onclick="showRules('alkkagi')">📖 룰</button>
+            <button class="card-btn-create" onclick="createRoom('alkkagi')">➕ 방 만들기</button>
+          </div>
+          <div class="card-join-row">
+            <input type="text" class="card-code-input" id="code-input-alkkagi"
+                   maxlength="6" placeholder="코드 6자리"
+                   autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false"
+                   onkeydown="if(event.key==='Enter') joinWithCode('alkkagi','code-input-alkkagi')" />
+            <button class="card-btn-join-code" onclick="joinWithCode('alkkagi','code-input-alkkagi')">입장</button>
+          </div>
+        </div>
+      </div>
+        </div>
       </div>
       <div class="lobby-category">
-        <h3>移대뱶寃뚯엫</h3>
-        <div id="card-games" class="category-cards"></div>
+        <h3>카드게임</h3>
+        <div class="category-cards">
+      <div class="game-card">
+        <div class="card-icon">🃏</div>
+        <div class="card-title">블랙잭</div>
+        <div class="card-desc">딜러 AI를 상대로 21에 가장 가깝게! 승무패(W/L/D) 전적이 기록됩니다.</div>
+        <div class="card-badge pve">PVE</div>
+        <div class="card-actions-bottom">
+          <div class="card-top-actions">
+            <button class="card-btn-rule"   onclick="showRules('blackjack')">📖 룰</button>
+            <button class="card-btn-create" onclick="createRoom('blackjack')">➕ 방 만들기</button>
+          </div>
+          <div class="card-join-row">
+            <input type="text" class="card-code-input" id="code-input-blackjack"
+                   maxlength="6" placeholder="코드 6자리"
+                   autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false"
+                   onkeydown="if(event.key==='Enter') joinWithCode('blackjack','code-input-blackjack')" />
+            <button class="card-btn-join-code" onclick="joinWithCode('blackjack','code-input-blackjack')">입장</button>
+          </div>
+        </div>
+      </div>
+      <div class="game-card">
+        <div class="card-icon">♠️</div>
+        <div class="card-title">텍사스 홀덤</div>
+        <div class="card-desc">별 10개로 시작! 체크(⭐ -1) 또는 폴드. 커뮤니티 카드 5장으로 족보 대결, 절반 파산 시 생존자 승리!</div>
+        <div class="card-badge pvp">PVP</div>
+        <div class="card-actions-bottom">
+          <div class="card-top-actions">
+            <button class="card-btn-rule"   onclick="showRules('holdem')">📖 룰</button>
+            <button class="card-btn-create" onclick="createRoom('holdem')">➕ 방 만들기</button>
+          </div>
+          <div class="card-join-row">
+            <input type="text" class="card-code-input" id="code-input-holdem"
+                   maxlength="6" placeholder="코드 6자리"
+                   autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false"
+                   onkeydown="if(event.key==='Enter') joinWithCode('holdem','code-input-holdem')" />
+            <button class="card-btn-join-code" onclick="joinWithCode('holdem','code-input-holdem')">입장</button>
+          </div>
+        </div>
+      </div>
+      <div class="game-card">
+        <div class="card-icon">♣️</div>
+        <div class="card-title">세븐 포커</div>
+        <div class="card-desc">3~7구 분배! 각자 7장, 히든 카드가 있는 별 서바이벌. 체크(⭐ -1) 또는 폴드로 승부!</div>
+        <div class="card-badge pvp">PVP</div>
+        <div class="card-actions-bottom">
+          <div class="card-top-actions">
+            <button class="card-btn-rule"   onclick="showRules('sevenpoker')">📖 룰</button>
+            <button class="card-btn-create" onclick="createRoom('sevenpoker')">➕ 방 만들기</button>
+          </div>
+          <div class="card-join-row">
+            <input type="text" class="card-code-input" id="code-input-sevenpoker"
+                   maxlength="6" placeholder="코드 6자리"
+                   autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false"
+                   onkeydown="if(event.key==='Enter') joinWithCode('sevenpoker','code-input-sevenpoker')" />
+            <button class="card-btn-join-code" onclick="joinWithCode('sevenpoker','code-input-sevenpoker')">입장</button>
+          </div>
+        </div>
+      </div>
+      <div class="game-card">
+        <div class="card-icon">🤠</div>
+        <div class="card-title">인디언 포커</div>
+        <div class="card-desc">상대 카드는 보이지만 내 카드는 안 보여요! 하트 10개로 시작, 서바이벌 승부!</div>
+        <div class="card-badge pvp">PVP</div>
+        <div class="card-actions-bottom">
+          <div class="card-top-actions">
+            <button class="card-btn-rule"   onclick="showRules('indian')">📖 룰</button>
+            <button class="card-btn-create" onclick="createRoom('indian')">➕ 방 만들기</button>
+          </div>
+          <div class="card-join-row">
+            <input type="text" class="card-code-input" id="code-input-indian"
+                   maxlength="6" placeholder="코드 6자리"
+                   autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false"
+                   onkeydown="if(event.key==='Enter') joinWithCode('indian','code-input-indian')" />
+            <button class="card-btn-join-code" onclick="joinWithCode('indian','code-input-indian')">입장</button>
+          </div>
+        </div>
+      </div>
+      <div class="game-card">
+        <div class="card-icon">🃏</div>
+        <div class="card-title">도둑잡기 (Thief)</div>
+        <div class="card-desc">53장(52+조커) 분배 후 페어 제거. 다음 플레이어 패에서 카드 1장 뽑기. 패 0장이면 탈출! 조커만 남으면 패배.</div>
+        <div class="card-badge pvp">PVP</div>
+        <div class="card-actions-bottom">
+          <div class="card-top-actions">
+            <button class="card-btn-rule"   onclick="showRules('thief')">📖 룰</button>
+            <button class="card-btn-create" onclick="createRoom('thief')">➕ 방 만들기</button>
+          </div>
+          <div class="card-join-row">
+            <input type="text" class="card-code-input" id="code-input-thief"
+                   maxlength="6" placeholder="코드 6자리"
+                   autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false"
+                   onkeydown="if(event.key==='Enter') joinWithCode('thief','code-input-thief')" />
+            <button class="card-btn-join-code" onclick="joinWithCode('thief','code-input-thief')">입장</button>
+          </div>
+        </div>
+      </div>
+      <div class="game-card">
+        <div class="card-icon">🃏</div>
+        <div class="card-title">원카드 (One Card)</div>
+        <div class="card-desc">바닥 카드와 문양/숫자 일치 카드만 낼 수 있음. J=스킵, Q=방향반전. 패 0장이면 승리!</div>
+        <div class="card-badge pvp">PVP</div>
+        <div class="card-actions-bottom">
+          <div class="card-top-actions">
+            <button class="card-btn-rule"   onclick="showRules('onecard')">📖 룰</button>
+            <button class="card-btn-create" onclick="createRoom('onecard')">➕ 방 만들기</button>
+          </div>
+          <div class="card-join-row">
+            <input type="text" class="card-code-input" id="code-input-onecard"
+                   maxlength="6" placeholder="코드 6자리"
+                   autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false"
+                   onkeydown="if(event.key==='Enter') joinWithCode('onecard','code-input-onecard')" />
+            <button class="card-btn-join-code" onclick="joinWithCode('onecard','code-input-onecard')">입장</button>
+          </div>
+        </div>
+      </div>
+      <div class="game-card">
+        <div class="card-icon">🀄</div>
+        <div class="card-title">마작 (Mahjong)</div>
+        <div class="card-desc">4인 전용. 136장 패 분배 후 쯔모·타패. 14장이 되면 패를 버리세요. (Phase 1)</div>
+        <div class="card-badge pvp">4인</div>
+        <div class="card-actions-bottom">
+          <div class="card-top-actions">
+            <button class="card-btn-rule"   onclick="showRules('mahjong')">📖 룰</button>
+            <button class="card-btn-create" onclick="createRoom('mahjong')">➕ 방 만들기</button>
+          </div>
+          <div class="card-join-row">
+            <input type="text" class="card-code-input" id="code-input-mahjong"
+                   maxlength="6" placeholder="코드 6자리"
+                   autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false"
+                   onkeydown="if(event.key==='Enter') joinWithCode('mahjong','code-input-mahjong')" />
+            <button class="card-btn-join-code" onclick="joinWithCode('mahjong','code-input-mahjong')">입장</button>
+          </div>
+        </div>
+      </div>
+        </div>
       </div>
     </div>
   </div>
 
-  <!-- ?먥븧 ROOM VIEW ?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧??-->
+  <!-- ══ ROOM VIEW ═══════════════════════════════════════════════════════════ -->
   <div id="room-view">
 
     <!-- Game Area -->
     <div id="game-area">
       <div id="game-area-header">
-        <span id="game-area-title">寃뚯엫</span>
+        <span id="game-area-title">게임</span>
         <div style="display:flex;gap:8px;align-items:center;">
-          <button class="header-btn" id="btn-ingame-rules" onclick="showCurrentRules()" title="?꾩옱 寃뚯엫 猷?蹂닿린" style="display:none;">?뱰 猷?/button>
-          <button class="header-btn" id="btn-add-bot" onclick="requestAddBot()" title="AI 遊?異붽? (?ㅻぉ/4紐??깊깮??" style="display:none;">?쨼 遊?異붽?</button>
-          <button id="btn-takeover" class="header-btn" style="background:var(--accent); color:#000; font-weight:bold; display:none;" onclick="sendTakeover()">?첄 ?쒖엯 / 李몄뿬?섍린</button>
-          <button id="room-code-badge" onclick="copyRoomCode()" title="?대┃?섏뿬 諛?肄붾뱶瑜??대┰蹂대뱶??蹂듭궗">
-            諛?肄붾뱶&nbsp;<span id="room-code-text">------</span>&nbsp;?뱥
+          <button class="header-btn" id="btn-ingame-rules" onclick="showCurrentRules()" title="현재 게임 룰 보기" style="display:none;">📖 룰</button>
+          <button class="header-btn" id="btn-add-bot" onclick="requestAddBot()" title="AI 봇 추가 (오목/4목/틱택토)" style="display:none;">🤖 봇 추가</button>
+          <button id="btn-takeover" class="header-btn" style="background:var(--accent); color:#000; font-weight:bold; display:none;" onclick="sendTakeover()">🪑 난입 / 참여하기</button>
+          <button id="room-code-badge" onclick="copyRoomCode()" title="클릭하여 방 코드를 클립보드에 복사">
+            방 코드&nbsp;<span id="room-code-text">------</span>&nbsp;📋
           </button>
         </div>
       </div>
       <div id="game-area-content">
 
-        <!-- Placeholder (?곌껐 / ?湲? -->
+        <!-- Placeholder (연결 / 대기) -->
         <div id="board-placeholder">
-          <div style="font-size:32px;">??/div>
-          <div>?곷?諛⑹쓣 湲곕떎由щ뒗 以?..</div>
+          <div style="font-size:32px;">🀱</div>
+          <div>상대방을 기다리는 중...</div>
         </div>
-        <!-- 寃뚯엫 ?쒖옉 ??以鍮?Ready) ?곸뿭 (怨듯넻 PVP) -->
+        <!-- 게임 시작 전 준비(Ready) 영역 (공통 PVP) -->
         <div id="ready-area" class="room-controls" style="display:none; flex-direction:column; align-items:center; gap:8px; margin-top:16px;">
-          <button id="btn-ready" class="indian-btn" style="background:var(--success); color:#000;" onclick="sendReady()">??以鍮??꾨즺 (<span id="ready-count">0/0</span>)</button>
-          <div style="font-size:12px; color:var(--text-muted);">?꾩썝??以鍮꾪빐??寃뚯엫???쒖옉?⑸땲??/div>
+          <button id="btn-ready" class="indian-btn" style="background:var(--success); color:#000;" onclick="sendReady()">✅ 준비 완료 (<span id="ready-count">0/0</span>)</button>
+          <div style="font-size:12px; color:var(--text-muted);">전원이 준비해야 게임이 시작됩니다</div>
         </div>
-        <!-- 由щℓ移??곸뿭 (怨듯넻 PVP) -->
+        <!-- 리매치 영역 (공통 PVP) -->
         <div id="rematch-area" class="room-controls">
           <button id="btn-rematch" onclick="sendRematch()">
-            ?봽 ??????(<span id="rematch-count">0/0</span>)
+            🔄 한 판 더 (<span id="rematch-count">0/0</span>)
           </button>
-          <div id="rematch-hint">?곷?諛⑸룄 踰꾪듉???꾨Ⅴ硫???寃뚯엫???쒖옉?⑸땲??/div>
+          <div id="rematch-hint">상대방도 버튼을 누르면 새 게임이 시작됩니다</div>
         </div>
 
         <!-- Gomoku container -->
         <div id="gomoku-container">
           <div id="game-status-bar">
             <div id="status-turn-block">
-              <div id="status-stone-icon">??/div>
+              <div id="status-stone-icon">⚫</div>
               <div>
-                <div class="status-label">?꾩옱 李⑤?</div>
-                <div id="status-turn-user">??/div>
+                <div class="status-label">현재 차례</div>
+                <div id="status-turn-user">—</div>
               </div>
             </div>
             <div id="status-timer-block">
-              <div class="status-label">?⑥? ?쒓컙</div>
+              <div class="status-label">남은 시간</div>
               <span id="status-seconds">--</span>
-              <span class="status-unit">珥?/span>
+              <span class="status-unit">초</span>
             </div>
           </div>
           <div id="gomoku-color-info"></div>
           <div id="gomoku-board-scaler"><div id="gomoku-board"></div></div>
-          <!-- ?ㅻぉ 愿??硫붿떆吏 (Phase 4.3.1) -->
+          <!-- 오목 관전 메시지 (Phase 4.3.1) -->
           <div id="gomoku-spectator-msg" style="display:none; padding:14px 18px; font-size:14px; font-weight:600; color:var(--text-secondary); text-align:center;">
-            ?? 愿??以묒엯?덈떎
+            👀 관전 중입니다
           </div>
         </div>
 
         <!-- Blackjack container -->
         <div id="blackjack-container">
-          <div id="bj-status-bar">?깗 釉붾옓??vs ?쒕윭 AI</div>
+          <div id="bj-status-bar">🃏 블랙잭 vs 딜러 AI</div>
           <div class="bj-area">
-            <div class="bj-area-title">?쨼 ?쒕윭</div>
+            <div class="bj-area-title">🤖 딜러</div>
             <div id="bj-dealer-hand" class="bj-hand"></div>
             <div id="bj-dealer-score" class="bj-score"></div>
           </div>
           <div class="bj-area">
-            <div class="bj-area-title">?뫀 ??/div>
+            <div class="bj-area-title">👤 나</div>
             <div id="bj-player-hand" class="bj-hand"></div>
             <div id="bj-player-score" class="bj-score"></div>
           </div>
           <div id="bj-actions">
             <div id="bj-start-buttons">
-              <button class="bj-btn bj-btn-bet" onclick="bjStart()">?렜 寃뚯엫 ?쒖옉</button>
+              <button class="bj-btn bj-btn-bet" onclick="bjStart()">🎮 게임 시작</button>
             </div>
             <div id="bj-game-buttons" style="display:none">
               <button class="bj-btn bj-btn-hit"   onclick="bjHit()">Hit</button>
               <button class="bj-btn bj-btn-stand" onclick="bjStand()">Stand</button>
             </div>
           </div>
-          <!-- 愿?꾩옄 硫붿떆吏 (Phase 4.3) -->
-          <div id="bj-spectator-msg">?? 愿??以묒엯?덈떎</div>
+          <!-- 관전자 메시지 (Phase 4.3) -->
+          <div id="bj-spectator-msg">👀 관전 중입니다</div>
           <div id="bj-message"></div>
-          <div id="bj-result-banner" class="game-result-banner" style="display:none;"></div>
         </div>
 
         <!-- Tictactoe container -->
         <div id="tictactoe-container">
           <div id="ttt-status-bar" style="display:flex;align-items:center;gap:16px;padding:8px 16px;background:var(--bg-tertiary);border-radius:var(--radius);">
-            <div id="ttt-status">?곷?諛⑹쓣 湲곕떎由щ뒗 以?..</div>
+            <div id="ttt-status">상대방을 기다리는 중...</div>
             <div id="ttt-timer-block" class="game-timer-block">
-              <span class="status-label">?⑥? ?쒓컙</span>
-              <span id="ttt-seconds" class="timer-num">--</span>珥?            </div>
+              <span class="status-label">남은 시간</span>
+              <span id="ttt-seconds" class="timer-num">--</span>초
+            </div>
           </div>
           <div id="ttt-color-info"></div>
           <div id="ttt-board"></div>
@@ -1728,9 +1995,9 @@
 
         <!-- Texas Holdem container -->
         <div id="holdem-container">
-          <div id="holdem-round-bar">?쇱슫????/div>
-          <div id="holdem-timer-block" class="game-timer-block"><span class="status-label">?⑥? ?쒓컙</span> <span id="holdem-seconds" class="timer-num">--</span>珥?/div>
-          <div id="holdem-pot-bar">??狩먄?</div>
+          <div id="holdem-round-bar">라운드 —</div>
+          <div id="holdem-timer-block" class="game-timer-block"><span class="status-label">남은 시간</span> <span id="holdem-seconds" class="timer-num">--</span>초</div>
+          <div id="holdem-pot-bar">팟 ⭐×0</div>
           <div id="holdem-community-wrap">
             <div id="holdem-community-cards" class="holdem-cards-row"></div>
           </div>
@@ -1738,111 +2005,112 @@
             <div id="holdem-players" class="holdem-players-grid"></div>
           </div>
           <div id="holdem-actions">
-            <button id="btn-holdem-check" class="holdem-btn" onclick="holdemCheck()" disabled>??泥댄겕 (狩?-1)</button>
-            <button id="btn-holdem-fold"  class="holdem-btn" onclick="holdemFold()"  disabled>?뤂截??대뱶</button>
+            <button id="btn-holdem-check" class="holdem-btn" onclick="holdemCheck()" disabled>✅ 체크 (⭐ -1)</button>
+            <button id="btn-holdem-fold"  class="holdem-btn" onclick="holdemFold()"  disabled>🏳️ 폴드</button>
           </div>
           <div class="poker-hand-guide">
-            <div class="poker-hand-guide-title">?뱥 ?ъ빱 議깅낫 媛?대뱶 (媛뺥븳 ?쒖꽌)</div>
+            <div class="poker-hand-guide-title">📋 포커 족보 가이드 (강한 순서)</div>
             <div class="poker-hand-guide-grid">
-              <div class="poker-hand-item"><span class="poker-hand-name">濡쒖뻹 ?ㅽ듃?덉씠???뚮윭??/span><span class="poker-hand-desc">媛숈? 臾대뒳 A, K, Q, J, 10</span></div>
-              <div class="poker-hand-item"><span class="poker-hand-name">?ㅽ듃?덉씠???뚮윭??/span><span class="poker-hand-desc">媛숈? 臾대뒳???곗냽???レ옄 5??/span></div>
-              <div class="poker-hand-item"><span class="poker-hand-name">?ъ뭅??/span><span class="poker-hand-desc">媛숈? ?レ옄 4??/span></div>
-              <div class="poker-hand-item"><span class="poker-hand-name">??섏슦??/span><span class="poker-hand-desc">媛숈? ?レ옄 3??+ 媛숈? ?レ옄 2??/span></div>
-              <div class="poker-hand-item"><span class="poker-hand-name">?뚮윭??/span><span class="poker-hand-desc">?レ옄 ?곴??놁씠 媛숈? 臾대뒳 5??/span></div>
-              <div class="poker-hand-item"><span class="poker-hand-name">?ㅽ듃?덉씠??/span><span class="poker-hand-desc">臾대뒳 ?곴??놁씠 ?곗냽???レ옄 5??/span></div>
-              <div class="poker-hand-item"><span class="poker-hand-name">?몃━??/span><span class="poker-hand-desc">媛숈? ?レ옄 3??/span></div>
-              <div class="poker-hand-item"><span class="poker-hand-name">?ы럹??/span><span class="poker-hand-desc">媛숈? ?レ옄 2?μ뵫 ????/span></div>
-              <div class="poker-hand-item"><span class="poker-hand-name">?먰럹??/span><span class="poker-hand-desc">媛숈? ?レ옄 2??????/span></div>
-              <div class="poker-hand-item"><span class="poker-hand-name">?섏씠移대뱶 (??</span><span class="poker-hand-desc">?꾨Т 吏앸룄 ?놁쓣 ??媛???믪? ?レ옄</span></div>
+              <div class="poker-hand-item"><span class="poker-hand-name">로얄 스트레이트 플러시</span><span class="poker-hand-desc">같은 무늬 A, K, Q, J, 10</span></div>
+              <div class="poker-hand-item"><span class="poker-hand-name">스트레이트 플러시</span><span class="poker-hand-desc">같은 무늬의 연속된 숫자 5장</span></div>
+              <div class="poker-hand-item"><span class="poker-hand-name">포카드</span><span class="poker-hand-desc">같은 숫자 4장</span></div>
+              <div class="poker-hand-item"><span class="poker-hand-name">풀하우스</span><span class="poker-hand-desc">같은 숫자 3장 + 같은 숫자 2장</span></div>
+              <div class="poker-hand-item"><span class="poker-hand-name">플러시</span><span class="poker-hand-desc">숫자 상관없이 같은 무늬 5장</span></div>
+              <div class="poker-hand-item"><span class="poker-hand-name">스트레이트</span><span class="poker-hand-desc">무늬 상관없이 연속된 숫자 5장</span></div>
+              <div class="poker-hand-item"><span class="poker-hand-name">트리플</span><span class="poker-hand-desc">같은 숫자 3장</span></div>
+              <div class="poker-hand-item"><span class="poker-hand-name">투페어</span><span class="poker-hand-desc">같은 숫자 2장씩 두 쌍</span></div>
+              <div class="poker-hand-item"><span class="poker-hand-name">원페어</span><span class="poker-hand-desc">같은 숫자 2장 한 쌍</span></div>
+              <div class="poker-hand-item"><span class="poker-hand-name">하이카드 (탑)</span><span class="poker-hand-desc">아무 짝도 없을 때 가장 높은 숫자</span></div>
             </div>
           </div>
         </div>
 
         <!-- Seven Poker container -->
         <div id="sevenpoker-container">
-          <div id="sevenpoker-round-bar">?쇱슫????/div>
-          <div id="sevenpoker-timer-block" class="game-timer-block"><span class="status-label">?⑥? ?쒓컙</span> <span id="sevenpoker-seconds" class="timer-num">--</span>珥?/div>
-          <div id="sevenpoker-pot-bar">??狩먄?</div>
+          <div id="sevenpoker-round-bar">라운드 —</div>
+          <div id="sevenpoker-timer-block" class="game-timer-block"><span class="status-label">남은 시간</span> <span id="sevenpoker-seconds" class="timer-num">--</span>초</div>
+          <div id="sevenpoker-pot-bar">팟 ⭐×0</div>
           <div id="sevenpoker-players-wrap">
             <div id="sevenpoker-players" class="sevenpoker-players-grid"></div>
           </div>
           <div id="sevenpoker-actions">
-            <button id="btn-sevenpoker-check" class="holdem-btn" onclick="sevenpokerCheck()" disabled>??泥댄겕 (狩?-1)</button>
-            <button id="btn-sevenpoker-fold"  class="holdem-btn" onclick="sevenpokerFold()"  disabled>?뤂截??대뱶</button>
+            <button id="btn-sevenpoker-check" class="holdem-btn" onclick="sevenpokerCheck()" disabled>✅ 체크 (⭐ -1)</button>
+            <button id="btn-sevenpoker-fold"  class="holdem-btn" onclick="sevenpokerFold()"  disabled>🏳️ 폴드</button>
           </div>
           <div id="sevenpoker-choice-box" style="display:none; margin-top:10px; padding:12px; background:var(--bg-secondary); border-radius:8px; text-align:center;">
-            <p style="font-size:13px; margin-bottom:12px; color:var(--gold); font-weight:700;">1?μ쓣 ?뚮쾭由ш퀬 1?μ쓣 ?몓截뤾났媛쒗븯?몄슂.</p>
+            <p style="font-size:13px; margin-bottom:12px; color:var(--gold); font-weight:700;">1장을 ❌버리고 1장을 👁️공개하세요.</p>
             <div id="sp-choice-cards" style="display:flex; gap:10px; justify-content:center; margin-bottom:12px; flex-wrap:wrap;"></div>
-            <button onclick="sendSevenPokerChoice()" class="indian-btn" id="btn-sp-choice-submit" disabled>?좏깮 ?꾨즺</button>
+            <button onclick="sendSevenPokerChoice()" class="indian-btn" id="btn-sp-choice-submit" disabled>선택 완료</button>
           </div>
           <div class="poker-hand-guide">
-            <div class="poker-hand-guide-title">?뱥 ?ъ빱 議깅낫 媛?대뱶 (媛뺥븳 ?쒖꽌)</div>
+            <div class="poker-hand-guide-title">📋 포커 족보 가이드 (강한 순서)</div>
             <div class="poker-hand-guide-grid">
-              <div class="poker-hand-item"><span class="poker-hand-name">濡쒖뻹 ?ㅽ듃?덉씠???뚮윭??/span><span class="poker-hand-desc">媛숈? 臾대뒳 A, K, Q, J, 10</span></div>
-              <div class="poker-hand-item"><span class="poker-hand-name">?ㅽ듃?덉씠???뚮윭??/span><span class="poker-hand-desc">媛숈? 臾대뒳???곗냽???レ옄 5??/span></div>
-              <div class="poker-hand-item"><span class="poker-hand-name">?ъ뭅??/span><span class="poker-hand-desc">媛숈? ?レ옄 4??/span></div>
-              <div class="poker-hand-item"><span class="poker-hand-name">??섏슦??/span><span class="poker-hand-desc">媛숈? ?レ옄 3??+ 媛숈? ?レ옄 2??/span></div>
-              <div class="poker-hand-item"><span class="poker-hand-name">?뚮윭??/span><span class="poker-hand-desc">?レ옄 ?곴??놁씠 媛숈? 臾대뒳 5??/span></div>
-              <div class="poker-hand-item"><span class="poker-hand-name">?ㅽ듃?덉씠??/span><span class="poker-hand-desc">臾대뒳 ?곴??놁씠 ?곗냽???レ옄 5??/span></div>
-              <div class="poker-hand-item"><span class="poker-hand-name">?몃━??/span><span class="poker-hand-desc">媛숈? ?レ옄 3??/span></div>
-              <div class="poker-hand-item"><span class="poker-hand-name">?ы럹??/span><span class="poker-hand-desc">媛숈? ?レ옄 2?μ뵫 ????/span></div>
-              <div class="poker-hand-item"><span class="poker-hand-name">?먰럹??/span><span class="poker-hand-desc">媛숈? ?レ옄 2??????/span></div>
-              <div class="poker-hand-item"><span class="poker-hand-name">?섏씠移대뱶 (??</span><span class="poker-hand-desc">?꾨Т 吏앸룄 ?놁쓣 ??媛???믪? ?レ옄</span></div>
+              <div class="poker-hand-item"><span class="poker-hand-name">로얄 스트레이트 플러시</span><span class="poker-hand-desc">같은 무늬 A, K, Q, J, 10</span></div>
+              <div class="poker-hand-item"><span class="poker-hand-name">스트레이트 플러시</span><span class="poker-hand-desc">같은 무늬의 연속된 숫자 5장</span></div>
+              <div class="poker-hand-item"><span class="poker-hand-name">포카드</span><span class="poker-hand-desc">같은 숫자 4장</span></div>
+              <div class="poker-hand-item"><span class="poker-hand-name">풀하우스</span><span class="poker-hand-desc">같은 숫자 3장 + 같은 숫자 2장</span></div>
+              <div class="poker-hand-item"><span class="poker-hand-name">플러시</span><span class="poker-hand-desc">숫자 상관없이 같은 무늬 5장</span></div>
+              <div class="poker-hand-item"><span class="poker-hand-name">스트레이트</span><span class="poker-hand-desc">무늬 상관없이 연속된 숫자 5장</span></div>
+              <div class="poker-hand-item"><span class="poker-hand-name">트리플</span><span class="poker-hand-desc">같은 숫자 3장</span></div>
+              <div class="poker-hand-item"><span class="poker-hand-name">투페어</span><span class="poker-hand-desc">같은 숫자 2장씩 두 쌍</span></div>
+              <div class="poker-hand-item"><span class="poker-hand-name">원페어</span><span class="poker-hand-desc">같은 숫자 2장 한 쌍</span></div>
+              <div class="poker-hand-item"><span class="poker-hand-name">하이카드 (탑)</span><span class="poker-hand-desc">아무 짝도 없을 때 가장 높은 숫자</span></div>
             </div>
           </div>
         </div>
 
         <!-- Indian Poker container -->
         <div id="indian-container">
-          <div id="indian-round-bar">?쇱슫????/div>
+          <div id="indian-round-bar">라운드 —</div>
           <div style="display:flex;align-items:center;justify-content:center;gap:12px;flex-wrap:wrap;">
-            <div id="indian-status">?곷?諛⑹쓣 湲곕떎由щ뒗 以?..</div>
+            <div id="indian-status">상대방을 기다리는 중...</div>
             <div id="indian-timer-block" class="game-timer-block">
-              <span class="status-label">?⑥? ?쒓컙</span>
-              <span id="indian-seconds" class="timer-num">--</span>珥?            </div>
+              <span class="status-label">남은 시간</span>
+              <span id="indian-seconds" class="timer-num">--</span>초
+            </div>
           </div>
 
-          <!-- ?곷?諛??곸뿭 -->
+          <!-- 상대방 영역 -->
           <div class="indian-player-area opponent-area">
             <div class="indian-card-wrap" id="indian-opp-card-wrap"></div>
             <div class="indian-player-info">
-              <div class="indian-player-name" id="indian-opp-name">??/div>
+              <div class="indian-player-name" id="indian-opp-name">—</div>
               <div class="indian-hearts-bar" id="indian-opp-hearts"></div>
             </div>
           </div>
 
           <div class="indian-vs-bar">VS</div>
 
-          <!-- ???곸뿭 -->
+          <!-- 내 영역 -->
           <div class="indian-player-area my-area">
             <div class="indian-card-wrap" id="indian-my-card-wrap"></div>
             <div class="indian-player-info">
-              <div class="indian-player-name" id="indian-my-name">??/div>
+              <div class="indian-player-name" id="indian-my-name">—</div>
               <div class="indian-hearts-bar" id="indian-my-hearts"></div>
             </div>
           </div>
 
-          <!-- ?≪뀡 踰꾪듉 -->
+          <!-- 액션 버튼 -->
           <div id="indian-actions">
-            <button id="btn-indian-showdown" class="indian-btn" onclick="indianShowdown()" disabled>?뷂툘 ?밸?</button>
-            <button id="btn-indian-giveup"   class="indian-btn" onclick="indianGiveUp()"   disabled>?뤂截??ш린</button>
+            <button id="btn-indian-showdown" class="indian-btn" onclick="indianShowdown()" disabled>⚔️ 승부</button>
+            <button id="btn-indian-giveup"   class="indian-btn" onclick="indianGiveUp()"   disabled>🏳️ 포기</button>
           </div>
         </div>
 
         <!-- Thief container -->
         <div id="thief-container">
           <div style="display:flex;align-items:center;justify-content:center;gap:12px;flex-wrap:wrap;">
-            <div id="thief-status">?곷?諛⑹쓣 湲곕떎由щ뒗 以?..</div>
+            <div id="thief-status">상대방을 기다리는 중...</div>
             <div id="thief-timer-block" class="game-timer-block">
-              <span class="status-label">?⑥? ?쒓컙</span>
-              <span id="thief-seconds" class="timer-num">--</span>珥?            </div>
+              <span class="status-label">남은 시간</span>
+              <span id="thief-seconds" class="timer-num">--</span>초
+            </div>
           </div>
           <div id="thief-escaped" style="font-size:12px;color:var(--text-secondary);margin-bottom:8px;"></div>
           <div id="thief-table-wrap" class="table-layout-wrap">
-            <div class="thief-tooltip">상대방의 카드를 2번 클릭하여 뽑으세요</div>
             <div id="thief-players"></div>
             <div id="thief-me-slot" class="table-seat seat-bottom">
-              <span class="table-seat-name">??/span>
+              <span class="table-seat-name">나</span>
               <div id="thief-hand" class="thief-hand"></div>
             </div>
           </div>
@@ -1850,46 +2118,48 @@
 
         <!-- OneCard container -->
         <div id="onecard-container">
-          <div id="onecard-attack-banner" class="">?뵦 怨듦꺽 ?꾩쟻: <span id="onecard-attack-count">0</span>??</div>
+          <div id="onecard-attack-banner" class="">🔥 공격 누적: <span id="onecard-attack-count">0</span>장!</div>
           <div style="display:flex;align-items:center;justify-content:center;gap:12px;flex-wrap:wrap;">
-            <div id="onecard-status">?곷?諛⑹쓣 湲곕떎由щ뒗 以?..</div>
+            <div id="onecard-status">상대방을 기다리는 중...</div>
             <div id="onecard-timer-block" class="game-timer-block">
-              <span class="status-label">?⑥? ?쒓컙</span>
-              <span id="onecard-seconds" class="timer-num">--</span>珥?            </div>
+              <span class="status-label">남은 시간</span>
+              <span id="onecard-seconds" class="timer-num">--</span>초
+            </div>
           </div>
           <div id="onecard-direction" style="font-size:12px;color:var(--text-secondary);margin-bottom:4px;"></div>
           <div id="onecard-table-wrap" class="table-layout-wrap onecard-table">
             <div id="onecard-players"></div>
             <div id="onecard-center" class="table-center-area" style="position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);">
               <div id="onecard-top-card" class="onecard-card"></div>
-              <div id="onecard-deck" class="onecard-deck" onclick="onecardDraw()" title="?대┃ ???쒕줈??></div>
+              <div id="onecard-deck" class="onecard-deck" onclick="onecardDraw()" title="클릭 시 드로우"></div>
             </div>
             <div id="onecard-me-slot" class="table-seat seat-bottom">
-              <span class="table-seat-name">??/span>
+              <span class="table-seat-name">나</span>
               <div id="onecard-hand" class="onecard-hand"></div>
             </div>
           </div>
           <div id="onecard-actions-row">
-            <button id="btn-onecard-call" onclick="onecardCallOneCard()" disabled>?슚 ?먯뭅??</button>
+            <button id="btn-onecard-call" onclick="onecardCallOneCard()" disabled>🚨 원카드!</button>
           </div>
         </div>
 
         <!-- Mahjong container -->
         <div id="mahjong-container">
           <div style="display:flex;align-items:center;justify-content:center;gap:12px;flex-wrap:wrap;">
-            <div id="mahjong-status">?곷?諛⑹쓣 湲곕떎由щ뒗 以?..</div>
+            <div id="mahjong-status">상대방을 기다리는 중...</div>
             <div id="mahjong-timer-block" class="game-timer-block">
-              <span class="status-label">?⑥? ?쒓컙</span>
-              <span id="mahjong-seconds" class="timer-num">--</span>珥?            </div>
+              <span class="status-label">남은 시간</span>
+              <span id="mahjong-seconds" class="timer-num">--</span>초
+            </div>
           </div>
-          <div id="mahjong-wall-info" style="font-size:14px;color:var(--text-secondary);margin-bottom:8px;">???⑥? ?? --??/div>
+          <div id="mahjong-wall-info" style="font-size:14px;color:var(--text-secondary);margin-bottom:8px;">🀄 남은 패: --장</div>
           <div id="mahjong-table-wrap" class="table-layout-wrap">
             <div id="mahjong-players"></div>
             <div id="mahjong-center" class="table-center-area" style="position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);">
-              <div id="mahjong-wall-display">??/div>
+              <div id="mahjong-wall-display">🀄</div>
             </div>
             <div id="mahjong-me-slot" class="table-seat seat-bottom">
-              <span class="table-seat-name">??/span>
+              <span class="table-seat-name">나</span>
               <div id="mahjong-discards-me" class="mahjong-discards mahjong-discards-row"></div>
               <div id="mahjong-hand" class="mahjong-hand"></div>
             </div>
@@ -1899,10 +2169,11 @@
         <!-- Connect4 container -->
         <div id="connect4-container">
           <div style="display:flex;align-items:center;justify-content:center;gap:16px;flex-wrap:wrap;">
-            <div id="c4-status">?곷?諛⑹쓣 湲곕떎由щ뒗 以?..</div>
+            <div id="c4-status">상대방을 기다리는 중...</div>
             <div id="c4-timer-block" class="game-timer-block">
-              <span class="status-label">?⑥? ?쒓컙</span>
-              <span id="c4-seconds" class="timer-num">--</span>珥?            </div>
+              <span class="status-label">남은 시간</span>
+              <span id="c4-seconds" class="timer-num">--</span>초
+            </div>
           </div>
           <div id="c4-color-info"></div>
           <div id="c4-col-btns"></div>
@@ -1911,9 +2182,9 @@
           </div>
         </div>
 
-        <!-- Alkkagi container (Matter.js 臾쇰━ 蹂대뱶) -->
+        <!-- Alkkagi container (Matter.js 물리 보드) -->
         <div id="alkkagi-container" style="display:none; flex-direction:column; align-items:center; gap:12px; width:100%;">
-          <div id="alkkagi-status" style="font-size:15px; font-weight:600;">?뚭퉴湲????곷?諛⑹쓣 湲곕떎由щ뒗 以?..</div>
+          <div id="alkkagi-status" style="font-size:15px; font-weight:600;">알까기 — 상대방을 기다리는 중...</div>
           <div id="alkkagi-board-wrap" style="position:relative; background:#c8a45a; border:3px solid #7a5010; border-radius:8px; overflow:hidden; box-shadow:0 6px 24px rgba(0,0,0,0.5);"></div>
         </div>
 
@@ -1923,18 +2194,18 @@
     <!-- Chat Panel -->
     <div id="chat-panel" class="collapsed">
       <div id="chat-header">
-        <span>?뮠 梨꾪똿</span>
+        <span>💬 채팅</span>
         <div style="display:flex;align-items:center;gap:8px;flex:1;min-width:0;">
           <div id="chat-preview"></div>
           <span id="chat-room-badge"></span>
-          <button id="btn-chat-toggle" onclick="toggleChatCollapse()" title="梨꾪똿李??쇱튂湲?>?뮠 ??/button>
+          <button id="btn-chat-toggle" onclick="toggleChatCollapse()" title="채팅창 펼치기">💬 ▲</button>
         </div>
       </div>
       <div id="chat-messages"></div>
       <div id="chat-input-area">
-        <input type="text" id="chat-input" placeholder="硫붿떆吏瑜??낅젰?섏꽭??.."
+        <input type="text" id="chat-input" placeholder="메시지를 입력하세요..."
                onkeydown="onChatKeyDown(event)" disabled />
-        <button id="btn-send-chat" onclick="sendChat()" disabled>?꾩넚</button>
+        <button id="btn-send-chat" onclick="sendChat()" disabled>전송</button>
       </div>
     </div>
 
@@ -1942,12 +2213,12 @@
 
 </div><!-- /app -->
 
-<!-- ?먥븧 Debug Panel ?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧 -->
+<!-- ══ Debug Panel ════════════════════════════════════════════════════════════ -->
 <div id="debug-backdrop" onclick="toggleDebugPanel()"></div>
 <div id="debug-panel">
   <div id="debug-panel-header">
-    <span>?뵩 媛쒕컻???꾧뎄</span>
-    <button onclick="toggleDebugPanel()">??/button>
+    <span>🔧 개발자 도구</span>
+    <button onclick="toggleDebugPanel()">✕</button>
   </div>
   <div id="debug-panel-content">
 
@@ -1957,166 +2228,129 @@
     </div>
     <div class="debug-section">
       <div class="debug-btn-row">
-        <button class="debug-btn connect"    id="btn-connect"    onclick="connect()">?곌껐</button>
-        <button class="debug-btn disconnect" id="btn-disconnect" onclick="disconnect()" disabled>?곌껐 醫낅즺</button>
+        <button class="debug-btn connect"    id="btn-connect"    onclick="connect()">연결</button>
+        <button class="debug-btn disconnect" id="btn-disconnect" onclick="disconnect()" disabled>연결 종료</button>
       </div>
     </div>
 
     <div class="debug-section">
-      <label>?섎룞 User / Room ID</label>
+      <label>수동 User / Room ID</label>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;">
         <input type="text" id="input-user-id" class="debug-input" value="player_A" placeholder="User ID" />
         <input type="text" id="input-room-id" class="debug-input" value="room_1"   placeholder="Room ID" />
       </div>
-      <button class="debug-btn" id="btn-join" onclick="debugJoinRoom()" disabled>?섎룞 諛??낆옣</button>
+      <button class="debug-btn" id="btn-join" onclick="debugJoinRoom()" disabled>수동 방 입장</button>
     </div>
 
     <div class="debug-section">
-      <label>硫붿떆吏 濡쒓렇</label>
+      <label>메시지 로그</label>
       <div id="log-output"></div>
-      <button class="debug-btn" onclick="clearLog()" style="margin-top:4px;">濡쒓렇 吏?곌린</button>
+      <button class="debug-btn" onclick="clearLog()" style="margin-top:4px;">로그 지우기</button>
     </div>
 
     <div class="debug-section">
-      <label>?먯떆 JSON ?꾩넚 (Ctrl+Enter)</label>
+      <label>원시 JSON 전송 (Ctrl+Enter)</label>
       <textarea id="msg-input" class="debug-input textarea">{}</textarea>
-      <button class="debug-btn" id="btn-send" onclick="sendMessage()" disabled>?꾩넚</button>
+      <button class="debug-btn" id="btn-send" onclick="sendMessage()" disabled>전송</button>
     </div>
 
   </div>
 </div>
 
-<!-- ?먥븧 OneCard 7 移대뱶 臾대뒳 ?좏깮 紐⑤떖 ?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧??-->
+<!-- ══ OneCard 7 카드 무늬 선택 모달 ═══════════════════════════════════════════ -->
 <div id="onecard-suit-modal">
   <div id="onecard-suit-backdrop" onclick="closeOneCardSuitModal()"></div>
   <div id="onecard-suit-box">
-    <div id="onecard-suit-title">7 移대뱶 ???ㅼ쓬 臾몄뼇 ?좏깮</div>
+    <div id="onecard-suit-title">7 카드 — 다음 문양 선택</div>
     <div id="onecard-suit-btns">
-      <button type="button" class="suit-btn" onclick="onecardPickSuit('??)">??/button>
-      <button type="button" class="suit-btn" onclick="onecardPickSuit('??)">??/button>
-      <button type="button" class="suit-btn" onclick="onecardPickSuit('??)">??/button>
-      <button type="button" class="suit-btn" onclick="onecardPickSuit('??)">??/button>
+      <button type="button" class="suit-btn" onclick="onecardPickSuit('♠')">♠</button>
+      <button type="button" class="suit-btn" onclick="onecardPickSuit('♥')">♥</button>
+      <button type="button" class="suit-btn" onclick="onecardPickSuit('♦')">♦</button>
+      <button type="button" class="suit-btn" onclick="onecardPickSuit('♣')">♣</button>
     </div>
   </div>
 </div>
 
-<!-- ?먥븧 Rules Modal ?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧 -->
+<!-- ══ Rules Modal ════════════════════════════════════════════════════════════ -->
 <div id="rules-modal">
   <div id="rules-backdrop" onclick="closeRules()"></div>
   <div id="rules-box">
     <div id="rules-title"></div>
     <div id="rules-content"></div>
-    <button id="rules-close" onclick="closeRules()">?リ린</button>
+    <button id="rules-close" onclick="closeRules()">닫기</button>
   </div>
 </div>
 
-<!-- ?먥븧 Toast Container ?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧 -->
+<!-- ══ Toast Container ════════════════════════════════════════════════════════ -->
 <div id="toast-container"></div>
 
-<!-- ?먥븧 Indian Poker ?밸? 寃곌낵 ?ㅻ쾭?덉씠 (3~5珥??먮룞 ?щ씪吏? ?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧 -->
+<!-- ══ Indian Poker 승부 결과 오버레이 (3~5초 자동 사라짐) ════════════════════ -->
 <div id="indian-showdown-overlay" onclick="closeIndianOverlay()">
-<<<<<<< HEAD
-<<<<<<< HEAD
   <div id="indian-showdown-box" class="unified-result-box">
-    <div id="indian-showdown-vs">??/div>
-    <div id="indian-showdown-result">??/div>
-=======
-=======
->>>>>>> parent of ed2fc56 (260224_1739)
-  <div id="indian-showdown-box">
     <div id="indian-showdown-vs">—</div>
     <div id="indian-showdown-result">—</div>
->>>>>>> parent of ed2fc56 (260224_1739)
   </div>
 </div>
 
-<!-- ?먥븧 Poker ?쇰떎??寃곌낵 ?ㅻ쾭?덉씠 (5珥??먮룞 ?щ씪吏? ?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧 -->
+<!-- ══ Poker 쇼다운 결과 오버레이 (5초 자동 사라짐) ════════════════════════════ -->
 <div id="poker-showdown-overlay" onclick="closePokerShowdownOverlay()">
-<<<<<<< HEAD
-<<<<<<< HEAD
   <div id="poker-showdown-box" class="unified-result-box">
-    <div id="poker-showdown-winner">??/div>
-=======
-=======
->>>>>>> parent of ed2fc56 (260224_1739)
-  <div id="poker-showdown-box">
     <div id="poker-showdown-winner">—</div>
->>>>>>> parent of ed2fc56 (260224_1739)
     <div id="poker-showdown-participants"></div>
   </div>
 </div>
 
-<<<<<<< HEAD
-<<<<<<< HEAD
-<!-- ?먥븧 Blackjack 寃곌낵 ?ㅻ쾭?덉씠 (3.5珥??먮룞 ?щ씪吏? ?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧 -->
+<!-- ══ Blackjack 결과 오버레이 (3.5초 자동 사라짐) ════════════════════════════ -->
 <div id="bj-result-overlay" style="display:none; position:fixed; inset:0; z-index:9999; align-items:center; justify-content:center; background:rgba(0,0,0,0.5); pointer-events:none;">
   <div id="bj-result-box" class="unified-result-box">
     <div id="bj-result-msg" style="font-size:24px; font-weight:800; letter-spacing:2px; text-transform:uppercase;"></div>
   </div>
 </div>
 
-<!-- ?먥븧 Profile Modal (留덉씠?섏씠吏) ?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧??-->
-=======
-=======
->>>>>>> parent of ed2fc56 (260224_1739)
 <!-- ══ Profile Modal (마이페이지) ═══════════════════════════════════════════ -->
->>>>>>> parent of ed2fc56 (260224_1739)
 <div id="profile-modal">
   <div id="profile-backdrop" onclick="closeProfileModal()"></div>
   <div id="profile-box">
-    <h3>?뫀 ???꾨줈??/h3>
+    <h3>👤 내 프로필</h3>
     <div id="profile-current-info" class="profile-info-block">
-      <div class="profile-info-row"><span class="profile-label">怨꾩젙 ?대찓??/span><span id="profile-email"></span></div>
-      <div class="profile-info-row"><span class="profile-label">?꾩옱 ?됰꽕??/span><span id="profile-current-nickname"></span></div>
+      <div class="profile-info-row"><span class="profile-label">계정 이메일</span><span id="profile-email"></span></div>
+      <div class="profile-info-row"><span class="profile-label">현재 닉네임</span><span id="profile-current-nickname"></span></div>
     </div>
     <div class="profile-section">
-      <div class="profile-section-title">?됰꽕??蹂寃?/div>
+      <div class="profile-section-title">닉네임 변경</div>
       <div style="display:flex;gap:8px;align-items:center;">
-        <input class="auth-input" type="text" id="profile-new-nickname" placeholder="???됰꽕?? maxlength="20" style="flex:1;" oninput="resetNicknameCheck('profile')" onkeydown="if(event.key==='Enter') checkNicknameProfile()" />
-        <button type="button" class="header-btn" onclick="checkNicknameProfile()">以묐났?뺤씤</button>
+        <input class="auth-input" type="text" id="profile-new-nickname" placeholder="새 닉네임" maxlength="20" style="flex:1;" oninput="resetNicknameCheck('profile')" onkeydown="if(event.key==='Enter') checkNicknameProfile()" />
+        <button type="button" class="header-btn" onclick="checkNicknameProfile()">중복확인</button>
       </div>
       <div id="profile-nickname-status" class="profile-status-text"></div>
-      <button type="button" id="btn-profile-apply" class="header-btn profile-apply-btn" onclick="saveProfileNickname()" disabled>蹂寃??곸슜</button>
+      <button type="button" id="btn-profile-apply" class="header-btn profile-apply-btn" onclick="saveProfileNickname()" disabled>변경 적용</button>
     </div>
-    <button type="button" id="btn-profile-logout" class="header-btn danger profile-logout-btn" onclick="authLogout(); closeProfileModal();">?슞 濡쒓렇?꾩썐</button>
-    <button type="button" class="header-btn" style="width: 100%; margin-top: 8px; padding: 10px;" onclick="closeProfileModal()">?リ린</button>
+    <button type="button" id="btn-profile-logout" class="header-btn danger profile-logout-btn" onclick="authLogout(); closeProfileModal();">🚪 로그아웃</button>
+    <button type="button" class="header-btn" style="width: 100%; margin-top: 8px; padding: 10px;" onclick="closeProfileModal()">닫기</button>
   </div>
 </div>
 
-<!-- ?먥븧 Opponent Record Modal (?곷? ?꾩쟻) ?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧??-->
+<!-- ══ Opponent Record Modal (상대 전적) ═══════════════════════════════════════ -->
 <div id="opponent-record-modal">
   <div id="opponent-record-backdrop" onclick="closeOpponentRecordModal()"></div>
   <div id="opponent-record-box">
-    <h3 id="opponent-record-title">???꾩쟻</h3>
+    <h3 id="opponent-record-title">— 전적</h3>
     <div id="opponent-record-content"></div>
-    <button class="header-btn" onclick="closeOpponentRecordModal()" style="margin-top:12px;">?リ린</button>
+    <button class="header-btn" onclick="closeOpponentRecordModal()" style="margin-top:12px;">닫기</button>
   </div>
 </div>
 
-<!-- ?먥븧 Game Result Modal ?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧 -->
+<!-- ══ Game Result Modal ══════════════════════════════════════════════════════ -->
 <div id="result-modal">
   <div id="result-modal-backdrop" onclick="closeResultModal()"></div>
-<<<<<<< HEAD
-<<<<<<< HEAD
   <div id="result-modal-box" class="unified-result-box">
-    <div id="result-modal-icon">?룇</div>
-    <div id="result-modal-title">寃뚯엫 寃곌낵</div>
-=======
-=======
->>>>>>> parent of ed2fc56 (260224_1739)
-  <div id="result-modal-box">
     <div id="result-modal-icon">🏆</div>
     <div id="result-modal-title">게임 결과</div>
->>>>>>> parent of ed2fc56 (260224_1739)
     <div id="result-modal-msg"></div>
-    <button id="result-modal-close" onclick="closeResultModal()">?뺤씤</button>
+    <button id="result-modal-close" onclick="closeResultModal()">확인</button>
   </div>
-
 </div>
 
-<<<<<<< HEAD
-  <script src="js/main.js"></script>
-=======
 <script>
   // ── Supabase 클라이언트 초기화 ──────────────────────────────────────────────
   // anon key는 프론트엔드용 퍼블릭 키이므로 소스 노출이 허용됩니다.
@@ -2139,6 +2373,10 @@
   let reconnectTimer = null;
   let isIntentionalLeave = false;
   let currentMode = 'lobby'; // 'lobby' | 'room'
+
+  // Indian Poker 카드 렌더링 최적화 (변경 시에만 업데이트)
+  let lastIndianOppCard = '';
+  let lastIndianMyCard  = '';
 
   // Gomoku
   let gomokuMyColor    = 0;
@@ -3663,19 +3901,27 @@
     renderBJHand('bj-dealer-hand', 'bj-dealer-score', data.dealerHand);
     renderBJHand('bj-player-hand', 'bj-player-score', data.playerHand);
     const msgEl = document.getElementById('bj-message');
-    const bannerEl = document.getElementById('bj-result-banner');
+    const overlayEl = document.getElementById('bj-result-overlay');
+    const boxEl = document.getElementById('bj-result-box');
+    const msgTextEl = document.getElementById('bj-result-msg');
     if (data.message) msgEl.textContent = data.message;
 
     const showResult = (data.phase === 'settlement' || data.state === 'game_over') && data.message;
     if (showResult) {
-      bannerEl.style.display = 'flex';
-      bannerEl.innerHTML = `<div class="result-title">${escapeHTML(data.message)}</div>`;
-      bannerEl.className = 'game-result-banner';
-      if (/승리|Win|이겼|블랙잭/i.test(data.message)) bannerEl.classList.add('win');
-      else if (/패배|Lose|졌|버스트|Bust/i.test(data.message)) bannerEl.classList.add('lose');
-      else bannerEl.classList.add('push');
+      msgTextEl.textContent = data.message;
+      boxEl.className = 'unified-result-box';
+      if (/승리|Win|이겼|블랙잭/i.test(data.message)) boxEl.classList.add('win');
+      else if (/패배|Lose|졌|버스트|Bust/i.test(data.message)) boxEl.classList.add('lose');
+      else boxEl.classList.add('push');
+
+      overlayEl.style.display = 'flex';
+
+      if (window.bjResultTimer) clearTimeout(window.bjResultTimer);
+      window.bjResultTimer = setTimeout(() => {
+        overlayEl.style.display = 'none';
+      }, 3500);
     } else {
-      bannerEl.style.display = 'none';
+      overlayEl.style.display = 'none';
     }
 
     const startBtns    = document.getElementById('bj-start-buttons');
@@ -3933,6 +4179,8 @@
   // ── Indian Poker UI ────────────────────────────────────────────────────────
 
   function showIndianUI() {
+    lastIndianOppCard = '';
+    lastIndianMyCard  = '';
     switchGameView('indian');
   }
 
@@ -4001,7 +4249,11 @@
       ? `<span class="clickable-nickname" onclick="requestOpponentRecord('${escapeForJsAttr(oppName)}')" title="전적 보기">${escapeHTML(oppName)}</span>`
       : '—';
     document.getElementById('indian-opp-hearts').innerHTML = renderHeartsBar(data.opponentHearts);
-    document.getElementById('indian-opp-card-wrap').innerHTML = renderIndianCard(data.opponentCard);
+    const oppCardHtml = renderIndianCard(data.opponentCard);
+    if (lastIndianOppCard !== oppCardHtml) {
+      document.getElementById('indian-opp-card-wrap').innerHTML = oppCardHtml;
+      lastIndianOppCard = oppCardHtml;
+    }
 
     // 내 정보
     const myName = data.myName || '—';
@@ -4009,7 +4261,11 @@
       ? `<span class="clickable-nickname" onclick="requestOpponentRecord('${escapeForJsAttr(myName)}')" title="전적 보기">${escapeHTML(myName)}</span>`
       : '—';
     document.getElementById('indian-my-hearts').innerHTML = renderHeartsBar(data.myHearts);
-    document.getElementById('indian-my-card-wrap').innerHTML = renderIndianCard(data.myCard);
+    const myCardHtml = renderIndianCard(data.myCard);
+    if (lastIndianMyCard !== myCardHtml) {
+      document.getElementById('indian-my-card-wrap').innerHTML = myCardHtml;
+      lastIndianMyCard = myCardHtml;
+    }
 
     // 현재 턴 유저 래퍼에 active-turn 강조
     const oppArea = document.querySelector('.indian-player-area.opponent-area');
@@ -4345,7 +4601,7 @@
         return `<div class="table-seat mahjong-player-box ${seatClass} ${p.isTurn ? 'my-turn' : ''}" data-user-id="${escapeHTML(p.userId)}">
           <span class="table-seat-name">${escapeHTML(p.userId)}</span>
           <div class="mahjong-discards mahjong-discards-row">${discardsHtml}</div>
-          <div class="mahjong-hand">${handHtml}</div>
+          <div class="mahjong-hand opponent-hand">${handHtml}</div>
         </div>`;
       }).join('');
     }
@@ -4534,7 +4790,10 @@
           : escapeHTML(p.userId) + ' (나)';
         return `
           <div class="holdem-player-box ${isTurn ? 'my-turn' : ''} ${folded ? 'folded' : ''}">
-            <div class="holdem-player-name">${nameHtml}</div>
+            <div style="display:flex; justify-content:space-between; align-items:center; gap:4px;">
+              <div class="holdem-player-name" style="flex:1;">${nameHtml}</div>
+              ${p.userId === data.dealerId ? `<div class="holdem-dealer-btn" title="딜러">D</div>` : ''}
+            </div>
             <div class="holdem-player-stars">⭐×${p.stars}</div>
             <div class="holdem-player-status">${folded ? '🏳️ 폴드' : p.status === 'check' ? '✅ 체크' : ''}</div>
             <div class="holdem-player-cards">${cardsHtml}</div>
@@ -4703,7 +4962,7 @@
     vsEl.textContent = `내 카드 ${myVal}${mySuit}  vs  상대 ${oppVal}${oppSuit}`;
     resEl.textContent = isWin ? `승리! (${deltaStr} 하트)` : `패배 (${deltaStr} 하트)`;
     resEl.className = 'indian-showdown-result ' + (isWin ? 'win' : 'lose');
-    box.className = 'indian-showdown-box ' + (isWin ? 'win' : 'lose');
+    box.className = 'unified-result-box ' + (isWin ? 'win' : 'lose');
 
     if (indianShowdownTimeout) clearTimeout(indianShowdownTimeout);
     overlay.classList.add('show');
@@ -4758,6 +5017,5 @@
     }
   }
 </script>
->>>>>>> parent of ed2fc56 (260224_1739)
 </body>
 </html>
