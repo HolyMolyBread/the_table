@@ -20,6 +20,359 @@
   let isIntentionalLeave = false;
   let currentMode = 'lobby'; // 'lobby' | 'room'
 
+  // ── 상수 (호이스팅/초기화 순서 문제 방지: 최상단 선언) ───────────────────────
+  const games = ['omok', 'blackjack', 'tictactoe', 'connect4', 'indian', 'holdem', 'sevenpoker', 'thief', 'onecard', 'mahjong', 'alkkagi'];
+  const RULES = {
+    omok: {
+        title: '🀱 오목 룰',
+        html: `
+        <h3>게임 개요</h3>
+        <ul>
+            <li>15×15 보드에서 <strong>가로·세로·대각선으로 5목</strong>을 먼저 완성하면 승리합니다.</li>
+            <li>2명이 입장하면 무작위로 흑(선공)/백(후공)이 결정됩니다.</li>
+        </ul>
+        <h3>렌주룰 (흑 금수)</h3>
+        <ul>
+            <li><strong>쌍삼(3-3)</strong>: 활삼이 두 방향 이상 동시에 완성되는 곳 금지</li>
+            <li><strong>쌍사(4-4)</strong>: 사(4목 위협)가 두 방향 이상 동시에 완성되는 곳 금지</li>
+            <li><strong>장목(6목+)</strong>: 6개 이상 연속 금지</li>
+            <li>백은 금수 없음, 6목 이상도 승리 인정</li>
+        </ul>
+        <h3>턴 타이머</h3>
+        <ul>
+            <li>한 턴당 <strong>15초</strong> 제한. 초과 시 시간 초과 패배.</li>
+        </ul>
+        <h3>리매치</h3>
+        <ul>
+            <li>게임 종료 후 <strong>🔄 한 판 더</strong> 버튼으로 리매치 가능. 흑/백을 교대하여 새 게임 시작.</li>
+        </ul>
+        <h3>전적 기록</h3>
+        <ul>
+            <li>게임 종료 시 승자에게 <strong>1승</strong>, 패자에게 <strong>1패</strong>가 전적에 기록됩니다.</li>
+        </ul>`
+    },
+    blackjack: {
+        title: '🃏 블랙잭 룰',
+        html: `
+        <h3>게임 개요</h3>
+        <ul>
+            <li>딜러 AI를 상대로 패의 합산이 <strong>21에 가장 가깝게</strong> 만드는 게임입니다.</li>
+            <li>21을 초과(버스트)하면 즉시 패배합니다.</li>
+        </ul>
+        <h3>카드 점수</h3>
+        <ul>
+            <li>숫자 카드: 해당 숫자</li>
+            <li>J, Q, K: 10점</li>
+            <li>A: 1 또는 11 (버스트 방지 자동 조정)</li>
+        </ul>
+        <h3>딜러 규칙</h3>
+        <ul>
+            <li>딜러는 패의 합이 <strong>16 이하</strong>이면 반드시 카드를 추가로 뽑습니다.</li>
+            <li>딜러 카드는 1장이 뒷면으로 숨겨져 있으며, Stand 후 공개됩니다.</li>
+        </ul>
+        <h3>전적 기록</h3>
+        <ul>
+            <li>승리 시: <strong>1승</strong> 기록</li>
+            <li>무승부(Push): <strong>1무</strong> 기록</li>
+            <li>패배 / 버스트: <strong>1패</strong> 기록</li>
+        </ul>`
+    },
+    tictactoe: {
+        title: '⭕ 틱택토 룰',
+        html: `
+        <h3>게임 개요</h3>
+        <ul>
+            <li>3×3 보드에서 <strong>가로·세로·대각선으로 3목</strong>을 먼저 완성하면 승리합니다.</li>
+            <li>2명이 입장하면 O(선공)와 X(후공)가 결정됩니다.</li>
+        </ul>
+        <h3>진행 방식</h3>
+        <ul>
+            <li>O와 X가 번갈아 가며 빈칸에 표시합니다.</li>
+            <li>9칸이 모두 채워지고 승부가 나지 않으면 <strong>무승부</strong>입니다.</li>
+        </ul>
+        <h3>턴 타이머</h3>
+        <ul>
+            <li>한 턴당 <strong>15초</strong> 제한. 초과 시 시간 초과 패배.</li>
+        </ul>
+        <h3>리매치</h3>
+        <ul>
+            <li>게임 종료 후 <strong>🔄 한 판 더</strong> 버튼으로 리매치 가능. 선후공(O/X) 교대하여 새 게임 시작.</li>
+        </ul>
+        <h3>전적 기록</h3>
+        <ul>
+            <li>승리 시: <strong>1승</strong> 기록</li>
+            <li>무승부: <strong>1무</strong> 기록</li>
+            <li>패배 시: <strong>1패</strong> 기록</li>
+        </ul>`
+    },
+    indian: {
+        title: '🃏 인디언 포커 룰',
+        html: `
+        <h3>게임 개요</h3>
+        <ul>
+            <li>자신의 카드는 볼 수 없고, <strong>상대방의 카드만 볼 수 있습니다.</strong></li>
+            <li>각 플레이어는 <strong>❤️×10 하트(인게임 체력)</strong>로 시작합니다. 하트는 라운드 진행을 위한 생명력이며, 0이 되면 매치에서 탈락합니다.</li>
+        </ul>
+        <h3>라운드 진행</h3>
+        <ul>
+            <li>매 라운드 각 플레이어는 카드를 1장 받습니다. 상대 카드를 보고 판단하세요.</li>
+            <li>선공이 먼저 선택합니다:</li>
+            <li>&nbsp;&nbsp;🏳️ <strong>포기</strong>: 선공 하트 -1. 라운드 종료.</li>
+            <li>&nbsp;&nbsp;⚔️ <strong>승부</strong>: 후공에게 차례가 넘어갑니다.</li>
+            <li>후공이 선택합니다:</li>
+            <li>&nbsp;&nbsp;🏳️ <strong>포기</strong>: 후공 하트 -1. 라운드 종료.</li>
+            <li>&nbsp;&nbsp;⚔️ <strong>승부(콜)</strong>: 카드를 공개하여 승패를 판정합니다.</li>
+        </ul>
+        <h3>라운드 내 하트 증감 (인게임 체력)</h3>
+        <ul>
+            <li>포기 시: 해당 플레이어 하트 -1.</li>
+            <li>승부(콜) 후: 승자 하트 +2, 패자 하트 -2.</li>
+            <li>숫자(2 < 3 < … < K < A)가 높은 쪽 승리. 동점 시 문양(♣ < ♦ < ♥ < ♠)으로 결정.</li>
+        </ul>
+        <h3>턴 타이머</h3>
+        <ul>
+            <li>한 턴당 <strong>30초</strong> 제한. 초과 시 <strong>포기</strong> 처리(하트 -1).</li>
+        </ul>
+        <h3>라운드마다 선후공 교체</h3>
+        <ul>
+            <li>매 라운드 선공과 후공이 교대합니다.</li>
+        </ul>
+        <h3>리매치</h3>
+        <ul>
+            <li>게임 완전 종료(누군가 하트 0개) 후 <strong>🔄 한 판 더</strong> 버튼으로 리매치 가능. 양쪽 하트를 10개로 리셋하여 새 게임 시작.</li>
+        </ul>
+        <h3>최종 전적 기록</h3>
+        <ul>
+            <li>누군가의 하트가 0이 되어 매치가 완전히 종료되면, 최종 생존자에게 <strong>1승</strong>, 탈락자에게 <strong>1패</strong>가 서버 전적에 기록됩니다.</li>
+        </ul>`
+    },
+    sevenpoker: {
+        title: '🃏 세븐 포커 룰',
+        html: `
+        <h3>게임 개요</h3>
+        <ul>
+            <li>최대 4인, 각 플레이어는 <strong>별(⭐)×10개</strong>로 시작합니다.</li>
+            <li>커뮤니티 카드 없이 <strong>각자 7장</strong>을 받는 3~7구 분배 방식입니다.</li>
+        </ul>
+        <h3>카드 분배 (3~7구)</h3>
+        <ul>
+            <li><strong>3구</strong>: 3장 분배 (1~2번째 카드 히든, 3번째 공개)</li>
+            <li><strong>4구</strong>: 4번째 카드 공개</li>
+            <li><strong>5구</strong>: 5번째 카드 공개</li>
+            <li><strong>6구</strong>: 6번째 카드 공개</li>
+            <li><strong>7구</strong>: 7번째 카드 히든 (쇼다운 전까지 비공개)</li>
+        </ul>
+        <h3>액션</h3>
+        <ul>
+            <li>✅ <strong>체크</strong>: 팟에 별 1개 지불 (별 0개면 무료 체크)</li>
+            <li>🏳️ <strong>폴드</strong>: 이번 라운드 포기</li>
+        </ul>
+        <h3>쇼다운 및 족보</h3>
+        <ul>
+            <li>7장 중 베스트 5장 족보로 승부.</li>
+            <li>동점 시 팟 분할, 나머지는 다음 라운드 이월.</li>
+        </ul>
+        <h3>📋 포커 족보 순서</h3>
+        <p>로티플 &gt; 스트레이트플러시 &gt; 포카드 &gt; 풀하우스 &gt; 플러시 &gt; 스트레이트 &gt; 트리플 &gt; 투페어 &gt; 원페어 &gt; 하이카드</p>
+        <h3>매치 종료</h3>
+        <ul>
+            <li>파산자(별 0개) ≥ 전체 유저 수/2 이면 매치 종료.</li>
+            <li>생존자 → 1승, 파산자 → 1패 전적 기록.</li>
+        </ul>`
+    },
+    holdem: {
+        title: '♠️ 텍사스 홀덤 룰',
+        html: `
+        <h3>게임 개요</h3>
+        <ul>
+            <li>최대 4인, 각 플레이어는 <strong>별(⭐)×10개</strong>로 시작합니다.</li>
+            <li>전통적인 칩 베팅(레이즈/올인) 없이, 캐주얼한 <strong>별 서바이벌 룰</strong>을 적용합니다.</li>
+        </ul>
+        <h3>페이즈</h3>
+        <ul>
+            <li><strong>프리플랍</strong>: 개인 카드 2장 배분 → 체크/폴드</li>
+            <li><strong>플랍</strong>: 커뮤니티 카드 3장 공개 → 체크/폴드</li>
+            <li><strong>턴</strong>: 커뮤니티 카드 +1장 → 체크/폴드</li>
+            <li><strong>리버</strong>: 커뮤니티 카드 +1장 → 체크/폴드</li>
+            <li><strong>쇼다운</strong>: 생존자들의 7장(개인 2장+공유 5장)으로 족보 판정, 최고 족보가 팟 획득</li>
+        </ul>
+        <h3>액션</h3>
+        <ul>
+            <li>✅ <strong>체크</strong>: 팟에 별 1개 지불하고 다음 페이즈 진행. (별 0개면 무료 체크)</li>
+            <li>🏳️ <strong>폴드</strong>: 이번 라운드 포기. (이미 낸 별은 돌려받지 못함)</li>
+        </ul>
+        <h3>쇼다운 및 족보</h3>
+        <ul>
+            <li>동점 시 팟을 n등분, 나머지는 다음 라운드로 이월</li>
+        </ul>
+        <h3>📋 포커 족보 순서</h3>
+        <p>로티플 &gt; 스트레이트플러시 &gt; 포카드 &gt; 풀하우스 &gt; 플러시 &gt; 스트레이트 &gt; 트리플 &gt; 투페어 &gt; 원페어 &gt; 하이카드</p>
+        <h3>매치 종료</h3>
+        <ul>
+            <li><strong>파산자 수 ≥ ceil(전체 유저 수 / 2)</strong>이면 매치 종료.</li>
+            <li>생존자(별 보유) → <strong>1승</strong>, 파산자 → <strong>1패</strong> 전적 기록.</li>
+        </ul>`
+    },
+    connect4: {
+        title: '🔴🟡 4목 (Connect 4) 룰',
+        html: `
+        <h3>게임 개요</h3>
+        <ul>
+            <li>6행 × 7열 보드에서 <strong>가로·세로·대각선으로 4개</strong>를 먼저 이으면 승리합니다.</li>
+            <li>2명이 입장하면 🔴 빨강(선공)과 🟡 노랑(후공)이 결정됩니다.</li>
+        </ul>
+        <h3>진행 방식</h3>
+        <ul>
+            <li>턴마다 열(1~7)을 하나 선택하면, 돌이 <strong>중력에 의해 해당 열의 가장 아래 빈 칸</strong>으로 떨어집니다.</li>
+            <li>열이 꽉 찼으면 해당 열을 선택할 수 없습니다.</li>
+            <li>42칸이 모두 차고 승부가 나지 않으면 <strong>무승부</strong>입니다.</li>
+        </ul>
+        <h3>턴 타이머</h3>
+        <ul>
+            <li>한 턴당 <strong>15초</strong> 제한. 초과 시 시간 초과 패배.</li>
+        </ul>
+        <h3>리매치</h3>
+        <ul>
+            <li>게임 종료 후 <strong>🔄 한 판 더</strong> 버튼으로 리매치 가능. 선후공(빨강/노랑) 교대하여 새 게임 시작.</li>
+        </ul>
+        <h3>전적 기록</h3>
+        <ul>
+            <li>승리 시: <strong>1승</strong> 기록</li>
+            <li>무승부: <strong>1무</strong> 기록</li>
+            <li>패배 시: <strong>1패</strong> 기록</li>
+        </ul>`
+    },
+    thief: {
+        title: '🃏 도둑잡기 (Thief) 룰',
+        html: `
+        <h3>게임 개요</h3>
+        <ul>
+            <li>2~4인, 52장+조커 1장 총 <strong>53장</strong>을 분배합니다.</li>
+            <li>분배 직후 같은 숫자의 카드(페어)를 자동으로 제거합니다.</li>
+        </ul>
+        <h3>턴 진행</h3>
+        <ul>
+            <li>내 차례일 때 <strong>다음 생존 플레이어</strong>의 패에서 카드 1장을 무작위로 뽑아 옵니다.</li>
+            <li>뽑은 직후 내 패에 같은 숫자가 생기면 즉시 페어로 버립니다.</li>
+        </ul>
+        <h3>승패</h3>
+        <ul>
+            <li>패가 0장이 되면 <strong>탈출(Win)</strong> — 턴에서 제외됩니다.</li>
+            <li>최종적으로 <strong>조커 1장만 들고 남은 1명</strong>이 패배(Lose)하며 게임 종료.</li>
+        </ul>`
+    },
+    onecard: {
+        title: '🃏 원카드 (One Card) 룰',
+        html: `
+        <h3>게임 개요</h3>
+        <ul>
+            <li>2~4인, 54장 덱(52장 + 흑백 조커 + 컬러 조커)에서 각 <strong>7장씩</strong> 분배.</li>
+            <li>덱이 비면 버린 카드를 셔플하여 재활용합니다.</li>
+        </ul>
+        <h3>턴 진행</h3>
+        <ul>
+            <li>바닥 카드와 <strong>문양</strong> 또는 <strong>숫자</strong>가 일치하는 카드만 낼 수 있습니다.</li>
+            <li>조커는 언제든 낼 수 있습니다.</li>
+            <li>낼 카드가 없으면 덱에서 드로우합니다.</li>
+        </ul>
+        <h3>공격 카드</h3>
+        <ul>
+            <li><strong>A</strong>: +3장</li>
+            <li><strong>흑백 조커(B)</strong>: +5장</li>
+            <li><strong>컬러 조커(C)</strong>: +7장</li>
+            <li>공격을 받으면 방어 카드로 막거나, 드로우를 선택해 패널티만큼 받습니다.</li>
+            <li>방어: A→A/조커, 흑백 조커→컬러 조커만, 컬러 조커는 방어 불가.</li>
+        </ul>
+        <h3>특수 카드</h3>
+        <ul>
+            <li><strong>J</strong>: 다음 사람 턴 스킵</li>
+            <li><strong>Q</strong>: 턴 진행 방향 반전</li>
+            <li><strong>K</strong>: 한 번 더! (내가 다시 카드를 냄)</li>
+            <li><strong>7</strong>: 다음 문양(♠♥♦♣) 강제 변경</li>
+        </ul>
+        <h3>원카드 콜</h3>
+        <ul>
+            <li>손패가 1장이 되면 <strong>원카드!</strong> 버튼이 활성화됩니다.</li>
+            <li>본인이 먼저 누르면 안전해지고, 타인이 먼저 누르면 1장인 유저가 벌칙 1장 드로우.</li>
+        </ul>
+        <h3>파산 & 승패</h3>
+        <ul>
+            <li>손패가 <strong>20장 초과</strong> 시 즉시 파산(패배).</li>
+            <li>패가 0장이 되면 <strong>승리</strong>, 나머지 <strong>패배</strong>.</li>
+        </ul>`
+    },
+    mahjong: {
+        title: '🀄 마작 (Mahjong) 룰 — Phase 1',
+        html: `
+        <h3>게임 개요</h3>
+        <ul>
+            <li><strong>4인 전용</strong>. 136장(수패 108장 + 자패 28장)을 사용합니다.</li>
+            <li>전원 Ready 후 게임이 시작됩니다.</li>
+        </ul>
+        <h3>패 분배</h3>
+        <ul>
+            <li>4명에게 각각 <strong>13장</strong>씩 분배합니다.</li>
+            <li>선(친)부터 턴이 시작되며, 턴 시작 시 <strong>쯔모</strong> 1장을 뽑아 14장이 됩니다.</li>
+        </ul>
+        <h3>타패 (Discard)</h3>
+        <ul>
+            <li>내 차례에 14장의 손패 중 1장을 선택해 버립니다.</li>
+            <li>버린 후 다음 플레이어로 턴이 넘어가고, 그 플레이어가 자동으로 1장 쯔모합니다.</li>
+        </ul>
+        <h3>Phase 1 범위</h3>
+        <ul>
+            <li>치/퐁/깡 및 역 계산은 아직 구현되지 않았습니다.</li>
+        </ul>`
+    },
+    alkkagi: {
+        title: '⚫ 알까기 (Alkkagi) 룰',
+        html: `
+        <h3>게임 개요</h3>
+        <ul>
+            <li><strong>2인 대전</strong>. 흑돌 4개 vs 백돌 4개.</li>
+            <li>돌을 튕겨 상대 알을 밀어내세요!</li>
+        </ul>
+        <h3>조작</h3>
+        <ul>
+            <li>내 차례에 돌을 드래그하여 당긴 뒤 놓으면 쏘아집니다. (향후 구현)</li>
+            <li>클라이언트 주도권: 각자의 브라우저가 물리 연산을 수행합니다.</li>
+        </ul>
+        <h3>승리 조건</h3>
+        <ul>
+            <li>상대 알을 모두 보드 밖으로 밀어내면 승리!</li>
+        </ul>`
+    }
+  };
+  const POKER_HAND_RANKINGS_HTML = `
+    <h3>📋 포커 족보 순서 (강 → 약)</h3>
+    <ol style="margin:12px 0; padding-left:20px; line-height:2;">
+      <li>로티플 (Royal Flush)</li>
+      <li>스트레이트 플러시 (Straight Flush)</li>
+      <li>포카드 (Four of a Kind)</li>
+      <li>풀하우스 (Full House)</li>
+      <li>플러시 (Flush)</li>
+      <li>스트레이트 (Straight)</li>
+      <li>트리플 (Three of a Kind)</li>
+      <li>투페어 (Two Pair)</li>
+      <li>원페어 (One Pair)</li>
+      <li>하이카드 (High Card)</li>
+    </ol>
+  `;
+  const GAME_VIEW_IDS = ['board-placeholder', 'gomoku-container', 'blackjack-container', 'tictactoe-container', 'connect4-container', 'indian-container', 'holdem-container', 'sevenpoker-container', 'thief-container', 'onecard-container', 'mahjong-container', 'alkkagi-container'];
+  const PREFIX_TO_CONTAINER = { omok: 'gomoku-container', blackjack: 'blackjack-container', tictactoe: 'tictactoe-container', connect4: 'connect4-container', indian: 'indian-container', holdem: 'holdem-container', sevenpoker: 'sevenpoker-container', thief: 'thief-container', onecard: 'onecard-container', mahjong: 'mahjong-container', alkkagi: 'alkkagi-container' };
+  const GAME_STATE_HANDLERS = {
+    tictactoe_state:  { logKey: 'ttt-state',       show: () => { if (typeof window.showTicTacToeUI === 'function') window.showTicTacToeUI(); },  render: (data) => { if (typeof window.renderTicTacToe === 'function') window.renderTicTacToe(data); } },
+    connect4_state:   { logKey: 'c4-state',       show: () => { if (typeof window.showConnect4UI === 'function') window.showConnect4UI(); },   render: (data) => { if (typeof window.renderConnect4 === 'function') window.renderConnect4(data); } },
+    indian_state:     { logKey: 'indian-state',   show: () => { if (typeof window.showIndianUI === 'function') window.showIndianUI(); },     render: (data) => { if (typeof window.renderIndian === 'function') window.renderIndian(data); } },
+    holdem_state:     { logKey: 'holdem-state',   show: () => { if (typeof window.showHoldemUI === 'function') window.showHoldemUI(); },     render: (data) => { if (typeof window.renderHoldem === 'function') window.renderHoldem(data); } },
+    sevenpoker_state: { logKey: 'sevenpoker-state', show: () => { if (typeof window.showSevenPokerUI === 'function') window.showSevenPokerUI(); }, render: (data) => { if (typeof window.renderSevenPoker === 'function') window.renderSevenPoker(data); } },
+    thief_state:      { logKey: 'thief-state',    show: () => { if (typeof window.showThiefUI === 'function') window.showThiefUI(); },      render: (data) => { if (typeof window.renderThief === 'function') window.renderThief(data); } },
+    onecard_state:    { logKey: 'onecard-state',  show: () => { if (typeof window.showOneCardUI === 'function') window.showOneCardUI(); },     render: (data) => { if (typeof window.renderOneCard === 'function') window.renderOneCard(data); } },
+    mahjong_state:    { logKey: 'mahjong-state',  show: () => { if (typeof window.showMahjongUI === 'function') window.showMahjongUI(); },   render: (data) => { if (typeof window.renderMahjong === 'function') window.renderMahjong(data); } },
+    alkkagi_state:    { logKey: 'alkkagi-state',  show: () => { if (typeof window.showAlkkagiUI === 'function') window.showAlkkagiUI(); },    render: (data) => { if (typeof window.renderAlkkagi === 'function') window.renderAlkkagi(data); } },
+  };
+  const PREFIX_TO_TIMER = { omok: ['status-seconds', 'status-timer-block'], tictactoe: ['ttt-seconds', 'ttt-timer-block'], connect4: ['c4-seconds', 'c4-timer-block'], indian: ['indian-seconds', 'indian-timer-block'], holdem: ['holdem-seconds', 'holdem-timer-block'], sevenpoker: ['sevenpoker-seconds', 'sevenpoker-timer-block'], thief: ['thief-seconds', 'thief-timer-block'], onecard: ['onecard-seconds', 'onecard-timer-block'], mahjong: ['mahjong-seconds', 'mahjong-timer-block'] };
+
   // Debug panel element references
   const logOutput  = document.getElementById('log-output');
   const wsUrl      = document.getElementById('ws-url');
@@ -384,7 +737,7 @@
       tttPrevBoard     = null;
       c4BoardReady     = false;
       c4PrevBoard      = null;
-      setGomokuEnded();
+      if (typeof window.setGomokuEnded === 'function') window.setGomokuEnded();
       document.getElementById('gomoku-container').style.display    = 'none';
       document.getElementById('blackjack-container').style.display = 'none';
       document.getElementById('tictactoe-container').style.display = 'none';
@@ -406,8 +759,6 @@
       document.getElementById('chat-messages').innerHTML = '';
     }
   }
-
-  const games = ['omok', 'blackjack', 'tictactoe', 'connect4', 'indian', 'holdem', 'sevenpoker', 'thief', 'onecard', 'mahjong', 'alkkagi'];
 
   /** record_update 수신 시 전적 배지 및 팝업을 갱신합니다. */
   function updateRecords(records) {
@@ -560,328 +911,6 @@
   }
 
   // ── Rules Modal ────────────────────────────────────────────────────────────
-const RULES = {
-    omok: {
-        title: '🀱 오목 룰',
-        html: `
-        <h3>게임 개요</h3>
-        <ul>
-            <li>15×15 보드에서 <strong>가로·세로·대각선으로 5목</strong>을 먼저 완성하면 승리합니다.</li>
-            <li>2명이 입장하면 무작위로 흑(선공)/백(후공)이 결정됩니다.</li>
-        </ul>
-        <h3>렌주룰 (흑 금수)</h3>
-        <ul>
-            <li><strong>쌍삼(3-3)</strong>: 활삼이 두 방향 이상 동시에 완성되는 곳 금지</li>
-            <li><strong>쌍사(4-4)</strong>: 사(4목 위협)가 두 방향 이상 동시에 완성되는 곳 금지</li>
-            <li><strong>장목(6목+)</strong>: 6개 이상 연속 금지</li>
-            <li>백은 금수 없음, 6목 이상도 승리 인정</li>
-        </ul>
-        <h3>턴 타이머</h3>
-        <ul>
-            <li>한 턴당 <strong>15초</strong> 제한. 초과 시 시간 초과 패배.</li>
-        </ul>
-        <h3>리매치</h3>
-        <ul>
-            <li>게임 종료 후 <strong>🔄 한 판 더</strong> 버튼으로 리매치 가능. 흑/백을 교대하여 새 게임 시작.</li>
-        </ul>
-        <h3>전적 기록</h3>
-        <ul>
-            <li>게임 종료 시 승자에게 <strong>1승</strong>, 패자에게 <strong>1패</strong>가 전적에 기록됩니다.</li>
-        </ul>`
-    },
-    blackjack: {
-        title: '🃏 블랙잭 룰',
-        html: `
-        <h3>게임 개요</h3>
-        <ul>
-            <li>딜러 AI를 상대로 패의 합산이 <strong>21에 가장 가깝게</strong> 만드는 게임입니다.</li>
-            <li>21을 초과(버스트)하면 즉시 패배합니다.</li>
-        </ul>
-        <h3>카드 점수</h3>
-        <ul>
-            <li>숫자 카드: 해당 숫자</li>
-            <li>J, Q, K: 10점</li>
-            <li>A: 1 또는 11 (버스트 방지 자동 조정)</li>
-        </ul>
-        <h3>딜러 규칙</h3>
-        <ul>
-            <li>딜러는 패의 합이 <strong>16 이하</strong>이면 반드시 카드를 추가로 뽑습니다.</li>
-            <li>딜러 카드는 1장이 뒷면으로 숨겨져 있으며, Stand 후 공개됩니다.</li>
-        </ul>
-        <h3>전적 기록</h3>
-        <ul>
-            <li>승리 시: <strong>1승</strong> 기록</li>
-            <li>무승부(Push): <strong>1무</strong> 기록</li>
-            <li>패배 / 버스트: <strong>1패</strong> 기록</li>
-        </ul>`
-    },
-    tictactoe: {
-        title: '⭕ 틱택토 룰',
-        html: `
-        <h3>게임 개요</h3>
-        <ul>
-            <li>3×3 보드에서 <strong>가로·세로·대각선으로 3목</strong>을 먼저 완성하면 승리합니다.</li>
-            <li>2명이 입장하면 O(선공)와 X(후공)가 결정됩니다.</li>
-        </ul>
-        <h3>진행 방식</h3>
-        <ul>
-            <li>O와 X가 번갈아 가며 빈칸에 표시합니다.</li>
-            <li>9칸이 모두 채워지고 승부가 나지 않으면 <strong>무승부</strong>입니다.</li>
-        </ul>
-        <h3>턴 타이머</h3>
-        <ul>
-            <li>한 턴당 <strong>15초</strong> 제한. 초과 시 시간 초과 패배.</li>
-        </ul>
-        <h3>리매치</h3>
-        <ul>
-            <li>게임 종료 후 <strong>🔄 한 판 더</strong> 버튼으로 리매치 가능. 선후공(O/X) 교대하여 새 게임 시작.</li>
-        </ul>
-        <h3>전적 기록</h3>
-        <ul>
-            <li>승리 시: <strong>1승</strong> 기록</li>
-            <li>무승부: <strong>1무</strong> 기록</li>
-            <li>패배 시: <strong>1패</strong> 기록</li>
-        </ul>`
-    },
-    indian: {
-        title: '🃏 인디언 포커 룰',
-        html: `
-        <h3>게임 개요</h3>
-        <ul>
-            <li>자신의 카드는 볼 수 없고, <strong>상대방의 카드만 볼 수 있습니다.</strong></li>
-            <li>각 플레이어는 <strong>❤️×10 하트(인게임 체력)</strong>로 시작합니다. 하트는 라운드 진행을 위한 생명력이며, 0이 되면 매치에서 탈락합니다.</li>
-        </ul>
-        <h3>라운드 진행</h3>
-        <ul>
-            <li>매 라운드 각 플레이어는 카드를 1장 받습니다. 상대 카드를 보고 판단하세요.</li>
-            <li>선공이 먼저 선택합니다:</li>
-            <li>&nbsp;&nbsp;🏳️ <strong>포기</strong>: 선공 하트 -1. 라운드 종료.</li>
-            <li>&nbsp;&nbsp;⚔️ <strong>승부</strong>: 후공에게 차례가 넘어갑니다.</li>
-            <li>후공이 선택합니다:</li>
-            <li>&nbsp;&nbsp;🏳️ <strong>포기</strong>: 후공 하트 -1. 라운드 종료.</li>
-            <li>&nbsp;&nbsp;⚔️ <strong>승부(콜)</strong>: 카드를 공개하여 승패를 판정합니다.</li>
-        </ul>
-        <h3>라운드 내 하트 증감 (인게임 체력)</h3>
-        <ul>
-            <li>포기 시: 해당 플레이어 하트 -1.</li>
-            <li>승부(콜) 후: 승자 하트 +2, 패자 하트 -2.</li>
-            <li>숫자(2 < 3 < … < K < A)가 높은 쪽 승리. 동점 시 문양(♣ < ♦ < ♥ < ♠)으로 결정.</li>
-        </ul>
-        <h3>턴 타이머</h3>
-        <ul>
-            <li>한 턴당 <strong>30초</strong> 제한. 초과 시 <strong>포기</strong> 처리(하트 -1).</li>
-        </ul>
-        <h3>라운드마다 선후공 교체</h3>
-        <ul>
-            <li>매 라운드 선공과 후공이 교대합니다.</li>
-        </ul>
-        <h3>리매치</h3>
-        <ul>
-            <li>게임 완전 종료(누군가 하트 0개) 후 <strong>🔄 한 판 더</strong> 버튼으로 리매치 가능. 양쪽 하트를 10개로 리셋하여 새 게임 시작.</li>
-        </ul>
-        <h3>최종 전적 기록</h3>
-        <ul>
-            <li>누군가의 하트가 0이 되어 매치가 완전히 종료되면, 최종 생존자에게 <strong>1승</strong>, 탈락자에게 <strong>1패</strong>가 서버 전적에 기록됩니다.</li>
-        </ul>`
-    },
-    sevenpoker: {
-        title: '🃏 세븐 포커 룰',
-        html: `
-        <h3>게임 개요</h3>
-        <ul>
-            <li>최대 4인, 각 플레이어는 <strong>별(⭐)×10개</strong>로 시작합니다.</li>
-            <li>커뮤니티 카드 없이 <strong>각자 7장</strong>을 받는 3~7구 분배 방식입니다.</li>
-        </ul>
-        <h3>카드 분배 (3~7구)</h3>
-        <ul>
-            <li><strong>3구</strong>: 3장 분배 (1~2번째 카드 히든, 3번째 공개)</li>
-            <li><strong>4구</strong>: 4번째 카드 공개</li>
-            <li><strong>5구</strong>: 5번째 카드 공개</li>
-            <li><strong>6구</strong>: 6번째 카드 공개</li>
-            <li><strong>7구</strong>: 7번째 카드 히든 (쇼다운 전까지 비공개)</li>
-        </ul>
-        <h3>액션</h3>
-        <ul>
-            <li>✅ <strong>체크</strong>: 팟에 별 1개 지불 (별 0개면 무료 체크)</li>
-            <li>🏳️ <strong>폴드</strong>: 이번 라운드 포기</li>
-        </ul>
-        <h3>쇼다운 및 족보</h3>
-        <ul>
-            <li>7장 중 베스트 5장 족보로 승부.</li>
-            <li>동점 시 팟 분할, 나머지는 다음 라운드 이월.</li>
-        </ul>
-        <h3>📋 포커 족보 순서</h3>
-        <p>로티플 &gt; 스트레이트플러시 &gt; 포카드 &gt; 풀하우스 &gt; 플러시 &gt; 스트레이트 &gt; 트리플 &gt; 투페어 &gt; 원페어 &gt; 하이카드</p>
-        <h3>매치 종료</h3>
-        <ul>
-            <li>파산자(별 0개) ≥ 전체 유저 수/2 이면 매치 종료.</li>
-            <li>생존자 → 1승, 파산자 → 1패 전적 기록.</li>
-        </ul>`
-    },
-    holdem: {
-        title: '♠️ 텍사스 홀덤 룰',
-        html: `
-        <h3>게임 개요</h3>
-        <ul>
-            <li>최대 4인, 각 플레이어는 <strong>별(⭐)×10개</strong>로 시작합니다.</li>
-            <li>전통적인 칩 베팅(레이즈/올인) 없이, 캐주얼한 <strong>별 서바이벌 룰</strong>을 적용합니다.</li>
-        </ul>
-        <h3>페이즈</h3>
-        <ul>
-            <li><strong>프리플랍</strong>: 개인 카드 2장 배분 → 체크/폴드</li>
-            <li><strong>플랍</strong>: 커뮤니티 카드 3장 공개 → 체크/폴드</li>
-            <li><strong>턴</strong>: 커뮤니티 카드 +1장 → 체크/폴드</li>
-            <li><strong>리버</strong>: 커뮤니티 카드 +1장 → 체크/폴드</li>
-            <li><strong>쇼다운</strong>: 생존자들의 7장(개인 2장+공유 5장)으로 족보 판정, 최고 족보가 팟 획득</li>
-        </ul>
-        <h3>액션</h3>
-        <ul>
-            <li>✅ <strong>체크</strong>: 팟에 별 1개 지불하고 다음 페이즈 진행. (별 0개면 무료 체크)</li>
-            <li>🏳️ <strong>폴드</strong>: 이번 라운드 포기. (이미 낸 별은 돌려받지 못함)</li>
-        </ul>
-        <h3>쇼다운 및 족보</h3>
-        <ul>
-            <li>동점 시 팟을 n등분, 나머지는 다음 라운드로 이월</li>
-        </ul>
-        <h3>📋 포커 족보 순서</h3>
-        <p>로티플 &gt; 스트레이트플러시 &gt; 포카드 &gt; 풀하우스 &gt; 플러시 &gt; 스트레이트 &gt; 트리플 &gt; 투페어 &gt; 원페어 &gt; 하이카드</p>
-        <h3>매치 종료</h3>
-        <ul>
-            <li><strong>파산자 수 ≥ ceil(전체 유저 수 / 2)</strong>이면 매치 종료.</li>
-            <li>생존자(별 보유) → <strong>1승</strong>, 파산자 → <strong>1패</strong> 전적 기록.</li>
-        </ul>`
-    },
-    connect4: {
-        title: '🔴🟡 4목 (Connect 4) 룰',
-        html: `
-        <h3>게임 개요</h3>
-        <ul>
-            <li>6행 × 7열 보드에서 <strong>가로·세로·대각선으로 4개</strong>를 먼저 이으면 승리합니다.</li>
-            <li>2명이 입장하면 🔴 빨강(선공)과 🟡 노랑(후공)이 결정됩니다.</li>
-        </ul>
-        <h3>진행 방식</h3>
-        <ul>
-            <li>턴마다 열(1~7)을 하나 선택하면, 돌이 <strong>중력에 의해 해당 열의 가장 아래 빈 칸</strong>으로 떨어집니다.</li>
-            <li>열이 꽉 찼으면 해당 열을 선택할 수 없습니다.</li>
-            <li>42칸이 모두 차고 승부가 나지 않으면 <strong>무승부</strong>입니다.</li>
-        </ul>
-        <h3>턴 타이머</h3>
-        <ul>
-            <li>한 턴당 <strong>15초</strong> 제한. 초과 시 시간 초과 패배.</li>
-        </ul>
-        <h3>리매치</h3>
-        <ul>
-            <li>게임 종료 후 <strong>🔄 한 판 더</strong> 버튼으로 리매치 가능. 선후공(빨강/노랑) 교대하여 새 게임 시작.</li>
-        </ul>
-        <h3>전적 기록</h3>
-        <ul>
-            <li>승리 시: <strong>1승</strong> 기록</li>
-            <li>무승부: <strong>1무</strong> 기록</li>
-            <li>패배 시: <strong>1패</strong> 기록</li>
-        </ul>`
-    },
-    thief: {
-        title: '🃏 도둑잡기 (Thief) 룰',
-        html: `
-        <h3>게임 개요</h3>
-        <ul>
-            <li>2~4인, 52장+조커 1장 총 <strong>53장</strong>을 분배합니다.</li>
-            <li>분배 직후 같은 숫자의 카드(페어)를 자동으로 제거합니다.</li>
-        </ul>
-        <h3>턴 진행</h3>
-        <ul>
-            <li>내 차례일 때 <strong>다음 생존 플레이어</strong>의 패에서 카드 1장을 무작위로 뽑아 옵니다.</li>
-            <li>뽑은 직후 내 패에 같은 숫자가 생기면 즉시 페어로 버립니다.</li>
-        </ul>
-        <h3>승패</h3>
-        <ul>
-            <li>패가 0장이 되면 <strong>탈출(Win)</strong> — 턴에서 제외됩니다.</li>
-            <li>최종적으로 <strong>조커 1장만 들고 남은 1명</strong>이 패배(Lose)하며 게임 종료.</li>
-        </ul>`
-    },
-    onecard: {
-        title: '🃏 원카드 (One Card) 룰',
-        html: `
-        <h3>게임 개요</h3>
-        <ul>
-            <li>2~4인, 54장 덱(52장 + 흑백 조커 + 컬러 조커)에서 각 <strong>7장씩</strong> 분배.</li>
-            <li>덱이 비면 버린 카드를 셔플하여 재활용합니다.</li>
-        </ul>
-        <h3>턴 진행</h3>
-        <ul>
-            <li>바닥 카드와 <strong>문양</strong> 또는 <strong>숫자</strong>가 일치하는 카드만 낼 수 있습니다.</li>
-            <li>조커는 언제든 낼 수 있습니다.</li>
-            <li>낼 카드가 없으면 덱에서 드로우합니다.</li>
-        </ul>
-        <h3>공격 카드</h3>
-        <ul>
-            <li><strong>A</strong>: +3장</li>
-            <li><strong>흑백 조커(B)</strong>: +5장</li>
-            <li><strong>컬러 조커(C)</strong>: +7장</li>
-            <li>공격을 받으면 방어 카드로 막거나, 드로우를 선택해 패널티만큼 받습니다.</li>
-            <li>방어: A→A/조커, 흑백 조커→컬러 조커만, 컬러 조커는 방어 불가.</li>
-        </ul>
-        <h3>특수 카드</h3>
-        <ul>
-            <li><strong>J</strong>: 다음 사람 턴 스킵</li>
-            <li><strong>Q</strong>: 턴 진행 방향 반전</li>
-            <li><strong>K</strong>: 한 번 더! (내가 다시 카드를 냄)</li>
-            <li><strong>7</strong>: 다음 문양(♠♥♦♣) 강제 변경</li>
-        </ul>
-        <h3>원카드 콜</h3>
-        <ul>
-            <li>손패가 1장이 되면 <strong>원카드!</strong> 버튼이 활성화됩니다.</li>
-            <li>본인이 먼저 누르면 안전해지고, 타인이 먼저 누르면 1장인 유저가 벌칙 1장 드로우.</li>
-        </ul>
-        <h3>파산 & 승패</h3>
-        <ul>
-            <li>손패가 <strong>20장 초과</strong> 시 즉시 파산(패배).</li>
-            <li>패가 0장이 되면 <strong>승리</strong>, 나머지 <strong>패배</strong>.</li>
-        </ul>`
-    },
-    mahjong: {
-        title: '🀄 마작 (Mahjong) 룰 — Phase 1',
-        html: `
-        <h3>게임 개요</h3>
-        <ul>
-            <li><strong>4인 전용</strong>. 136장(수패 108장 + 자패 28장)을 사용합니다.</li>
-            <li>전원 Ready 후 게임이 시작됩니다.</li>
-        </ul>
-        <h3>패 분배</h3>
-        <ul>
-            <li>4명에게 각각 <strong>13장</strong>씩 분배합니다.</li>
-            <li>선(친)부터 턴이 시작되며, 턴 시작 시 <strong>쯔모</strong> 1장을 뽑아 14장이 됩니다.</li>
-        </ul>
-        <h3>타패 (Discard)</h3>
-        <ul>
-            <li>내 차례에 14장의 손패 중 1장을 선택해 버립니다.</li>
-            <li>버린 후 다음 플레이어로 턴이 넘어가고, 그 플레이어가 자동으로 1장 쯔모합니다.</li>
-        </ul>
-        <h3>Phase 1 범위</h3>
-        <ul>
-            <li>치/퐁/깡 및 역 계산은 아직 구현되지 않았습니다.</li>
-        </ul>`
-    },
-    alkkagi: {
-        title: '⚫ 알까기 (Alkkagi) 룰',
-        html: `
-        <h3>게임 개요</h3>
-        <ul>
-            <li><strong>2인 대전</strong>. 흑돌 4개 vs 백돌 4개.</li>
-            <li>돌을 튕겨 상대 알을 밀어내세요!</li>
-        </ul>
-        <h3>조작</h3>
-        <ul>
-            <li>내 차례에 돌을 드래그하여 당긴 뒤 놓으면 쏘아집니다. (향후 구현)</li>
-            <li>클라이언트 주도권: 각자의 브라우저가 물리 연산을 수행합니다.</li>
-        </ul>
-        <h3>승리 조건</h3>
-        <ul>
-            <li>상대 알을 모두 보드 밖으로 밀어내면 승리!</li>
-        </ul>`
-    }
-    };
-
   function showRules(game) {
     const rule = RULES[game];
     if (!rule) return;
@@ -890,22 +919,6 @@ const RULES = {
     document.getElementById('rules-modal').classList.add('show');
   }
 
-  /** 홀덤/세븐포커 전용 족보 순서 모달 */
-  const POKER_HAND_RANKINGS_HTML = `
-    <h3>📋 포커 족보 순서 (강 → 약)</h3>
-    <ol style="margin:12px 0; padding-left:20px; line-height:2;">
-      <li>로티플 (Royal Flush)</li>
-      <li>스트레이트 플러시 (Straight Flush)</li>
-      <li>포카드 (Four of a Kind)</li>
-      <li>풀하우스 (Full House)</li>
-      <li>플러시 (Flush)</li>
-      <li>스트레이트 (Straight)</li>
-      <li>트리플 (Three of a Kind)</li>
-      <li>투페어 (Two Pair)</li>
-      <li>원페어 (One Pair)</li>
-      <li>하이카드 (High Card)</li>
-    </ol>
-  `;
   function closeRules() {
     document.getElementById('rules-modal').classList.remove('show');
   }
@@ -1053,7 +1066,7 @@ const RULES = {
               if (parsed.data && parsed.data.board) {
                 showGomokuBoard();
                 renderBoard({ board: parsed.data.board, turn: '', colors: parsed.data.colors || {}, lastMove: parsed.data.lastMove || [-1,-1] });
-                setGomokuEnded();
+                if (typeof window.setGomokuEnded === 'function') window.setGomokuEnded();
               }
               if (parsed.rematchEnabled) {
                 const total = parsed.data?.totalCount ?? 2;
@@ -1298,21 +1311,6 @@ const RULES = {
   }
 
   // ── 게임 뷰 전환 (DRY) ─────────────────────────────────────────────────────
-  const GAME_VIEW_IDS = ['board-placeholder', 'gomoku-container', 'blackjack-container', 'tictactoe-container', 'connect4-container', 'indian-container', 'holdem-container', 'sevenpoker-container', 'thief-container', 'onecard-container', 'mahjong-container', 'alkkagi-container'];
-  const PREFIX_TO_CONTAINER = { omok: 'gomoku-container', blackjack: 'blackjack-container', tictactoe: 'tictactoe-container', connect4: 'connect4-container', indian: 'indian-container', holdem: 'holdem-container', sevenpoker: 'sevenpoker-container', thief: 'thief-container', onecard: 'onecard-container', mahjong: 'mahjong-container', alkkagi: 'alkkagi-container' };
-
-  const GAME_STATE_HANDLERS = {
-    tictactoe_state:  { logKey: 'ttt-state',       show: showTicTacToeUI,  render: renderTicTacToe },
-    connect4_state:   { logKey: 'c4-state',       show: showConnect4UI,   render: renderConnect4 },
-    indian_state:     { logKey: 'indian-state',   show: showIndianUI,     render: renderIndian },
-    holdem_state:     { logKey: 'holdem-state',   show: showHoldemUI,     render: renderHoldem },
-    sevenpoker_state: { logKey: 'sevenpoker-state', show: showSevenPokerUI, render: renderSevenPoker },
-    thief_state:      { logKey: 'thief-state',    show: showThiefUI,      render: renderThief },
-    onecard_state:    { logKey: 'onecard-state',  show: showOneCardUI,     render: renderOneCard },
-    mahjong_state:    { logKey: 'mahjong-state',  show: showMahjongUI,     render: renderMahjong },
-    alkkagi_state:    { logKey: 'alkkagi-state',  show: showAlkkagiUI,     render: renderAlkkagi },
-  };
-
   function switchGameView(prefix) {
     const showId = PREFIX_TO_CONTAINER[prefix] || 'board-placeholder';
     GAME_VIEW_IDS.forEach(id => {
@@ -1322,8 +1320,6 @@ const RULES = {
     const rematchEl = document.getElementById('rematch-area');
     if (rematchEl) rematchEl.style.display = 'none';
   }
-
-  const PREFIX_TO_TIMER = { omok: ['status-seconds', 'status-timer-block'], tictactoe: ['ttt-seconds', 'ttt-timer-block'], connect4: ['c4-seconds', 'c4-timer-block'], indian: ['indian-seconds', 'indian-timer-block'], holdem: ['holdem-seconds', 'holdem-timer-block'], sevenpoker: ['sevenpoker-seconds', 'sevenpoker-timer-block'], thief: ['thief-seconds', 'thief-timer-block'], onecard: ['onecard-seconds', 'onecard-timer-block'], mahjong: ['mahjong-seconds', 'mahjong-timer-block'] };
 
   function updateGameTimer(turnUser, remaining) {
     const prefix = currentRoomId.startsWith('omok') ? 'omok'

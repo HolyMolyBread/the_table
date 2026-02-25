@@ -149,19 +149,22 @@ if !c.limiter.Allow() {
 | **공격 유형** | 소스 코드 및 `.env` 노출 |
 | **위험도** | ~~Warning~~ → **🟢 해결 완료 (Phase 6.2)** |
 
-**해결 방법 (Phase 6.2 적용)**
+**해결 방법 (Phase 6.2 적용, Phase 8.7 현행화)**
 
-`http.FileServer(http.Dir("."))` 를 완전히 제거하고, `index.html` 단일 파일만 서빙하는 커스텀 핸들러로 교체했습니다.
+`.env`나 소스 코드가 노출되지 않도록 `http.FileServer(http.Dir("."))` 사용을 **금지**합니다.  
+오직 `/js/`와 `/css/` 경로만 `http.StripPrefix`와 `http.FileServer`를 통해 **명시적으로** 안전하게 개방합니다.
 
 ```go
-// main.go — indexHandler (index.html만 서빙)
-func indexHandler(w http.ResponseWriter, r *http.Request) {
-    http.ServeFile(w, r, "index.html")
-}
-http.HandleFunc("/", indexHandler)
+// main.go — 정적 파일: js/, css/만 허용 (index.html은 별도 indexHandler)
+http.Handle("/js/", http.StripPrefix("/js/", http.FileServer(http.Dir("js"))))
+http.Handle("/css/", http.StripPrefix("/css/", http.FileServer(http.Dir("css"))))
+http.HandleFunc("/", indexHandler)  // index.html 단일 서빙 (디렉터리 노출 없음)
 ```
 
-Docker 이미지에도 `index.html`과 실행 바이너리만 포함되며, `.env`, `go.mod` 등은 `.dockerignore`로 제외됩니다.
+- **허용 경로**: `/js/*`, `/css/*` — 프론트엔드 정적 리소스만 서빙
+- **차단**: `go.mod`, `.env`, `cmd/`, `temp_sql/` 등 프로젝트 루트 전체 노출 방지
+
+Docker 이미지에는 `index.html`, `js/`, `css/` 폴더와 실행 바이너리만 포함되며, `.env`, `go.mod` 등은 `.dockerignore`로 제외됩니다.
 
 ---
 
