@@ -45,7 +45,7 @@
     if (playersEl) {
       playersEl.innerHTML = opponents.map((p) => {
         const relativeIdx = (p.playerIdx - myIdx + numPlayers) % numPlayers;
-        const seatClass = RELATIVE_INDEX_TO_SEAT[relativeIdx] || 'seat-top';
+        const seatClass = opponents.length === 1 ? 'seat-top' : (RELATIVE_INDEX_TO_SEAT[relativeIdx] || 'seat-top');
         const isTarget = data.targetUserId === p.userId;
         const cardCount = p.cardCount || 0;
         let targetCardsHtml = '';

@@ -727,7 +727,8 @@ func (g *ThiefGame) handleReady(client *Client) {
 	}
 	idx := g.playerIndex(client)
 	if idx < 0 {
-		client.SendJSON(ServerResponse{Type: "error", Message: "플레이어가 아닙니다."})
+		log.Printf("[THIEF] room:[%s] handleReady: playerIndex -1 for user [%s] (세션 꼬임 가능)", g.room.ID, client.UserID)
+		client.SendJSON(ServerResponse{Type: "error", Message: "방 재입장이 필요합니다."})
 		return
 	}
 	g.startReady[client] = true

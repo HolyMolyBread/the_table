@@ -40,11 +40,12 @@
         const nameHtml = !isMe
           ? `<span class="clickable-nickname" onclick="requestOpponentRecord('${escapeForJsAttr(p.userId)}')" title="전적 보기">${escapeHTML(p.userId)}</span>`
           : escapeHTML(p.userId) + ' (나)';
+        const dealerBadge = p.isDealer ? '<div class="holdem-dealer-btn" title="딜러">D</div>' : '';
         return `
           <div class="holdem-player-box ${isTurn ? 'my-turn' : ''} ${folded ? 'folded' : ''}">
-            <div style="display:flex; justify-content:space-between; align-items:center; gap:4px;">
-              <div class="holdem-player-name" style="flex:1;">${nameHtml}</div>
-              ${p.userId === data.dealerId ? `<div class="holdem-dealer-btn" title="딜러">D</div>` : ''}
+            <div style="display:flex; align-items:center; gap:4px;">
+              <div class="holdem-player-name" style="flex:1; min-width:0;">${nameHtml}</div>
+              ${dealerBadge}
             </div>
             <div class="holdem-player-stars">⭐×${p.stars}</div>
             <div class="holdem-player-status">${folded ? '🏳️ 폴드' : p.status === 'check' ? '✅ 체크' : ''}</div>

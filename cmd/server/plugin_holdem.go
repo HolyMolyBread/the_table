@@ -25,6 +25,7 @@ type HoldemPlayerInfo struct {
 	Status   string  `json:"status"`   // "check" | "fold" | ""
 	Cards    []Card  `json:"cards"`   // 본인은 앞면, 타인은 Hidden=true
 	IsActive bool    `json:"isActive"` // 이번 라운드 생존
+	IsDealer bool    `json:"isDealer"` // 딜러(D) 마커 표시
 }
 
 // HoldemData는 holdem_state 응답의 data 필드입니다.
@@ -972,6 +973,7 @@ func (g *HoldemGame) buildHoldemDataForPlayer(viewerIdx int) HoldemData {
 			Status:   status,
 			Cards:    cards,
 			IsActive: !g.foldedThisRound[i],
+			IsDealer: i == g.dealerIdx,
 		})
 	}
 

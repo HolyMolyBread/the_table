@@ -74,7 +74,7 @@
     const topEl = document.getElementById('onecard-top-card');
     if (topEl) topEl.innerHTML = top.suit ? renderOneCardCard(top, false).replace(' data-index=""', '') : '';
     const canPlay = isMyTurn && top.suit;
-    const hasPlayableCard = canPlay && (data.hand || []).some(c => onecardIsPlayable(data, c));
+    const hasPlayableCard = canPlay && (data.hand?.some(c => onecardIsPlayable(data, c)) ?? false);
     const deckEl = document.getElementById('onecard-deck');
     if (deckEl) {
       const total = (data.deckCount || 0) + (data.discardCount || 0);
@@ -88,8 +88,9 @@
       }
     }
     const handEl = document.getElementById('onecard-hand');
-    if (handEl && data.hand) {
-      handEl.innerHTML = data.hand.map((c, i) => {
+    if (handEl) {
+      const hand = data.hand ?? [];
+      handEl.innerHTML = hand.map((c, i) => {
         const playable = canPlay && onecardIsPlayable(data, c);
         const cardWithIdx = { ...c, _index: i };
         return renderOneCardCard(cardWithIdx, playable);
@@ -99,7 +100,7 @@
         el.onclick = () => {
           const idx = parseInt(el.dataset.index, 10);
           if (isNaN(idx)) return;
-          const card = data.hand[idx];
+          const card = hand[idx];
           if (card && card.value === '7') {
             onecardPendingPlayIndex = idx;
             document.getElementById('onecard-suit-modal').classList.add('show');
