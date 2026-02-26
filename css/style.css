@@ -1638,6 +1638,9 @@ header {
 #onecard-table-wrap .table-seat.seat-top { top: 16px !important; }
 #onecard-table-wrap .table-seat.seat-left { left: 16px !important; }
 #onecard-table-wrap .table-seat.seat-right { right: 16px !important; }
+/* 원카드: 상대만 좌석에 표시, seat-bottom은 내 전용 영역 — 플레이어 박스 배치 금지 */
+#onecard-players .table-seat.seat-bottom { display: none !important; }
+#onecard-me-slot { margin-top: 0; }
 /* 원카드 패 영역: 테이블 본체와 분리 */
 .onecard-hand-area {
   margin-top: 20px !important;
