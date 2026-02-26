@@ -21,6 +21,7 @@
   let currentMode = 'lobby'; // 'lobby' | 'room'
 
   // ── 상수 (호이스팅/초기화 순서 문제 방지: 최상단 선언) ───────────────────────
+  const TABLE_SEAT_ORDER = ['seat-top', 'seat-right', 'seat-bottom', 'seat-left'];
   const games = ['omok', 'blackjack', 'tictactoe', 'connect4', 'indian', 'holdem', 'sevenpoker', 'thief', 'onecard', 'mahjong', 'alkkagi'];
   const RULES = {
     omok: {

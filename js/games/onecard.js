@@ -70,7 +70,7 @@
     if (playersEl && data.players) {
       const opponents = (data.players || []).filter(p => p.userId !== currentUserId);
       playersEl.innerHTML = opponents.map((p, idx) => {
-        const seatClass = TABLE_SEAT_ORDER[idx] || 'seat-top';
+        const seatClass = (typeof TABLE_SEAT_ORDER !== 'undefined' ? TABLE_SEAT_ORDER[idx] : null) || 'seat-top';
         return `<div class="table-seat onecard-player-box ${seatClass} ${p.isTurn ? 'my-turn' : ''}" data-user-id="${escapeHTML(p.userId)}">
           <span class="table-seat-name">${escapeHTML(p.userId)}</span>
           <span class="table-seat-count">🃏 ${p.cardCount || 0}장</span>

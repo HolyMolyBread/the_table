@@ -90,9 +90,20 @@ func (g *OneCardGame) OnJoin(client *Client) {
 	g.mu.Lock()
 	defer g.mu.Unlock()
 
+	// 재접속: 동일 UserID의 기존 플레이어가 있으면 포인터만 최신화 후 상태 전송
 	for i := 0; i < oneCardMaxPlayers; i++ {
-		if g.players[i] == client {
-			g.sendStateToAllLocked()
+		if g.players[i] != nil && g.players[i].UserID == client.UserID {
+			oldClient := g.players[i]
+			g.players[i] = client
+			if g.startReady[oldClient] {
+				g.startReady[client] = true
+				delete(g.startReady, oldClient)
+			}
+			if g.rematchReady[oldClient] {
+				g.rematchReady[client] = true
+				delete(g.rematchReady, oldClient)
+			}
+			g.sendStateToClientLocked(client)
 			return
 		}
 	}
@@ -143,7 +154,7 @@ func (g *OneCardGame) OnLeave(client *Client, remainingCount int) {
 
 	idx := -1
 	for i := 0; i < oneCardMaxPlayers; i++ {
-		if g.players[i] == client {
+		if g.players[i] != nil && g.players[i].UserID == client.UserID {
 			idx = i
 			break
 		}
@@ -633,7 +644,7 @@ func (g *OneCardGame) advanceTurnLocked() {
 
 func (g *OneCardGame) playerIndex(c *Client) int {
 	for i := 0; i < oneCardMaxPlayers; i++ {
-		if g.players[i] == c {
+		if g.players[i] != nil && g.players[i].UserID == c.UserID {
 			return i
 		}
 	}
@@ -739,7 +750,7 @@ func (g *OneCardGame) stopTurnTimerLocked() {
 
 func (g *OneCardGame) handleTimeOver(timedOutPlayer *Client) {
 	g.mu.Lock()
-	if !g.gameStarted || g.players[g.currentTurn] != timedOutPlayer {
+	if !g.gameStarted || g.players[g.currentTurn] == nil || g.players[g.currentTurn].UserID != timedOutPlayer.UserID {
 		g.mu.Unlock()
 		return
 	}
