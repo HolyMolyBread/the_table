@@ -16,16 +16,16 @@ const botThinkDelay = 1500 * time.Millisecond
 func SpawnBot(m *RoomManager, room *Room, gamePrefix string) error {
 	prefix := strings.ToLower(strings.TrimSpace(gamePrefix))
 	switch prefix {
-	case "omok", "connect4", "tictactoe", "indian", "holdem", "sevenpoker", "thief", "onecard", "mahjong", "mahjong3":
+	case "omok", "connect4", "tictactoe", "indian", "holdem", "sevenpoker", "thief", "onecard", "mahjong", "mahjong3", "blackjack":
 		// 지원하는 게임
 	default:
 		log.Printf("[BOT] 지원하지 않는 게임 접두사: %s", gamePrefix)
 		return nil // 에러 대신 무시
 	}
 
-	// 인원 제한: 1:1 게임은 2명, 다인(holdem, sevenpoker, thief, onecard)은 4명, mahjong3은 3명
+	// 인원 제한: 1:1 게임은 2명, 다인(holdem, sevenpoker, thief, onecard, blackjack)은 4명, mahjong3은 3명
 	maxPlayers := 2
-	if prefix == "holdem" || prefix == "sevenpoker" || prefix == "thief" || prefix == "onecard" || prefix == "mahjong" {
+	if prefix == "holdem" || prefix == "sevenpoker" || prefix == "thief" || prefix == "onecard" || prefix == "mahjong" || prefix == "blackjack" {
 		maxPlayers = 4
 	}
 	if prefix == "mahjong3" {
@@ -45,17 +45,18 @@ func SpawnBot(m *RoomManager, room *Room, gamePrefix string) error {
 		IsBot:     true,
 		BotProcess: nil, // 아래에서 설정
 		Records: map[string]*GameRecord{
-			"total":      {},
-			"omok":       {},
-			"tictactoe":  {},
-			"connect4":   {},
-			"indian":     {},
-			"holdem":     {},
-			"sevenpoker": {},
-			"thief":      {},
-			"onecard":    {},
-			"mahjong":    {},
-			"mahjong3":   {},
+			"total":       {},
+			"omok":        {},
+			"tictactoe":   {},
+			"connect4":    {},
+			"indian":      {},
+			"holdem":      {},
+			"sevenpoker":  {},
+			"thief":       {},
+			"onecard":     {},
+			"mahjong":     {},
+			"mahjong3":    {},
+			"blackjack":   {},
 		},
 	}
 
@@ -380,6 +381,41 @@ func makeBotProcess(bot *Client, room *Room, gamePrefix string) func(msg []byte)
 				payload, _ := json.Marshal(map[string]any{"cmd": "draw"})
 				room.Plugin.HandleAction(bot, "game_action", payload)
 			}
+
+		case "blackjack_state", "blackjack_pvp_state":
+			if gamePrefix != "blackjack" {
+				return
+			}
+			var data map[string]any
+			if json.Unmarshal(base.Data, &data) != nil {
+				return
+			}
+			// PVP 블랙잭은 data["turn"] 사용, PVE는 data["currentTurn"] - 둘 다 지원
+			turnUser, _ := data["turn"].(string)
+			if turnUser == "" {
+				turnUser, _ = data["currentTurn"].(string)
+			}
+			if turnUser == "" {
+				// turnOrder + currentTurnIdx로부터 유도
+				if order, ok := data["turnOrder"].([]any); ok {
+					if idx, ok := data["currentTurnIdx"].(float64); ok && int(idx) < len(order) {
+						if u, ok := order[int(idx)].(string); ok {
+							turnUser = u
+						}
+					}
+				}
+			}
+			if turnUser != bot.UserID {
+				return
+			}
+			time.Sleep(botThinkDelay)
+			// Level 1: 70% hit, 30% stand
+			cmd := "hit"
+			if rand.Intn(100) < 30 {
+				cmd = "stand"
+			}
+			payload, _ := json.Marshal(map[string]any{"cmd": cmd})
+			room.Plugin.HandleAction(bot, "game_action", payload)
 		}
 		}()
 	}

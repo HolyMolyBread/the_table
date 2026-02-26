@@ -553,6 +553,8 @@ func (m *RoomManager) HandleMessage(client *Client, rawMsg []byte) {
 			prefix = "onecard"
 		} else if strings.HasPrefix(client.RoomID, "mahjong") {
 			prefix = "mahjong"
+		} else if strings.HasPrefix(client.RoomID, "blackjack") {
+			prefix = "blackjack"
 		}
 		if prefix == "" {
 			client.SendJSON(ServerResponse{

@@ -703,7 +703,7 @@
       const rulesBtn = document.getElementById('btn-ingame-rules');
       rulesBtn.style.display = (roomId.startsWith('omok') || roomId.startsWith('blackjack') || roomId.startsWith('tictactoe') || roomId.startsWith('connect4') || roomId.startsWith('indian') || roomId.startsWith('holdem') || roomId.startsWith('sevenpoker') || roomId.startsWith('thief') || roomId.startsWith('onecard') || roomId.startsWith('mahjong') || roomId.startsWith('mahjong3') || roomId.startsWith('alkkagi')) ? '' : 'none';
       const addBotBtn = document.getElementById('btn-add-bot');
-      addBotBtn.style.display = (roomId.startsWith('omok') || roomId.startsWith('connect4') || roomId.startsWith('tictactoe') || roomId.startsWith('indian') || roomId.startsWith('holdem') || roomId.startsWith('sevenpoker') || roomId.startsWith('thief') || roomId.startsWith('onecard') || roomId.startsWith('mahjong') || roomId.startsWith('mahjong3') || roomId.startsWith('alkkagi')) ? '' : 'none';
+      addBotBtn.style.display = (roomId.startsWith('omok') || roomId.startsWith('connect4') || roomId.startsWith('tictactoe') || roomId.startsWith('indian') || roomId.startsWith('holdem') || roomId.startsWith('sevenpoker') || roomId.startsWith('thief') || roomId.startsWith('onecard') || roomId.startsWith('mahjong') || roomId.startsWith('mahjong3') || roomId.startsWith('alkkagi') || roomId.startsWith('blackjack')) ? '' : 'none';
 
       if (inputUserId) inputUserId.value = userId;
       if (inputRoomId) inputRoomId.value = roomId;
@@ -1319,8 +1319,16 @@
   }
 
   function clearAllGameContainers() {
-    const ids = ['gomoku-board', 'bj-dealer-hand', 'bj-player-hand', 'ttt-board', 'holdem-players', 'sevenpoker-players', 'indian-opp-card-wrap', 'indian-my-card-wrap', 'thief-players', 'onecard-players', 'mahjong-players'];
-    ids.forEach(id => {
+    // 모든 게임 컨테이너 숨김 + 내부 콘텐츠 비우기 (UI 잔상 방지)
+    const containerIds = ['gomoku-container', 'blackjack-container', 'tictactoe-container', 'connect4-container', 'indian-container', 'holdem-container', 'sevenpoker-container', 'thief-container', 'onecard-container', 'mahjong-container', 'alkkagi-container'];
+    containerIds.forEach(id => {
+      const el = document.getElementById(id);
+      if (el) {
+        el.style.display = 'none';
+      }
+    });
+    const clearIds = ['gomoku-board', 'gomoku-color-info', 'bj-dealer-hand', 'bj-player-hand', 'bj-dealer-hearts', 'bj-player-hearts', 'bj-message', 'ttt-board', 'ttt-color-info', 'c4-board', 'c4-color-info', 'holdem-players', 'holdem-community-cards', 'sevenpoker-players', 'sp-choice-cards', 'indian-opp-card-wrap', 'indian-my-card-wrap', 'indian-opp-hearts', 'indian-my-hearts', 'thief-players', 'thief-hand', 'onecard-players', 'onecard-hand', 'onecard-top-card', 'onecard-deck', 'mahjong-players', 'mahjong-discards-me', 'mahjong-melds-me', 'mahjong-hand'];
+    clearIds.forEach(id => {
       const el = document.getElementById(id);
       if (el) el.innerHTML = '';
     });

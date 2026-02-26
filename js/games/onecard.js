@@ -43,6 +43,7 @@
 
   function renderOneCard(data) {
     if (!data) return;
+    console.log("[OneCard Debug]", data, currentUserId);
     const isMyTurn = data.turn === currentUserId;
     const top = data.topCard || {};
     const attackPenalty = data.attackPenalty || 0;
@@ -95,7 +96,10 @@
     }
     const handEl = document.getElementById('onecard-hand');
     if (handEl) {
-      const hand = data.hand ?? [];
+      const hand = data.hand || [];
+      if (hand.length === 0 && data.players && data.players.some(p => p.userId === currentUserId)) {
+        console.warn("내 손패가 비어있습니다. 서버 데이터를 점검하세요.");
+      }
       handEl.innerHTML = hand.map((c, i) => {
         const playable = canPlay && onecardIsPlayable(data, c);
         const cardWithIdx = { ...c, _index: i };
