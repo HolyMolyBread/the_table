@@ -205,11 +205,7 @@ func makeBotProcess(bot *Client, room *Room, gamePrefix string) func(msg []byte)
 				return
 			}
 			time.Sleep(botThinkDelay)
-			// Level 1: 70% showdown, 30% give_up
-			cmd := "showdown"
-			if rand.Intn(100) < 30 {
-				cmd = "give_up"
-			}
+			cmd := botPickIndian(d)
 			payload, _ := json.Marshal(map[string]any{"cmd": cmd})
 			room.Plugin.HandleAction(bot, "game_action", payload)
 
@@ -225,11 +221,7 @@ func makeBotProcess(bot *Client, room *Room, gamePrefix string) func(msg []byte)
 				return
 			}
 			time.Sleep(botThinkDelay)
-			// Level 1: 95% check, 5% fold (테스트 용이성)
-			cmd := "check"
-			if rand.Intn(100) < 5 {
-				cmd = "fold"
-			}
+			cmd := botPickHoldem(d, bot.UserID)
 			payload, _ := json.Marshal(map[string]any{"cmd": cmd})
 			room.Plugin.HandleAction(bot, "game_action", payload)
 
@@ -852,4 +844,115 @@ func botPickOneCard(d OneCardData) int {
 		}
 	}
 	return -1 // 낼 카드가 없으면 -1 반환 (Draw)
+}
+
+// botPickHoldem은 HoldemData를 기반으로 check/fold를 결정합니다.
+// EvaluateHand로 7장 족보 점수를 계산하고, 족보 등급에 따라 액션을 선택합니다.
+func botPickHoldem(d HoldemData, myUserID string) string {
+	cards7 := make([]Card, 0, 7)
+
+	// 내 핸드 카드 (2장)
+	for _, p := range d.Players {
+		if p.UserID == myUserID && len(p.Cards) >= 2 {
+			for _, c := range p.Cards {
+				if c.Suit != "" || c.Value != "" {
+					cards7 = append(cards7, c)
+				}
+			}
+			break
+		}
+	}
+
+	// 커뮤니티 카드 (페이즈에 따라 0~5장)
+	communityVisible := 0
+	switch d.Phase {
+	case "flop":
+		communityVisible = 3
+	case "turn":
+		communityVisible = 4
+	case "river", "showdown":
+		communityVisible = 5
+	}
+	for i := 0; i < communityVisible && i < len(d.CommunityCards); i++ {
+		c := d.CommunityCards[i]
+		if c.Suit != "" || c.Value != "" {
+			cards7 = append(cards7, c)
+		}
+	}
+
+	// 상대 배팅 여부: 다른 플레이어가 이미 체크(액션)했는지
+	opponentBet := false
+	for _, p := range d.Players {
+		if p.UserID != myUserID && p.IsActive && p.Status == "check" {
+			opponentBet = true
+			break
+		}
+	}
+
+	rank := 1 // 기본: 하이카드
+	if len(cards7) >= 5 {
+		score := EvaluateHand(cards7)
+		rank = int(score >> 20)
+		if rank <= 0 {
+			rank = 1
+		}
+	}
+
+	r := rand.Intn(100)
+	switch {
+	case rank >= 4: // 트리플 이상 (공격적: 90% Call, 10% Raise → check만 가능하므로 95% check)
+		if r < 95 {
+			return "check"
+		}
+		return "fold"
+	case rank == 3: // 투페어
+		if r < 80 {
+			return "check"
+		}
+		return "fold"
+	case rank == 2: // 원페어
+		if opponentBet {
+			if r < 50 {
+				return "check"
+			}
+			return "fold"
+		}
+		return "check"
+	default: // 하이카드 (rank 1)
+		if opponentBet {
+			if r < 90 {
+				return "fold"
+			}
+			return "check" // 10% 블러핑
+		}
+		return "check"
+	}
+}
+
+// botPickIndian은 IndianData를 기반으로 showdown/give_up을 결정합니다.
+// 상대 카드(OpponentCard) 값을 숫자로 변환하여 전략을 적용합니다.
+func botPickIndian(d IndianData) string {
+	oppVal := cardRank(d.OpponentCard) // 2~14 (A=14)
+	if oppVal <= 0 {
+		oppVal = 7 // 알 수 없으면 중간값
+	}
+
+	r := rand.Intn(100)
+	switch {
+	case oppVal >= 8: // 8 이상 (8,9,10,J,Q,K,A)
+		if r < 70 {
+			return "give_up"
+		}
+		return "showdown"
+	case oppVal <= 3: // 3 이하 (2,3)
+		if r < 90 {
+			return "showdown"
+		}
+		return "give_up"
+	default: // 4~7
+		if r < 60 {
+			return "showdown"
+		}
+		return "give_up"
+	}
 }
