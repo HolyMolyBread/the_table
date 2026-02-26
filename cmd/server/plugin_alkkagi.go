@@ -23,6 +23,7 @@ type AlkkagiStone struct {
 // AlkkagiData는 alkkagi_state 응답의 data 필드입니다.
 type AlkkagiData struct {
 	CurrentTurn string         `json:"currentTurn"` // 현재 차례 유저 ID
+	Players     [2]string      `json:"players"`     // [0]=흑, [1]=백
 	Stones      []AlkkagiStone `json:"stones"`      // 각 알의 좌표/속도
 }
 
@@ -160,8 +161,8 @@ func (g *AlkkagiGame) HandleAction(client *Client, action string, payload json.R
 			client.SendJSON(ServerResponse{Type: "error", Message: "sync 페이로드 파싱 오류"})
 			return
 		}
-		if len(p.Stones) == 0 || len(p.Stones) > 16 {
-			client.SendJSON(ServerResponse{Type: "error", Message: "stones 개수 오류 (1~16)"})
+		if len(p.Stones) > 16 {
+			client.SendJSON(ServerResponse{Type: "error", Message: "stones 개수 오류 (0~16)"})
 			return
 		}
 		for i := range p.Stones {
@@ -174,6 +175,11 @@ func (g *AlkkagiGame) HandleAction(client *Client, action string, payload json.R
 		g.broadcastStateLocked()
 
 	case "flick":
+		// 턴 검증: 요청한 client가 현재 차례인지 확인
+		if g.currentTurn < 0 || g.currentTurn >= 2 || g.players[g.currentTurn] == nil || g.players[g.currentTurn].UserID != client.UserID {
+			client.SendJSON(ServerResponse{Type: "error", Message: "내 차례가 아닙니다."})
+			return
+		}
 		var p struct {
 			ID     int     `json:"id"`
 			ForceX float64 `json:"forceX"`
@@ -204,6 +210,7 @@ func (g *AlkkagiGame) HandleAction(client *Client, action string, payload json.R
 			},
 		})
 		g.room.broadcastAll(msg)
+		g.currentTurn = 1 - g.currentTurn
 
 	default:
 		client.SendJSON(ServerResponse{Type: "error", Message: fmt.Sprintf("알 수 없는 cmd: %s", base.Cmd)})
@@ -216,6 +223,7 @@ func (g *AlkkagiGame) sendStateToAllLocked() {
 		RoomID: g.room.ID,
 		Data: AlkkagiData{
 			CurrentTurn: g.turnUserIDLocked(),
+			Players:     g.playersUserIDsLocked(),
 			Stones:      g.stones,
 		},
 	})
@@ -232,6 +240,7 @@ func (g *AlkkagiGame) sendStateToClientLocked(client *Client) {
 		RoomID: g.room.ID,
 		Data: AlkkagiData{
 			CurrentTurn: g.turnUserIDLocked(),
+			Players:     g.playersUserIDsLocked(),
 			Stones:      g.stones,
 		},
 	})
@@ -243,4 +252,14 @@ func (g *AlkkagiGame) turnUserIDLocked() string {
 		return g.players[g.currentTurn].UserID
 	}
 	return ""
+}
+
+func (g *AlkkagiGame) playersUserIDsLocked() [2]string {
+	var out [2]string
+	for i := 0; i < 2; i++ {
+		if g.players[i] != nil {
+			out[i] = g.players[i].UserID
+		}
+	}
+	return out
 }

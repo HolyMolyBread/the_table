@@ -172,18 +172,20 @@ header {
 /* ── Game Cards ── */
 #game-cards {
   display: none;
-  width: 100%;
-  max-width: 1400px;
   flex-direction: column;
-  gap: 40px;
+  align-items: stretch; /* center 대신 stretch로 넓게 쓰기 */
+  width: 100%;
+  max-width: 1600px; /* 최대 넓이를 엄청 크게 확장 */
+  gap: 32px;
   padding-bottom: 60px;
 }
 .lobby-category { width: 100%; margin-bottom: 20px; }
 .lobby-category h3 { font-size: 16px; margin-bottom: 12px; border-bottom: 1px solid var(--border); padding-bottom: 8px; }
 .lobby-category .category-cards {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: 12px;
+  /* 화면이 허락하는 한 240px 카드를 최대한 많이 쑤셔 넣음 */
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 12px; /* 카드 간격 좁힘 */
   align-items: stretch;
 }
 
