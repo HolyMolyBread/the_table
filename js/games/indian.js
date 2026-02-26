@@ -87,7 +87,7 @@
       ? `<span class="clickable-nickname" onclick="requestOpponentRecord('${escapeForJsAttr(myName)}')" title="전적 보기">${escapeHTML(myName)}</span>`
       : '—';
     document.getElementById('indian-my-hearts').innerHTML = renderHeartsBar(data.myHearts);
-    if ((data.phase === 'game_over' || data.phase === 'settlement') && data.myCard) {
+    if ((data.phase === 'game_over' || data.phase === 'settlement' || data.phase === 'showdown') && data.myCard) {
       data.myCard.hidden = false;
     }
     const myCardHtml = renderIndianCard(data.myCard);
@@ -127,6 +127,18 @@
     const resEl = document.getElementById('indian-showdown-result');
     const overlay = document.getElementById('indian-showdown-overlay');
     if (!box || !vsEl || !resEl || !overlay) return;
+
+    // 오버레이 표시 시 게임 판 위의 내 카드·상대 카드도 공개
+    const myWrap = document.getElementById('indian-my-card-wrap');
+    const oppWrap = document.getElementById('indian-opp-card-wrap');
+    if (myWrap && data.myCard) {
+      myWrap.innerHTML = renderIndianCard({ ...data.myCard, hidden: false });
+      lastIndianMyCard = myWrap.innerHTML;
+    }
+    if (oppWrap && data.opponentCard) {
+      oppWrap.innerHTML = renderIndianCard({ ...data.opponentCard, hidden: false });
+      lastIndianOppCard = oppWrap.innerHTML;
+    }
 
     const myVal = data.myCard?.value ?? '?';
     const oppVal = data.opponentCard?.value ?? '?';
