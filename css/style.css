@@ -172,9 +172,10 @@ header {
 /* ── Game Cards ── */
 #game-cards {
   display: none;
+  width: 100%;
+  max-width: 1400px;
   flex-direction: column;
-  align-items: stretch;
-  gap: 32px;
+  gap: 40px;
   padding-bottom: 60px;
 }
 .lobby-category { width: 100%; margin-bottom: 20px; }
@@ -182,7 +183,7 @@ header {
 .lobby-category .category-cards {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: 16px;
+  gap: 20px;
   align-items: stretch;
 }
 
