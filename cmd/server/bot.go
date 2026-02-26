@@ -135,8 +135,12 @@ func makeBotProcess(bot *Client, room *Room, gamePrefix string) func(msg []byte)
 			if d.Turn != bot.UserID {
 				return
 			}
+			myColor := d.Colors[bot.UserID]
+			if myColor == 0 {
+				myColor = 1
+			}
 			time.Sleep(botThinkDelay)
-			x, y := botPickOmok(d.Board)
+			x, y := botPickOmok(d.Board, myColor)
 			if x < 0 {
 				return
 			}
@@ -421,35 +425,147 @@ func makeBotProcess(bot *Client, room *Room, gamePrefix string) func(msg []byte)
 	}
 }
 
-func botPickOmok(board [15][15]int) (x, y int) {
-	// 기존 돌과 인접한 빈칸 후보 수집
-	var candidates [][2]int
+// omokHeuristicWeights는 휴리스틱 점수 가중치입니다.
+const (
+	omokMyFive      = 100000 // 내 5목 완성
+	omokBlockFive   = 50000  // 상대 5목 차단
+	omokMyOpenFour  = 10000  // 내 활사(Open 4)
+	omokBlockOpen4  = 8000   // 상대 활사 차단
+	omokMyOpenThree = 1000   // 내 활삼(Open 3)
+	omokBlockOpen3  = 800    // 상대 활삼 차단
+	omokMyFour      = 5000   // 내 4목 (한쪽 막힌 것 포함)
+	omokBlockFour   = 2000   // 상대 4목 차단
+	omokMyThree     = 500    // 내 3목
+	omokBlockThree  = 300    // 상대 3목 차단
+)
+
+// omokLineInfo는 (x,y)에서 방향 (dx,dy)로 color 돌의 연속 개수와 양끝 개방 여부를 반환합니다.
+func omokLineInfo(board [15][15]int, x, y, dx, dy, color int) (count int, leftOpen, rightOpen bool) {
+	count = 1
+	// 음의 방향
+	for i := 1; i < 15; i++ {
+		nx, ny := x-dx*i, y-dy*i
+		if nx < 0 || nx >= 15 || ny < 0 || ny >= 15 {
+			break
+		}
+		if board[nx][ny] != color {
+			leftOpen = (board[nx][ny] == 0)
+			break
+		}
+		count++
+	}
+	// 양의 방향
+	for i := 1; i < 15; i++ {
+		nx, ny := x+dx*i, y+dy*i
+		if nx < 0 || nx >= 15 || ny < 0 || ny >= 15 {
+			break
+		}
+		if board[nx][ny] != color {
+			rightOpen = (board[nx][ny] == 0)
+			break
+		}
+		count++
+	}
+	return count, leftOpen, rightOpen
+}
+
+// evaluateOmokMove는 (x,y)에 myColor를 두었을 때의 점수를 반환합니다.
+func evaluateOmokMove(board [15][15]int, x, y, myColor, oppColor int) int {
+	board[x][y] = myColor
+	defer func() { board[x][y] = 0 }()
+
+	dirs := [4][2]int{{0, 1}, {1, 0}, {1, 1}, {1, -1}}
+	score := 0
+
+	// 내 돌 패턴 점수
+	for _, d := range dirs {
+		cnt, lo, ro := omokLineInfo(board, x, y, d[0], d[1], myColor)
+		openEnds := 0
+		if lo {
+			openEnds++
+		}
+		if ro {
+			openEnds++
+		}
+		switch {
+		case cnt >= 5:
+			score += omokMyFive
+		case cnt == 4:
+			if openEnds == 2 {
+				score += omokMyOpenFour
+			} else {
+				score += omokMyFour
+			}
+		case cnt == 3:
+			if openEnds == 2 {
+				score += omokMyOpenThree
+			} else {
+				score += omokMyThree
+			}
+		}
+	}
+
+	// 상대 돌 차단 점수 (이 수로 상대의 위협을 막는지)
+	board[x][y] = oppColor
+	for _, d := range dirs {
+		cnt, lo, ro := omokLineInfo(board, x, y, d[0], d[1], oppColor)
+		openEnds := 0
+		if lo {
+			openEnds++
+		}
+		if ro {
+			openEnds++
+		}
+		switch {
+		case cnt >= 5:
+			score += omokBlockFive
+		case cnt == 4:
+			if openEnds == 2 {
+				score += omokBlockOpen4
+			} else {
+				score += omokBlockFour
+			}
+		case cnt == 3:
+			if openEnds == 2 {
+				score += omokBlockOpen3
+			} else {
+				score += omokBlockThree
+			}
+		}
+	}
+	board[x][y] = 0
+
+	return score
+}
+
+func botPickOmok(board [15][15]int, myColor int) (x, y int) {
+	if myColor == 0 {
+		myColor = 1
+	}
+	oppColor := 3 - myColor
+
+	var bestCandidates [][2]int
+	bestScore := -1
+
 	for i := 0; i < 15; i++ {
 		for j := 0; j < 15; j++ {
 			if board[i][j] != 0 {
 				continue
 			}
-			adj := false
-			for di := -1; di <= 1 && !adj; di++ {
-				for dj := -1; dj <= 1 && !adj; dj++ {
-					if di == 0 && dj == 0 {
-						continue
-					}
-					ni, nj := i+di, j+dj
-					if ni >= 0 && ni < 15 && nj >= 0 && nj < 15 && board[ni][nj] != 0 {
-						adj = true
-					}
-				}
-			}
-			if adj || isEmptyBoard(board) {
-				candidates = append(candidates, [2]int{i, j})
+			score := evaluateOmokMove(board, i, j, myColor, oppColor)
+			if score > bestScore {
+				bestScore = score
+				bestCandidates = [][2]int{{i, j}}
+			} else if score == bestScore && score >= 0 {
+				bestCandidates = append(bestCandidates, [2]int{i, j})
 			}
 		}
 	}
-	if len(candidates) == 0 {
+
+	if len(bestCandidates) == 0 {
 		return -1, -1
 	}
-	pick := candidates[rand.Intn(len(candidates))]
+	pick := bestCandidates[rand.Intn(len(bestCandidates))]
 	return pick[0], pick[1]
 }
 
