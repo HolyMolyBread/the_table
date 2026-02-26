@@ -468,6 +468,9 @@ func SpawnBotsForPVE(m *RoomManager, room *Room, gamePrefix string) {
 	if prefix == "holdem" || prefix == "sevenpoker" || prefix == "thief" || prefix == "onecard" || prefix == "mahjong" {
 		maxPlayers = 4
 	}
+	if prefix == "mahjong3" {
+		maxPlayers = 3
+	}
 	for room.count() < maxPlayers {
 		if err := SpawnBot(m, room, prefix); err != nil {
 			return

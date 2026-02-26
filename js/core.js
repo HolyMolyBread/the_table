@@ -722,6 +722,7 @@
       }
 
     } else {
+      clearAllGameContainers();
       document.getElementById('lobby-view').style.display = '';
       document.getElementById('room-view').classList.remove('active');
       document.getElementById('btn-leave').style.display  = 'none';
@@ -1312,8 +1313,18 @@
       isIntentionalLeave = false;
       return;
     }
+    clearAllGameContainers();
     sendRaw(JSON.stringify({ action: 'leave', payload: {} }));
     setRoomState('', '');
+  }
+
+  function clearAllGameContainers() {
+    const ids = ['gomoku-board', 'bj-dealer-hand', 'bj-player-hand', 'ttt-board', 'holdem-players', 'sevenpoker-players', 'indian-opp-card-wrap', 'indian-my-card-wrap', 'thief-players', 'onecard-players', 'mahjong-players'];
+    ids.forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.innerHTML = '';
+    });
+    if (typeof window.clearAlkkagi === 'function') window.clearAlkkagi();
   }
 
   function debugJoinRoom() {

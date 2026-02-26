@@ -277,3 +277,20 @@
     if (!body || !alkkagiWorld.bodies.includes(body)) return;
     Matter.Body.applyForce(body, body.position, { x: data.forceX || 0, y: data.forceY || 0 });
   };
+
+  window.clearAlkkagi = function() {
+    if (!alkkagiEngine) return;
+    const M = Matter;
+    if (alkkagiRunner) M.Runner.stop(alkkagiRunner);
+    if (alkkagiRender) M.Render.stop(alkkagiRender);
+    if (alkkagiWorld) M.Composite.clear(alkkagiWorld);
+    alkkagiBodies = {};
+    alkkagiInitialized = false;
+    alkkagiEngine = null;
+    alkkagiRender = null;
+    alkkagiRunner = null;
+    alkkagiWorld = null;
+    alkkagiDragging = false;
+    alkkagiDragStone = null;
+    window.alkkagiJustFlicked = false;
+  };
