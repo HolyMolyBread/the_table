@@ -99,7 +99,10 @@ func SpawnBot(m *RoomManager, room *Room, gamePrefix string) error {
 }
 
 func makeBotProcess(bot *Client, room *Room, gamePrefix string) func(msg []byte) {
-	var thiefActionDone bool // 도둑잡기 이번 턴 행동 여부 기억
+	var thiefActionDone bool
+	var lastOmokBoard [15][15]int
+	var lastOmokExclude map[[2]int]bool
+	var lastOmokX, lastOmokY int
 	return func(msg []byte) {
 		var base struct {
 			Type   string          `json:"type"`
@@ -124,6 +127,33 @@ func makeBotProcess(bot *Client, room *Room, gamePrefix string) func(msg []byte)
 				}()
 			}
 			return
+		case "error":
+			if gamePrefix != "omok" {
+				return
+			}
+			var errResp struct {
+				Message string `json:"message"`
+			}
+			if json.Unmarshal(msg, &errResp) != nil {
+				return
+			}
+			if !strings.Contains(errResp.Message, "금수") {
+				return
+			}
+			if lastOmokExclude == nil {
+				lastOmokExclude = make(map[[2]int]bool)
+			}
+			lastOmokExclude[[2]int{lastOmokX, lastOmokY}] = true
+			time.Sleep(500 * time.Millisecond)
+			myColor := 1
+			x, y := botPickOmokExcluding(lastOmokBoard, myColor, lastOmokExclude)
+			if x < 0 {
+				return
+			}
+			lastOmokX, lastOmokY = x, y
+			payload, _ := json.Marshal(map[string]any{"cmd": "place", "x": x, "y": y})
+			room.Plugin.HandleAction(bot, "game_action", payload)
+
 		case "board_update":
 			if gamePrefix != "omok" {
 				return
@@ -132,6 +162,8 @@ func makeBotProcess(bot *Client, room *Room, gamePrefix string) func(msg []byte)
 			if json.Unmarshal(base.Data, &d) != nil {
 				return
 			}
+			lastOmokBoard = d.Board
+			lastOmokExclude = nil
 			if d.Turn != bot.UserID {
 				return
 			}
@@ -144,6 +176,7 @@ func makeBotProcess(bot *Client, room *Room, gamePrefix string) func(msg []byte)
 			if x < 0 {
 				return
 			}
+			lastOmokX, lastOmokY = x, y
 			payload, _ := json.Marshal(map[string]any{"cmd": "place", "x": x, "y": y})
 			room.Plugin.HandleAction(bot, "game_action", payload)
 
@@ -527,7 +560,8 @@ func evaluateOmokMove(board [15][15]int, x, y, myColor, oppColor int) int {
 	return score
 }
 
-func botPickOmok(board [15][15]int, myColor int) (x, y int) {
+// botPickOmokExcluding은 exclude에 있는 좌표를 제외하고 최적의 수를 선택합니다.
+func botPickOmokExcluding(board [15][15]int, myColor int, exclude map[[2]int]bool) (x, y int) {
 	if myColor == 0 {
 		myColor = 1
 	}
@@ -540,6 +574,15 @@ func botPickOmok(board [15][15]int, myColor int) (x, y int) {
 		for j := 0; j < 15; j++ {
 			if board[i][j] != 0 {
 				continue
+			}
+			if exclude != nil && exclude[[2]int{i, j}] {
+				continue
+			}
+			// 흑(1)일 때 렌주룰 금수 자리 제외
+			if myColor == 1 {
+				if forbidden, _ := IsRenjuForbiddenBoard(board, i, j); forbidden {
+					continue
+				}
 			}
 			score := evaluateOmokMove(board, i, j, myColor, oppColor)
 			if score > bestScore {
@@ -556,6 +599,10 @@ func botPickOmok(board [15][15]int, myColor int) (x, y int) {
 	}
 	pick := bestCandidates[rand.Intn(len(bestCandidates))]
 	return pick[0], pick[1]
+}
+
+func botPickOmok(board [15][15]int, myColor int) (x, y int) {
+	return botPickOmokExcluding(board, myColor, nil)
 }
 
 func isEmptyBoard(board [15][15]int) bool {

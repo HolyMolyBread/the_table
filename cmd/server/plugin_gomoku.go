@@ -74,6 +74,32 @@ func (g *GomokuGame) OnJoin(client *Client) {
 	g.mu.Lock()
 	defer g.mu.Unlock()
 
+	// 재접속: 동일 UserID가 이미 슬롯에 있으면 새 클라이언트 포인터로 갱신 후 보드/타이머 전송
+	for i := range g.players {
+		if g.players[i] != nil && g.players[i].UserID == client.UserID {
+			g.players[i] = client
+			turnUserID := ""
+			if g.gameStarted && g.players[g.currentTurn] != nil {
+				turnUserID = g.players[g.currentTurn].UserID
+			}
+			snap, _ := json.Marshal(BoardUpdateResponse{
+				Type:   "board_update",
+				RoomID: g.room.ID,
+				Data: BoardData{
+					Board:    g.board,
+					Turn:     turnUserID,
+					Colors:   g.makeColorMap(),
+					LastMove: g.lastMove,
+				},
+			})
+			client.SafeSend(snap)
+			if g.gameStarted && g.players[g.currentTurn] != nil {
+				g.broadcastTimerTickLocked(turnTimeLimit, g.players[g.currentTurn].UserID)
+			}
+			return
+		}
+	}
+
 	switch {
 	case g.players[0] == nil:
 		g.players[0] = client
@@ -88,7 +114,7 @@ func (g *GomokuGame) OnJoin(client *Client) {
 		})
 		g.room.broadcastAll(upd)
 
-	case g.players[1] == nil && g.players[0] != client:
+	case g.players[1] == nil && (g.players[0] == nil || g.players[0].UserID != client.UserID):
 		g.players[1] = client
 		upd, _ := json.Marshal(ReadyUpdateMessage{
 			Type:       "ready_update",
@@ -132,7 +158,7 @@ func (g *GomokuGame) OnLeave(client *Client, remainingCount int) {
 
 	playerIdx := -1
 	for i, p := range g.players {
-		if p == client {
+		if p != nil && p.UserID == client.UserID {
 			playerIdx = i
 			break
 		}
@@ -287,6 +313,96 @@ func (g *GomokuGame) handlePlace(client *Client, x, y int) {
 //  2. 장목 (countLine >= 6)       → 금수
 //  3. 쌍사(4-4): 두 방향 이상에서 4목 위협 패턴 → 금수
 //  4. 쌍삼(3-3): 두 방향 이상에서 활삼(活三) 패턴 → 금수
+
+// IsRenjuForbiddenBoard는 보드 복사본에서 (x,y)에 흑을 두는 것이 렌주룰 위반인지 검사합니다.
+// bot.go 등에서 보드 상태만으로 금수 여부를 판단할 때 사용합니다. 호출 전 board[x][y]==0 이어야 합니다.
+func IsRenjuForbiddenBoard(board [gomokuSize][gomokuSize]int, x, y int) (forbidden bool, reason string) {
+	board[x][y] = 1
+	defer func() { board[x][y] = 0 }()
+
+	dirs := [4][2]int{{0, 1}, {1, 0}, {1, 1}, {1, -1}}
+	for _, d := range dirs {
+		if countLineBoard(board, x, y, d[0], d[1], 1) == 5 {
+			return false, ""
+		}
+	}
+	for _, d := range dirs {
+		if countLineBoard(board, x, y, d[0], d[1], 1) >= 6 {
+			return true, "장목(6목 이상)"
+		}
+	}
+	fourCount := 0
+	for _, d := range dirs {
+		if hasFourPattern(extractLineBoard(board, x, y, d[0], d[1])) {
+			fourCount++
+		}
+	}
+	if fourCount >= 2 {
+		return true, "쌍사(4-4)"
+	}
+	threeCount := 0
+	for _, d := range dirs {
+		if hasOpenThreePattern(extractLineBoard(board, x, y, d[0], d[1])) {
+			threeCount++
+		}
+	}
+	if threeCount >= 2 {
+		return true, "쌍삼(3-3)"
+	}
+	return false, ""
+}
+
+func extractLineBoard(board [gomokuSize][gomokuSize]int, x, y, dx, dy int) string {
+	buf := make([]byte, 11)
+	for i := -5; i <= 5; i++ {
+		nx, ny := x+dx*i, y+dy*i
+		if nx < 0 || nx >= gomokuSize || ny < 0 || ny >= gomokuSize {
+			buf[i+5] = '2'
+		} else {
+			buf[i+5] = byte('0' + board[nx][ny])
+		}
+	}
+	return string(buf)
+}
+
+func countLineBoard(board [gomokuSize][gomokuSize]int, x, y, dx, dy, color int) int {
+	count := 1
+	for i := 1; i < gomokuSize; i++ {
+		nx, ny := x+dx*i, y+dy*i
+		if nx < 0 || nx >= gomokuSize || ny < 0 || ny >= gomokuSize || board[nx][ny] != color {
+			break
+		}
+		count++
+	}
+	for i := 1; i < gomokuSize; i++ {
+		nx, ny := x-dx*i, y-dy*i
+		if nx < 0 || nx >= gomokuSize || ny < 0 || ny >= gomokuSize || board[nx][ny] != color {
+			break
+		}
+		count++
+	}
+	return count
+}
+
+func hasFourPattern(line string) bool {
+	for _, p := range []string{
+		"01111", "11110", "10111", "11011", "11101",
+	} {
+		if strings.Contains(line, p) {
+			return true
+		}
+	}
+	return false
+}
+
+func hasOpenThreePattern(line string) bool {
+	for _, p := range []string{"01110", "010110", "011010"} {
+		if strings.Contains(line, p) {
+			return true
+		}
+	}
+	return false
+}
 
 // isRenjuForbidden은 (x, y)에 흑을 두는 것이 렌주룰 위반인지 검사합니다.
 // 호출 전 board[x][y] == 0 이어야 합니다.
@@ -491,12 +607,12 @@ func (g *GomokuGame) handleTimeOver(timedOutPlayer *Client) {
 	defer g.mu.Unlock()
 
 	// 게임이 이미 종료됐거나 차례가 바뀐 경우 무시 (중복 실행 방지)
-	if !g.gameStarted || g.players[g.currentTurn] != timedOutPlayer {
+	if !g.gameStarted || g.players[g.currentTurn] == nil || g.players[g.currentTurn].UserID != timedOutPlayer.UserID {
 		return
 	}
 
 	winner := g.players[1-g.currentTurn]
-	loser := timedOutPlayer
+	loser := g.players[g.currentTurn]
 
 	winner.RecordResult("omok", "win")
 	loser.RecordResult("omok", "lose")
@@ -532,10 +648,14 @@ func (g *GomokuGame) broadcastBoardLocked() {
 }
 
 func (g *GomokuGame) makeColorMap() map[string]int {
-	return map[string]int{
-		g.players[0].UserID: 1, // 흑
-		g.players[1].UserID: 2, // 백
+	m := make(map[string]int)
+	if g.players[0] != nil {
+		m[g.players[0].UserID] = 1
 	}
+	if g.players[1] != nil {
+		m[g.players[1].UserID] = 2
+	}
+	return m
 }
 
 // endGameLocked는 게임을 종료하지만 players를 유지합니다 (리매치용).
@@ -568,7 +688,7 @@ func (g *GomokuGame) handleReady(client *Client) {
 	}
 	idx := -1
 	for i, p := range g.players {
-		if p == client {
+		if p != nil && p.UserID == client.UserID {
 			idx = i
 			break
 		}
@@ -625,7 +745,7 @@ func (g *GomokuGame) handleRematch(client *Client) {
 	// 플레이어 슬롯 확인
 	idx := -1
 	for i, p := range g.players {
-		if p == client {
+		if p != nil && p.UserID == client.UserID {
 			idx = i
 			break
 		}
@@ -694,7 +814,7 @@ func (g *GomokuGame) handleTakeover(client *Client) {
 		return
 	}
 	for i := range g.players {
-		if g.players[i] == client {
+		if g.players[i] != nil && g.players[i].UserID == client.UserID {
 			client.SendJSON(ServerResponse{Type: "error", Message: "이미 플레이어입니다."})
 			return
 		}
