@@ -300,6 +300,42 @@
           </div>
         </div>
       </div>
+      <div class="game-card">
+        <div class="card-icon">🀄</div>
+        <div class="card-title">마작 (4인)</div>
+        <div class="card-desc">4인 전용. 136장 패 분배 후 쯔모·타패. 14장이 되면 패를 버리세요. (Phase 1)</div>
+        <div class="card-badge pvp">4인</div>
+        <div class="card-actions-bottom">
+          <div class="card-top-actions">
+            <button class="card-btn-rule"   onclick="showRules('mahjong')">📖 룰</button>
+            <button class="card-btn-create" onclick="createRoom('mahjong')">➕ 방 만들기</button>
+          </div>
+          <div class="card-join-row">
+            <input type="text" class="card-code-input" id="code-input-mahjong"
+                   maxlength="6" placeholder="코드 6자리"
+                   autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false"
+                   onkeydown="if(event.key==='Enter') joinWithCode('mahjong','code-input-mahjong')" />
+            <button class="card-btn-join-code" onclick="joinWithCode('mahjong','code-input-mahjong')">입장</button>
+          </div>
+        </div>
+      </div>
+      <div class="game-card">
+        <div class="card-icon">🀄</div>
+        <div class="card-title">마작 (3인)</div>
+        <div class="card-desc">3인 삼마. 108장 패(만즈 1·9만만) 분배 후 쯔모·타패. 14장이 되면 패를 버리세요.</div>
+        <div class="card-badge pvp">3인</div>
+        <div class="card-actions-bottom">
+          <div class="card-top-actions">
+            <button class="card-btn-rule"   onclick="showRules('mahjong')">📖 룰</button>
+            <button class="card-btn-create" onclick="createRoom('mahjong3')">➕ 방 만들기</button>
+          </div>
+          <div class="card-join-row">
+            <input type="text" class="card-code-input" id="code-input-mahjong3"
+                   maxlength="6" placeholder="코드 6자리"
+                   autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false"
+                   onkeydown="if(event.key==='Enter') joinWithCode('mahjong3','code-input-mahjong3')" />
+            <button class="card-btn-join-code" onclick="joinWithCode('mahjong3','code-input-mahjong3')">입장</button>
+          </div>
         </div>
       </div>
         </div>
@@ -343,46 +379,123 @@
           </div>
         </div>
       </div>
-        </div>
-      </div>
-      <div class="lobby-category">
-        <h3>🀄 타일 게임</h3>
-        <div class="category-cards">
       <div class="game-card">
-        <div class="card-icon">🀄</div>
-        <div class="card-title">마작 (4인)</div>
-        <div class="card-desc">4인 전용. 136장 패 분배 후 쯔모·타패. 14장이 되면 패를 버리세요. (Phase 1)</div>
-        <div class="card-badge pvp">4인</div>
+        <div class="card-icon">🀱</div>
+        <div class="card-title">오목 (PVE)</div>
+        <div class="card-desc">AI 봇을 상대로 5목을 완성하세요! (연습 모드)</div>
+        <div class="card-badge pve">PVE</div>
         <div class="card-actions-bottom">
           <div class="card-top-actions">
-            <button class="card-btn-rule"   onclick="showRules('mahjong')">📖 룰</button>
-            <button class="card-btn-create" onclick="createRoom('mahjong')">➕ 방 만들기</button>
-          </div>
-          <div class="card-join-row">
-            <input type="text" class="card-code-input" id="code-input-mahjong"
-                   maxlength="6" placeholder="코드 6자리"
-                   autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false"
-                   onkeydown="if(event.key==='Enter') joinWithCode('mahjong','code-input-mahjong')" />
-            <button class="card-btn-join-code" onclick="joinWithCode('mahjong','code-input-mahjong')">입장</button>
+            <button class="card-btn-rule"   onclick="showRules('omok')">📖 룰</button>
+            <button class="card-btn-create" onclick="startPVE('omok')">🎮 PVE 시작</button>
           </div>
         </div>
       </div>
       <div class="game-card">
+        <div class="card-icon">🔴🟡</div>
+        <div class="card-title">4목 (PVE)</div>
+        <div class="card-desc">AI 봇을 상대로 4목에 도전하세요!</div>
+        <div class="card-badge pve">PVE</div>
+        <div class="card-actions-bottom">
+          <div class="card-top-actions">
+            <button class="card-btn-rule"   onclick="showRules('connect4')">📖 룰</button>
+            <button class="card-btn-create" onclick="startPVE('connect4')">🎮 PVE 시작</button>
+          </div>
+        </div>
+      </div>
+      <div class="game-card">
+        <div class="card-icon">⭕❌</div>
+        <div class="card-title">틱택토 (PVE)</div>
+        <div class="card-desc">3x3 보드에서 AI와 가볍게 대결하세요.</div>
+        <div class="card-badge pve">PVE</div>
+        <div class="card-actions-bottom">
+          <div class="card-top-actions">
+            <button class="card-btn-rule"   onclick="showRules('tictactoe')">📖 룰</button>
+            <button class="card-btn-create" onclick="startPVE('tictactoe')">🎮 PVE 시작</button>
+          </div>
+        </div>
+      </div>
+      <div class="game-card">
+        <div class="card-icon">♠️</div>
+        <div class="card-title">텍사스 홀덤 (PVE)</div>
+        <div class="card-desc">AI 봇 3명과 함께 홀덤 실력을 키워보세요.</div>
+        <div class="card-badge pve">PVE</div>
+        <div class="card-actions-bottom">
+          <div class="card-top-actions">
+            <button class="card-btn-rule"   onclick="showRules('holdem')">📖 룰</button>
+            <button class="card-btn-create" onclick="startPVE('holdem')">🎮 PVE 시작</button>
+          </div>
+        </div>
+      </div>
+      <div class="game-card">
+        <div class="card-icon">♣️</div>
+        <div class="card-title">세븐 포커 (PVE)</div>
+        <div class="card-desc">AI 봇 3명과 함께 세븐 포커를 연습하세요.</div>
+        <div class="card-badge pve">PVE</div>
+        <div class="card-actions-bottom">
+          <div class="card-top-actions">
+            <button class="card-btn-rule"   onclick="showRules('sevenpoker')">📖 룰</button>
+            <button class="card-btn-create" onclick="startPVE('sevenpoker')">🎮 PVE 시작</button>
+          </div>
+        </div>
+      </div>
+      <div class="game-card">
+        <div class="card-icon">🤠</div>
+        <div class="card-title">인디언 포커 (PVE)</div>
+        <div class="card-desc">AI를 상대로 1:1 눈치 게임!</div>
+        <div class="card-badge pve">PVE</div>
+        <div class="card-actions-bottom">
+          <div class="card-top-actions">
+            <button class="card-btn-rule"   onclick="showRules('indian')">📖 룰</button>
+            <button class="card-btn-create" onclick="startPVE('indian')">🎮 PVE 시작</button>
+          </div>
+        </div>
+      </div>
+      <div class="game-card">
+        <div class="card-icon">🃏</div>
+        <div class="card-title">도둑잡기 (PVE)</div>
+        <div class="card-desc">AI 봇 3명과 조커 피하기 심리전!</div>
+        <div class="card-badge pve">PVE</div>
+        <div class="card-actions-bottom">
+          <div class="card-top-actions">
+            <button class="card-btn-rule"   onclick="showRules('thief')">📖 룰</button>
+            <button class="card-btn-create" onclick="startPVE('thief')">🎮 PVE 시작</button>
+          </div>
+        </div>
+      </div>
+      <div class="game-card">
+        <div class="card-icon">🃏</div>
+        <div class="card-title">원카드 (PVE)</div>
+        <div class="card-desc">AI 봇 3명과 원카드 룰로 대결하세요.</div>
+        <div class="card-badge pve">PVE</div>
+        <div class="card-actions-bottom">
+          <div class="card-top-actions">
+            <button class="card-btn-rule"   onclick="showRules('onecard')">📖 룰</button>
+            <button class="card-btn-create" onclick="startPVE('onecard')">🎮 PVE 시작</button>
+          </div>
+        </div>
+      </div>
+      <div class="game-card">
         <div class="card-icon">🀄</div>
-        <div class="card-title">마작 (3인)</div>
-        <div class="card-desc">3인 삼마. 108장 패(만즈 1·9만만) 분배 후 쯔모·타패. 14장이 되면 패를 버리세요.</div>
-        <div class="card-badge pvp">3인</div>
+        <div class="card-title">마작 (4인 PVE)</div>
+        <div class="card-desc">3명의 AI 봇과 함께 리치 마작을 연습하세요.</div>
+        <div class="card-badge pve">PVE</div>
         <div class="card-actions-bottom">
           <div class="card-top-actions">
             <button class="card-btn-rule"   onclick="showRules('mahjong')">📖 룰</button>
-            <button class="card-btn-create" onclick="createRoom('mahjong3')">➕ 방 만들기</button>
+            <button class="card-btn-create" onclick="startPVE('mahjong')">🎮 PVE 시작</button>
           </div>
-          <div class="card-join-row">
-            <input type="text" class="card-code-input" id="code-input-mahjong3"
-                   maxlength="6" placeholder="코드 6자리"
-                   autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false"
-                   onkeydown="if(event.key==='Enter') joinWithCode('mahjong3','code-input-mahjong3')" />
-            <button class="card-btn-join-code" onclick="joinWithCode('mahjong3','code-input-mahjong3')">입장</button>
+        </div>
+      </div>
+      <div class="game-card">
+        <div class="card-icon">🀄</div>
+        <div class="card-title">마작 (3인 PVE)</div>
+        <div class="card-desc">2명의 AI 봇과 빠른 템포의 삼마를 연습하세요.</div>
+        <div class="card-badge pve">PVE</div>
+        <div class="card-actions-bottom">
+          <div class="card-top-actions">
+            <button class="card-btn-rule"   onclick="showRules('mahjong')">📖 룰</button>
+            <button class="card-btn-create" onclick="startPVE('mahjong3')">🎮 PVE 시작</button>
           </div>
         </div>
       </div>

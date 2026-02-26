@@ -104,7 +104,10 @@ header {
 
 /* ══ LOBBY VIEW ══════════════════════════════════════════════════════════ */
 #lobby-view {
-  flex: 1; overflow-y: auto;
+  height: 100%;
+  overflow-y: auto;
+  overflow-x: hidden;
+  flex: 1;
   display: flex; flex-direction: column; align-items: center;
   padding: 48px 24px 32px; gap: 40px;
 }
@@ -167,10 +170,21 @@ header {
 #auth-confirm-group { display: none; }
 
 /* ── Game Cards ── */
-#game-cards { display: none; flex-direction: column; align-items: center; gap: 20px; }
+#game-cards {
+  display: none;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 32px;
+  padding-bottom: 60px;
+}
 .lobby-category { width: 100%; margin-bottom: 20px; }
 .lobby-category h3 { font-size: 16px; margin-bottom: 12px; border-bottom: 1px solid var(--border); padding-bottom: 8px; }
-.lobby-category .category-cards { display: flex; gap: 20px; flex-wrap: wrap; justify-content: center; }
+.lobby-category .category-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 16px;
+  align-items: stretch;
+}
 
 .game-card {
   width: 240px; background: var(--bg-secondary); border: 1px solid var(--border);
@@ -1472,8 +1486,8 @@ header {
 
   /* ── 로비 ── */
   #lobby-view { padding: 12px 8px 60px; }
-  #game-cards { gap: 10px; }
-  .category-cards { gap: 10px; }
+  #game-cards { gap: 24px; }
+  .category-cards { gap: 12px; }
   .game-card { padding: 14px 12px; }
 
   /* ── 룸 뷰: 그리드 → 세로 스택 ── */
