@@ -523,6 +523,13 @@ func (m *RoomManager) HandleMessage(client *Client, rawMsg []byte) {
 			})
 			return
 		}
+		if !strings.Contains(client.RoomID, "_pve_") {
+			client.SendJSON(ServerResponse{
+				Type:    "error",
+				Message: "PVP 아레나에서는 봇을 추가할 수 없습니다. PVE 모드를 이용해 주세요.",
+			})
+			return
+		}
 		m.mu.RLock()
 		room, ok := m.rooms[client.RoomID]
 		m.mu.RUnlock()
