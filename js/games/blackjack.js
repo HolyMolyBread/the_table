@@ -3,24 +3,16 @@
     switchGameView('blackjack');
   }
 
-  /** 블랙잭 하트 바 HTML (인디언 포커 스타일 재활용) */
+  /** 블랙잭 하트 표시: 간결한 텍스트 형식 (❤️ x N) */
   function renderBJHeartsBar(count) {
-    const MAX_ICONS = 20;
-    const displayMax = Math.max(10, count);
-    let html = '';
-    const iconCount = Math.min(count, MAX_ICONS);
-    const totalSlots = Math.min(displayMax, MAX_ICONS);
-    for (let i = 0; i < totalSlots; i++) {
-      html += `<span class="indian-heart${i >= iconCount ? ' lost' : ''}">❤️</span>`;
-    }
-    if (count > MAX_ICONS) {
-      html += `<span class="indian-hearts-count">+${count - MAX_ICONS}</span>`;
-    }
-    return html;
+    const n = Math.max(0, count ?? 0);
+    return `❤️ × ${n}`;
   }
 
   function renderBlackjackState(data) {
     if (!data) return;
+    const playersEl = document.getElementById('blackjack-players');
+    if (playersEl && !data.players) playersEl.innerHTML = '';
     renderBJHand('bj-dealer-hand', 'bj-dealer-score', data.dealerHand);
     renderBJHand('bj-player-hand', 'bj-player-score', data.playerHand);
 
@@ -155,9 +147,50 @@
     return total;
   }
 
+  /** TABLE_SEAT_ORDER 기반: seat-bottom=나, 상대는 seat-top, seat-right, seat-left */
+  const BJ_OPPONENT_SEATS = ['seat-top', 'seat-right', 'seat-left'];
+
+  function renderBlackjackOtherPlayers(data) {
+    const playersEl = document.getElementById('blackjack-players');
+    if (!playersEl || !data || !data.players) {
+      if (playersEl) playersEl.innerHTML = '';
+      return;
+    }
+    const turnOrder = data.turnOrder || Object.keys(data.players);
+    const opponents = turnOrder
+      .filter(id => id !== currentUserId)
+      .map(userId => {
+        const p = data.players[userId];
+        return p ? { userId, hand: p.hand || [], hearts: p.hearts ?? 0 } : null;
+      })
+      .filter(Boolean);
+    playersEl.innerHTML = opponents.map((opp, i) => {
+      const seatClass = BJ_OPPONENT_SEATS[i] || 'seat-top';
+      const handInfo = { cards: opp.hand || [], score: handScoreFromCards(opp.hand || []) };
+      const cardsHtml = (handInfo.cards || []).map(card => {
+        if (card.hidden) return `<div class="bj-card hidden"></div>`;
+        const isRed = card.suit === '♥' || card.suit === '♦';
+        return `<div class="bj-card ${isRed ? 'red' : 'black'}">
+          <span class="bj-card-top">${card.value}</span>
+          <span class="bj-card-center">${card.suit}</span>
+          <span class="bj-card-bot">${card.value}</span>
+        </div>`;
+      }).join('');
+      const heartsText = renderBJHeartsBar(opp.hearts);
+      const isTheirTurn = data.phase === 'player_turn' && data.turnOrder && data.turnOrder[data.currentTurnIdx] === opp.userId;
+      return `<div class="table-seat blackjack-player-box ${seatClass} ${isTheirTurn ? 'my-turn' : ''}" data-user-id="${escapeHTML(opp.userId)}">
+        <span class="table-seat-name">${escapeHTML(opp.userId)}</span>
+        <span class="bj-hearts-simple">${heartsText}</span>
+        <div class="bj-hand bj-opponent-hand">${cardsHtml}</div>
+        <div class="bj-score">${handInfo.score > 0 ? handInfo.score : ''}</div>
+      </div>`;
+    }).join('');
+  }
+
   function renderBlackjackPVPState(data) {
     const adapted = adaptPVPToPVEData(data);
     renderBlackjackState(adapted);
+    renderBlackjackOtherPlayers(data);
     const gameBtns = document.getElementById('bj-game-buttons');
     const startBtns = document.getElementById('bj-start-buttons');
     if (gameBtns && adapted) {
