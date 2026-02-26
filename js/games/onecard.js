@@ -11,12 +11,13 @@
     let val = card.value || '?';
     if (val === 'B_JOKER') val = 'B';
     if (val === 'C_JOKER') val = 'C';
+
     return `
-  <div class="onecard-card ${isRed ? 'red-suit' : 'black-suit'} ${playable ? 'playable' : ''}" data-index="${card._index ?? ''}">
-    <div style="font-size:12px; line-height:1; text-align:left;">${val}</div>
-    <div style="font-size:22px; text-align:center; line-height:1; margin-top:2px;">${suit}</div>
-    <div style="font-size:12px; line-height:1; text-align:left; transform:rotate(180deg);">${val}</div>
-  </div>`;
+    <div class="onecard-card ${isRed ? 'red-suit' : 'black-suit'} ${playable ? 'playable' : ''}" data-index="${card._index ?? ''}" style="background: white; color: ${isRed ? '#dc2626' : '#111'};">
+      <div style="font-size:12px; font-weight: bold; text-align:left;">${val}</div>
+      <div style="font-size:24px; text-align:center; flex: 1; display: flex; align-items: center; justify-content: center;">${suit}</div>
+      <div style="font-size:12px; font-weight: bold; text-align:right;">${val}</div>
+    </div>`;
   }
 
   function onecardCanDefend(attackCard, card) {

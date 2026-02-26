@@ -1601,13 +1601,19 @@ header {
 
 /* 원카드 중앙 보드 가림 절대 방지 */
 #onecard-table-wrap {
-  margin-bottom: 60px !important;
+  margin-bottom: 20px !important; /* 간격 축소 */
 }
 #onecard-center {
-  top: 35% !important;
+  top: 45% !important; /* 중앙 보드 위치 조정 */
 }
 #onecard-me-slot {
-  bottom: -40px !important;
+  bottom: 10px !important; /* -40px에서 10px로 변경하여 화면 안으로 복귀 */
+}
+
+/* 추가: 원카드 패가 겹쳐서 안 보이는 경우를 방지하기 위해 최소 높이 보장 */
+.onecard-hand {
+  min-height: 100px !important;
+  padding-top: 10px !important;
 }
 
 /* 마작 테이블 중앙 시야 확보 */
