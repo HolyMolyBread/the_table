@@ -950,6 +950,15 @@
   function escapeForJsAttr(str) {
     return String(str).replace(/\\/g,'\\\\').replace(/"/g,'\\"').replace(/'/g,"\\'");
   }
+  /** 카드 업데이트 시 뒤집기 애니메이션 적용 (0.4초 후 클래스 제거) */
+  function applyCardFlipAnim(el) {
+    if (!el) return;
+    el.classList.add('card-flip-anim');
+    const onEnd = () => { el.classList.remove('card-flip-anim'); el.removeEventListener('animationend', onEnd); };
+    el.addEventListener('animationend', onEnd);
+    setTimeout(() => { el.classList.remove('card-flip-anim'); }, 450);
+  }
+  window.applyCardFlipAnim = applyCardFlipAnim;
   function formatJSON(raw) {
     try { return JSON.stringify(JSON.parse(raw), null, 2); } catch { return raw; }
   }

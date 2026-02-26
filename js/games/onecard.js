@@ -1,7 +1,12 @@
   // ── OneCard (원카드) UI ────────────────────────────────────────────────────
 
+  let lastOneCardTopJson = '';
+  let lastOneCardHandJson = '';
+
   function showOneCardUI() {
     switchGameView('onecard');
+    lastOneCardTopJson = '';
+    lastOneCardHandJson = '';
   }
 
   function renderOneCardCard(card, playable) {
@@ -86,7 +91,15 @@
     }
 
     const topEl = document.getElementById('onecard-top-card');
-    if (topEl) topEl.innerHTML = top.suit ? renderOneCardCard(top, false).replace(' data-index=""', '') : '';
+    if (topEl) {
+      const topJson = JSON.stringify(top);
+      if (topJson !== lastOneCardTopJson) {
+        lastOneCardTopJson = topJson;
+        topEl.innerHTML = top.suit ? renderOneCardCard(top, false).replace(' data-index=""', '') : '';
+        const cardEl = topEl.firstElementChild || topEl;
+        if (cardEl && top.suit && window.applyCardFlipAnim) window.applyCardFlipAnim(cardEl);
+      }
+    }
     const canPlay = isMyTurn && top.suit;
     const hasPlayableCard = canPlay && (data.hand?.some(c => onecardIsPlayable(data, c)) ?? false);
     const deckEl = document.getElementById('onecard-deck');
@@ -107,25 +120,54 @@
       if (hand.length === 0 && data.players && data.players.some(p => p.userId === currentUserId)) {
         console.warn("내 손패가 비어있습니다. 서버 데이터를 점검하세요.");
       }
-      handEl.innerHTML = hand.map((c, i) => {
-        const playable = canPlay && onecardIsPlayable(data, c);
-        const cardWithIdx = { ...c, _index: i };
-        return renderOneCardCard(cardWithIdx, playable);
-      }).join('');
-      handEl.querySelectorAll('.onecard-card.playable').forEach(el => {
-        el.style.cursor = 'pointer';
-        el.onclick = () => {
-          const idx = parseInt(el.dataset.index, 10);
-          if (isNaN(idx)) return;
-          const card = hand[idx];
-          if (card && card.value === '7') {
-            onecardPendingPlayIndex = idx;
-            document.getElementById('onecard-suit-modal').classList.add('show');
+      const handJson = JSON.stringify(hand.map((c, i) => ({ ...c, _playable: canPlay && onecardIsPlayable(data, c), _index: i })));
+      if (handJson !== lastOneCardHandJson) {
+        lastOneCardHandJson = handJson;
+        handEl.innerHTML = hand.map((c, i) => {
+          const playable = canPlay && onecardIsPlayable(data, c);
+          const cardWithIdx = { ...c, _index: i };
+          return renderOneCardCard(cardWithIdx, playable);
+        }).join('');
+        handEl.querySelectorAll('.onecard-card').forEach((el) => {
+          if (window.applyCardFlipAnim) window.applyCardFlipAnim(el);
+        });
+        handEl.querySelectorAll('.onecard-card.playable').forEach(el => {
+          el.style.cursor = 'pointer';
+          el.onclick = () => {
+            const idx = parseInt(el.dataset.index, 10);
+            if (isNaN(idx)) return;
+            const card = hand[idx];
+            if (card && card.value === '7') {
+              onecardPendingPlayIndex = idx;
+              document.getElementById('onecard-suit-modal').classList.add('show');
+            } else {
+              onecardPlay(idx);
+            }
+          };
+        });
+      } else {
+        handEl.querySelectorAll('.onecard-card').forEach((el, i) => {
+          const playable = canPlay && onecardIsPlayable(data, hand[i]);
+          el.classList.toggle('playable', playable);
+          el.dataset.index = String(i);
+          if (playable) {
+            el.style.cursor = 'pointer';
+            el.onclick = () => {
+              const idx = parseInt(el.dataset.index, 10);
+              if (isNaN(idx)) return;
+              const card = hand[idx];
+              if (card && card.value === '7') {
+                onecardPendingPlayIndex = idx;
+                document.getElementById('onecard-suit-modal').classList.add('show');
+              } else {
+                onecardPlay(idx);
+              }
+            };
           } else {
-            onecardPlay(idx);
+            el.onclick = null;
           }
-        };
-      });
+        });
+      }
     }
   }
 

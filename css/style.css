@@ -803,7 +803,7 @@ header {
   font-size: 20px; font-weight: 800; color: #f87171; margin-left: 4px;
 }
 /* 카드 표시 */
-.indian-card-wrap { flex-shrink: 0; }
+.indian-card-wrap { flex-shrink: 0; perspective: 400px; }
 .indian-card-face {
   width: 58px; height: 84px;
   background: #fff; border: 1px solid #ccc; border-radius: 8px;
@@ -874,7 +874,7 @@ header {
 .thief-hand {
   display: flex; flex-wrap: nowrap; overflow-x: auto;
   width: 100%; max-width: 90vw; padding: 10px 10px 20px 10px;
-  gap: 8px;
+  gap: 8px; perspective: 400px;
 }
 #thief-table-wrap .thief-hand {
   gap: 12px;
@@ -936,6 +936,17 @@ header {
   transition: transform 0.2s ease, box-shadow 0.2s ease, margin 0.2s ease;
 }
 
+/* 카드 뒤집기(Flip) 애니메이션 — 업데이트 시에만 적용 */
+@keyframes card-flip-anim {
+  from { transform: rotateY(180deg); }
+  to { transform: rotateY(0deg); }
+}
+.card-flip-anim {
+  animation: card-flip-anim 0.4s ease-out forwards;
+  backface-visibility: hidden;
+  transform-style: preserve-3d;
+}
+
 /* 타겟 유저 영역 붉은색 강조 */
 @keyframes targetBlink {
   0%, 100% { box-shadow: 0 0 0px var(--danger); }
@@ -953,7 +964,7 @@ header {
   display: none; flex-direction: column; align-items: center; gap: 12px;
   width: 100%; max-width: 1100px;
 }
-.table-center-area { display: flex; align-items: center; justify-content: center; gap: 16px; }
+.table-center-area { display: flex; align-items: center; justify-content: center; gap: 16px; perspective: 400px; }
 /* 중앙 보드와 내 패 사이 물리적 여백 강제 확보 */
 .onecard-table { z-index: 1 !important; }
 #onecard-status { font-size: 15px; font-weight: 700; text-align: center; }
@@ -975,6 +986,7 @@ header {
 .onecard-hand {
   display: flex !important;
   flex-wrap: nowrap !important;
+  perspective: 400px;
   justify-content: center !important;
   overflow-x: auto !important;
   padding-bottom: 20px !important;

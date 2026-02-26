@@ -77,8 +77,11 @@
     document.getElementById('indian-opp-hearts').innerHTML = renderHeartsBar(data.opponentHearts);
     const oppCardHtml = renderIndianCard(data.opponentCard);
     if (lastIndianOppCard !== oppCardHtml) {
-      document.getElementById('indian-opp-card-wrap').innerHTML = oppCardHtml;
+      const oppWrap = document.getElementById('indian-opp-card-wrap');
+      oppWrap.innerHTML = oppCardHtml;
       lastIndianOppCard = oppCardHtml;
+      const cardEl = oppWrap.querySelector('.indian-card-face, .indian-card-back');
+      if (cardEl && window.applyCardFlipAnim) window.applyCardFlipAnim(cardEl);
     }
 
     // 내 정보
@@ -92,8 +95,11 @@
     }
     const myCardHtml = renderIndianCard(data.myCard);
     if (lastIndianMyCard !== myCardHtml) {
-      document.getElementById('indian-my-card-wrap').innerHTML = myCardHtml;
+      const myWrap = document.getElementById('indian-my-card-wrap');
+      myWrap.innerHTML = myCardHtml;
       lastIndianMyCard = myCardHtml;
+      const cardEl = myWrap.querySelector('.indian-card-face, .indian-card-back');
+      if (cardEl && window.applyCardFlipAnim) window.applyCardFlipAnim(cardEl);
     }
 
     // 현재 턴 유저 래퍼에 active-turn 강조
@@ -132,12 +138,18 @@
     const myWrap = document.getElementById('indian-my-card-wrap');
     const oppWrap = document.getElementById('indian-opp-card-wrap');
     if (myWrap && data.myCard) {
-      myWrap.innerHTML = renderIndianCard({ ...data.myCard, hidden: false });
-      lastIndianMyCard = myWrap.innerHTML;
+      const myCardHtml = renderIndianCard({ ...data.myCard, hidden: false });
+      myWrap.innerHTML = myCardHtml;
+      lastIndianMyCard = myCardHtml;
+      const myCardEl = myWrap.querySelector('.indian-card-face, .indian-card-back');
+      if (myCardEl && window.applyCardFlipAnim) window.applyCardFlipAnim(myCardEl);
     }
     if (oppWrap && data.opponentCard) {
-      oppWrap.innerHTML = renderIndianCard({ ...data.opponentCard, hidden: false });
-      lastIndianOppCard = oppWrap.innerHTML;
+      const oppCardHtml = renderIndianCard({ ...data.opponentCard, hidden: false });
+      oppWrap.innerHTML = oppCardHtml;
+      lastIndianOppCard = oppCardHtml;
+      const oppCardEl = oppWrap.querySelector('.indian-card-face, .indian-card-back');
+      if (oppCardEl && window.applyCardFlipAnim) window.applyCardFlipAnim(oppCardEl);
     }
 
     const myVal = data.myCard?.value ?? '?';

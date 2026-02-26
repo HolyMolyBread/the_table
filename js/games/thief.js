@@ -79,6 +79,9 @@
         lastThiefHandJson = handJson;
         const hoverOnMyCard = thiefHoveredTargetId === currentUserId;
         handEl.innerHTML = data.hand.map((c, i) => renderThiefCard(c, hoverOnMyCard && thiefHoveredIndex === i, discardingSet.has(i))).join('');
+        handEl.querySelectorAll('.thief-card').forEach((el) => {
+          if (window.applyCardFlipAnim) window.applyCardFlipAnim(el);
+        });
       } else {
         const hoverOnMyCard = thiefHoveredTargetId === currentUserId;
         handEl.querySelectorAll('.thief-card').forEach((el, i) => {
