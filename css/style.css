@@ -1003,7 +1003,7 @@ header {
 /* ══ MAHJONG (마작) ═══════════════════════════════════════════════════════ */
 #mahjong-container {
   display: none; flex-direction: column; align-items: center; gap: 12px;
-  width: 100%; max-width: 520px;
+  width: 100%; max-width: 900px;
 }
 #mahjong-status { font-size: 15px; font-weight: 700; text-align: center; }
 .mahjong-tile {
@@ -1025,7 +1025,7 @@ header {
 }
 .mahjong-tile.discardable { cursor: pointer; border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent); }
 .mahjong-tile.discardable:hover { transform: translateY(-8px); }
-.my-hand-area, .mahjong-hand {
+.my-hand-area, .table-seat.seat-bottom .mahjong-hand {
   transform: scale(0.85) !important;
   transform-origin: bottom center !important;
   margin-bottom: -10px !important;
@@ -1648,15 +1648,27 @@ header {
   padding-top: 12px !important;
 }
 
-/* 마작 테이블 중앙 시야 확보 */
+/* 마작 테이블 레이아웃 확장 */
 #mahjong-table-wrap {
-  min-height: 440px !important;
+  min-height: 500px !important;
   margin-bottom: 60px !important;
+  position: relative;
 }
 
-/* 3인 마작: Top 자리 없음, Right/Left만 렌더링됨 */
+/* 좌석 겹침 방지: 여백 확대 (3인/4인 공통) */
+#mahjong-table-wrap .table-seat.seat-top { top: 24px !important; left: 50% !important; transform: translateX(-50%) !important; }
+#mahjong-table-wrap .table-seat.seat-left { left: 24px !important; top: 50% !important; transform: translateY(-50%) !important; }
+#mahjong-table-wrap .table-seat.seat-right { right: 24px !important; top: 50% !important; transform: translateY(-50%) !important; }
+/* 3인 마작: 좌/우 좌석 세로로 약간 분리 */
+#mahjong-players.mahjong-3p .table-seat.seat-left { top: 45% !important; transform: translateY(-50%) !important; }
+#mahjong-players.mahjong-3p .table-seat.seat-right { top: 55% !important; transform: translateY(-50%) !important; }
+
+/* 중앙 영역: 좌석에 가려지지 않도록 */
 #mahjong-center {
-  top: 38% !important;
+  top: 50% !important;
+  left: 50% !important;
+  transform: translate(-50%, -50%) !important;
+  z-index: 10 !important;
 }
 #mahjong-me-slot {
   bottom: -40px !important;
@@ -1670,16 +1682,30 @@ header {
   margin: 0 -1px !important;
 }
 
-/* 상대방 패 압축 (크기 축소 및 강하게 겹침) */
+/* 옆쪽 좌석 패 회전: 입체적 레이아웃 */
+.table-seat.seat-left .mahjong-hand.opponent-hand {
+  transform: rotate(90deg) !important;
+  transform-origin: right center !important;
+  margin: 8px 0 !important;
+}
+.table-seat.seat-right .mahjong-hand.opponent-hand {
+  transform: rotate(-90deg) !important;
+  transform-origin: left center !important;
+  margin: 8px 0 !important;
+}
+/* seat-top 패는 회전 없음 (위쪽 상대) */
+
+/* 상대방 패 압축 (20% 축소: 28x40) */
 .opponent-hand {
   gap: 0 !important;
   padding: 4px !important;
 }
-.opponent-hand .mahjong-tile {
-  width: 24px !important;
-  height: 36px !important;
-  font-size: 22px !important;
-  margin-left: -14px !important;
+.opponent-hand .mahjong-tile,
+.opponent-hand .mahjong-tile.hidden {
+  width: 28px !important;
+  height: 40px !important;
+  font-size: 24px !important;
+  margin-left: -12px !important;
   box-shadow: -2px 0 4px rgba(0,0,0,0.4) !important;
 }
 .opponent-hand .mahjong-tile:first-child {
