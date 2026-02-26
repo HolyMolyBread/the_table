@@ -805,8 +805,14 @@ header {
 /* ══ THIEF (도둑잡기) ═══════════════════════════════════════════════════════ */
 #thief-container {
   display: none; flex-direction: column; align-items: center; gap: 12px;
-  width: 100%; max-width: 520px;
+  width: 100%; max-width: 1100px;
 }
+#thief-table-wrap {
+  min-height: 550px !important;
+}
+#thief-table-wrap .table-seat.seat-top { top: 16px !important; left: 50% !important; transform: translateX(-50%) !important; }
+#thief-table-wrap .table-seat.seat-left { left: 16px !important; top: 50% !important; transform: translateY(-50%) !important; }
+#thief-table-wrap .table-seat.seat-right { right: 16px !important; top: 50% !important; transform: translateY(-50%) !important; }
 #thief-status { font-size: 15px; font-weight: 700; text-align: center; }
 /* 원탁 테이블 레이아웃 */
 .table-layout-wrap {
@@ -830,18 +836,30 @@ header {
 .table-seat-name { font-size: 12px; font-weight: 700; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
 .table-seat-count { font-size: 14px; font-weight: 700; color: var(--gold); margin-top: 4px; }
 .table-seat-target-cards {
-  display: flex; flex-wrap: wrap; justify-content: center;
+  display: flex; flex-wrap: wrap; justify-content: center; gap: 8px;
   padding-top: 15px; margin-top: 4px;
+}
+#thief-table-wrap .table-seat-target-cards {
+  gap: 12px;
+  padding-top: 20px;
 }
 .thief-hand {
   display: flex; flex-wrap: nowrap; overflow-x: auto;
   width: 100%; max-width: 90vw; padding: 10px 10px 20px 10px;
+  gap: 8px;
+}
+#thief-table-wrap .thief-hand {
+  gap: 12px;
+  padding: 14px 16px 24px 16px;
 }
 .thief-hand::-webkit-scrollbar { height: 6px; }
 .thief-hand::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
 .thief-card {
   flex-shrink: 0; margin-left: -28px; position: relative;
   transition: transform 0.2s, z-index 0s;
+}
+#thief-table-wrap .thief-card {
+  margin-left: 0;
 }
 .thief-card:first-child { margin-left: 0; }
 .thief-card:hover { transform: translateY(-20px); z-index: 100; margin-right: 15px; }
@@ -866,6 +884,9 @@ header {
   border-radius: 8px; display: flex; align-items: center; justify-content: center;
   font-size: 22px; cursor: pointer; transition: all 0.15s ease; user-select: none;
   margin-left: -24px; position: relative; box-shadow: 2px 2px 6px rgba(0,0,0,0.4);
+}
+#thief-table-wrap .thief-target-card {
+  margin-left: 0;
 }
 .thief-target-card:first-child { margin-left: 0; }
 .thief-target-card:hover, .thief-target-card.hovered {
@@ -1003,7 +1024,7 @@ header {
 /* ══ MAHJONG (마작) ═══════════════════════════════════════════════════════ */
 #mahjong-container {
   display: none; flex-direction: column; align-items: center; gap: 12px;
-  width: 100%; max-width: 900px;
+  width: 100%; max-width: 1100px;
 }
 #mahjong-status { font-size: 15px; font-weight: 700; text-align: center; }
 .mahjong-tile {
@@ -1658,20 +1679,22 @@ header {
   position: relative;
 }
 
-/* 좌석 겹침 방지: 여백 확대 (3인/4인 공통) */
-#mahjong-table-wrap .table-seat.seat-top { top: 24px !important; left: 50% !important; transform: translateX(-50%) !important; }
-#mahjong-table-wrap .table-seat.seat-left { left: 24px !important; top: 50% !important; transform: translateY(-50%) !important; }
-#mahjong-table-wrap .table-seat.seat-right { right: 24px !important; top: 50% !important; transform: translateY(-50%) !important; }
+/* 좌석 겹침 방지: 넓어진 화면 끝단 배치 (3인/4인 공통) */
+#mahjong-table-wrap .table-seat.seat-top { top: 20px !important; left: 50% !important; transform: translateX(-50%) !important; }
+#mahjong-table-wrap .table-seat.seat-left { left: 20px !important; top: 50% !important; transform: translateY(-50%) !important; }
+#mahjong-table-wrap .table-seat.seat-right { right: 20px !important; top: 50% !important; transform: translateY(-50%) !important; }
 /* 3인 마작: 좌/우 좌석 세로로 약간 분리 */
 #mahjong-players.mahjong-3p .table-seat.seat-left { top: 45% !important; transform: translateY(-50%) !important; }
 #mahjong-players.mahjong-3p .table-seat.seat-right { top: 55% !important; transform: translateY(-50%) !important; }
 
-/* 중앙 영역: 좌석에 가려지지 않도록 */
+/* 중앙 영역: 넓어진 레이아웃에서 더 크게 보이도록 여백 확보 */
 #mahjong-center {
-  top: 48% !important;
+  top: 50% !important;
   left: 50% !important;
   transform: translate(-50%, -50%) !important;
   z-index: 10 !important;
+  min-width: 120px;
+  padding: 16px;
 }
 #mahjong-me-slot {
   bottom: -40px !important;
