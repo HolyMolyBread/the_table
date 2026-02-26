@@ -756,7 +756,11 @@
       document.getElementById('mahjong-container').style.display   = 'none';
       document.getElementById('alkkagi-container').style.display   = 'none';
       document.getElementById('board-placeholder').style.display   = 'flex';
-      document.getElementById('rematch-area').classList.remove('visible');
+      const rematchArea = document.getElementById('rematch-area');
+      if (rematchArea) {
+        rematchArea.classList.remove('visible');
+        rematchArea.style.display = 'none';
+      }
       document.getElementById('rematch-count').textContent = '0/0';
       document.getElementById('btn-rematch').disabled = false;
       document.getElementById('ready-area').style.display = 'none';
@@ -1349,6 +1353,15 @@
 
   function sendReady() {
     if (!ws || ws.readyState !== WebSocket.OPEN) return;
+    let minPlayers = 2;
+    if (currentRoomId.startsWith('mahjong3')) minPlayers = 3;
+    else if (currentRoomId.startsWith('mahjong')) minPlayers = 4;
+    const readyCountEl = document.getElementById('ready-count');
+    const total = readyCountEl ? parseInt((readyCountEl.textContent || '0/0').split('/')[1], 10) || 0 : 0;
+    if (total < minPlayers) {
+      alert('최소 인원(' + minPlayers + '명)이 모여야 준비할 수 있습니다. 봇을 추가하거나 다른 유저를 기다려주세요.');
+      return;
+    }
     sendGameAction({ cmd: 'ready' });
     document.getElementById('btn-ready').disabled = true;
   }
@@ -1372,7 +1385,10 @@
       if (el) el.style.display = id === showId ? 'flex' : 'none';
     });
     const rematchEl = document.getElementById('rematch-area');
-    if (rematchEl) rematchEl.style.display = 'none';
+    if (rematchEl) {
+      rematchEl.classList.remove('visible');
+      rematchEl.style.display = 'none';
+    }
   }
 
   function updateGameTimer(turnUser, remaining) {

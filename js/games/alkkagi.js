@@ -201,13 +201,13 @@
       }
     });
 
-    render.canvas.addEventListener('pointermove', function(e) {
+    window.addEventListener('pointermove', function(e) {
       if (alkkagiDragging) {
         alkkagiCurrentPos = canvasToWorld(e);
       }
     });
 
-    render.canvas.addEventListener('pointerup', function(e) {
+    function handlePointerUp(e) {
       if (!alkkagiDragging || !alkkagiDragStone) return;
       const pos = canvasToWorld(e);
       alkkagiCurrentPos = { x: pos.x, y: pos.y };
@@ -229,7 +229,10 @@
       window.alkkagiJustFlicked = true;
       alkkagiDragging = false;
       alkkagiDragStone = null;
-    });
+    }
+
+    window.addEventListener('pointerup', handlePointerUp);
+    window.addEventListener('pointercancel', handlePointerUp);
 
     alkkagiEngine = engine;
     alkkagiRender = render;

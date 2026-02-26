@@ -19,7 +19,10 @@
 
     const playersEl = document.getElementById('sevenpoker-players');
     if (playersEl && data.players) {
-      playersEl.innerHTML = data.players.map(p => {
+      const me = data.players.find(p => p.userId === currentUserId);
+      const opponents = data.players.filter(p => p.userId !== currentUserId);
+
+      function renderPlayerBox(p) {
         const isMe = p.userId === currentUserId;
         const isTurn = p.userId === data.currentTurn;
         const folded = p.status === 'fold';
@@ -41,7 +44,17 @@
             <div class="sevenpoker-player-status">${folded ? '🏳️ 폴드' : p.status === 'check' ? '✅ 체크' : ''}</div>
             <div class="sevenpoker-player-cards">${cardsHtml}</div>
           </div>`;
-      }).join('');
+      }
+
+      playersEl.className = '';
+      playersEl.style.cssText = 'display: flex; flex-direction: column; gap: 16px; align-items: center; width: 100%;';
+      playersEl.innerHTML = `
+        <div style="display:flex; justify-content:center; gap:10px; flex-wrap:wrap; width:100%;">
+          ${opponents.map(renderPlayerBox).join('')}
+        </div>
+        <div style="display:flex; justify-content:center; gap:10px; width:100%;">
+          ${me ? renderPlayerBox(me) : ''}
+        </div>`;
     }
 
     const canAct = isMyTurn && isPlayer && data.phase !== 'waiting' && data.phase !== 'showdown' && data.phase !== 'choice';

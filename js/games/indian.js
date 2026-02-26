@@ -87,6 +87,9 @@
       ? `<span class="clickable-nickname" onclick="requestOpponentRecord('${escapeForJsAttr(myName)}')" title="전적 보기">${escapeHTML(myName)}</span>`
       : '—';
     document.getElementById('indian-my-hearts').innerHTML = renderHeartsBar(data.myHearts);
+    if ((data.phase === 'game_over' || data.phase === 'settlement') && data.myCard) {
+      data.myCard.hidden = false;
+    }
     const myCardHtml = renderIndianCard(data.myCard);
     if (lastIndianMyCard !== myCardHtml) {
       document.getElementById('indian-my-card-wrap').innerHTML = myCardHtml;
