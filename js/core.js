@@ -1337,7 +1337,7 @@
         el.style.display = 'none';
       }
     });
-    const clearIds = ['gomoku-board', 'gomoku-color-info', 'bj-dealer-hand', 'bj-player-hand', 'bj-dealer-hearts', 'bj-player-hearts', 'bj-message', 'ttt-board', 'ttt-color-info', 'c4-board', 'c4-color-info', 'holdem-players', 'holdem-community-cards', 'sevenpoker-players', 'sp-choice-cards', 'indian-opp-card-wrap', 'indian-my-card-wrap', 'indian-opp-hearts', 'indian-my-hearts', 'thief-players', 'thief-hand', 'onecard-players', 'onecard-hand', 'onecard-top-card', 'onecard-deck', 'mahjong-players', 'mahjong-discards-me', 'mahjong-melds-me', 'mahjong-hand'];
+    const clearIds = ['gomoku-board', 'gomoku-color-info', 'bj-dealer-hand', 'bj-dealer-hearts', 'bj-players-row', 'bj-message', 'ttt-board', 'ttt-color-info', 'c4-board', 'c4-color-info', 'holdem-players', 'holdem-community-cards', 'sevenpoker-players', 'sp-choice-cards', 'indian-opp-card-wrap', 'indian-my-card-wrap', 'indian-opp-hearts', 'indian-my-hearts', 'thief-players', 'thief-hand', 'onecard-players', 'onecard-hand', 'onecard-top-card', 'onecard-deck', 'mahjong-players', 'mahjong-discards-me', 'mahjong-melds-me', 'mahjong-hand'];
     clearIds.forEach(id => {
       const el = document.getElementById(id);
       if (el) el.innerHTML = '';

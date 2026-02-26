@@ -19,8 +19,14 @@
 
     const playersEl = document.getElementById('sevenpoker-players');
     if (playersEl && data.players) {
-      const me = data.players.find(p => p.userId === currentUserId);
-      const opponents = data.players.filter(p => p.userId !== currentUserId);
+      const players = data.players;
+      const numPlayers = players.length;
+      const myIdx = players.findIndex(p => p.userId === currentUserId);
+      const ordered = players
+        .map((p, playerIdx) => ({ ...p, playerIdx, relativeIdx: (playerIdx - myIdx + numPlayers) % numPlayers }))
+        .sort((a, b) => a.relativeIdx - b.relativeIdx);
+      const opponents = ordered.filter(p => p.relativeIdx !== 0);
+      const me = ordered.find(p => p.relativeIdx === 0);
 
       function renderPlayerBox(p) {
         const isMe = p.userId === currentUserId;

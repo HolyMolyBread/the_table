@@ -32,7 +32,16 @@
 
     const playersEl = document.getElementById('holdem-players');
     if (playersEl && data.players) {
-      playersEl.innerHTML = data.players.map(p => {
+      const players = data.players;
+      const numPlayers = players.length;
+      const myIdx = players.findIndex(p => p.userId === currentUserId);
+      const ordered = players
+        .map((p, playerIdx) => ({ ...p, playerIdx, relativeIdx: (playerIdx - myIdx + numPlayers) % numPlayers }))
+        .sort((a, b) => a.relativeIdx - b.relativeIdx);
+      const opponentsFirst = ordered.filter(p => p.relativeIdx !== 0);
+      const meLast = ordered.filter(p => p.relativeIdx === 0);
+      const renderOrder = [...opponentsFirst, ...meLast];
+      playersEl.innerHTML = renderOrder.map(p => {
         const isMe = p.userId === currentUserId;
         const isTurn = p.userId === data.currentTurn;
         const folded = p.status === 'fold';

@@ -3,23 +3,77 @@
     switchGameView('blackjack');
   }
 
-  /** 블랙잭 하트 표시: 간결한 텍스트 형식 (❤️ x N) */
+  /** 블랙잭 하트 표시: 숫자 형식 (❤️ x N) */
   function renderBJHeartsBar(count) {
     const n = Math.max(0, count ?? 0);
-    return `❤️ × ${n}`;
+    return `❤️ x ${n}`;
+  }
+
+  function renderBJPlayerBox(playerData, isMe, isTheirTurn, showActions) {
+    const handInfo = playerData?.hand ? { cards: playerData.hand, score: handScoreFromCards(playerData.hand) } : { cards: [], score: 0 };
+    const hearts = playerData?.hearts ?? 0;
+    const name = isMe ? '나' : (playerData?.userId ? escapeHTML(playerData.userId) : '—');
+    const cardsHtml = (handInfo.cards || []).map(card => {
+      if (card.hidden) return `<div class="bj-card hidden"></div>`;
+      const isRed = card.suit === '♥' || card.suit === '♦';
+      return `<div class="bj-card ${isRed ? 'red' : 'black'}">
+        <span class="bj-card-top">${card.value}</span>
+        <span class="bj-card-center">${card.suit}</span>
+        <span class="bj-card-bot">${card.value}</span>
+      </div>`;
+    }).join('');
+    const heartsText = renderBJHeartsBar(hearts);
+    const actionsHtml = showActions ? `
+      <div class="bj-player-actions">
+        <div id="bj-start-buttons">
+          <button class="bj-btn bj-btn-bet" onclick="bjStart()">🎮 게임 시작</button>
+        </div>
+        <div id="bj-game-buttons" style="display:none">
+          <button class="bj-btn bj-btn-hit" onclick="bjHit()">Hit</button>
+          <button class="bj-btn bj-btn-stand" onclick="bjStand()">Stand</button>
+        </div>
+      </div>
+    ` : '';
+    return `<div class="bj-player-box ${isMe ? 'is-me' : ''} ${isTheirTurn ? 'my-turn' : ''}">
+      <div class="bj-area-header">
+        <span class="bj-area-title">${isMe ? '👤' : '👤'} ${name}</span>
+        <span class="bj-hearts-simple">${heartsText}</span>
+      </div>
+      <div class="bj-hand">${cardsHtml}</div>
+      <div class="bj-score">${handInfo.score > 0 ? handInfo.score : ''}</div>
+      ${actionsHtml}
+    </div>`;
   }
 
   function renderBlackjackState(data) {
     if (!data) return;
-    const playersEl = document.getElementById('blackjack-players');
-    if (playersEl && !data.players) playersEl.innerHTML = '';
     renderBJHand('bj-dealer-hand', 'bj-dealer-score', data.dealerHand);
-    renderBJHand('bj-player-hand', 'bj-player-score', data.playerHand);
-
     const dealerHeartsEl = document.getElementById('bj-dealer-hearts');
-    const playerHeartsEl = document.getElementById('bj-player-hearts');
     if (dealerHeartsEl) dealerHeartsEl.innerHTML = renderBJHeartsBar(data.dealerHearts ?? 10);
-    if (playerHeartsEl) playerHeartsEl.innerHTML = renderBJHeartsBar(data.playerHearts ?? 10);
+
+    const playersRowEl = document.getElementById('bj-players-row');
+    if (!playersRowEl) return;
+
+    if (data.players) {
+      const turnOrder = data.turnOrder || Object.keys(data.players);
+      const numPlayers = turnOrder.length;
+      const myIdx = turnOrder.indexOf(currentUserId);
+      const ordered = turnOrder
+        .map((userId, i) => ({ userId, playerIdx: i, relativeIdx: (i - myIdx + numPlayers) % numPlayers }))
+        .sort((a, b) => a.relativeIdx - b.relativeIdx);
+      const isMyTurn = data.phase === 'player_turn' && data.turnOrder && data.turnOrder[data.currentTurnIdx] === currentUserId;
+      playersRowEl.innerHTML = ordered.map(({ userId }) => {
+        const p = data.players[userId];
+        const isMe = userId === currentUserId;
+        const isTheirTurn = data.phase === 'player_turn' && data.turnOrder && data.turnOrder[data.currentTurnIdx] === userId;
+        const showActions = isMe;
+        return renderBJPlayerBox(p ? { ...p, userId } : { userId, hand: [], hearts: 0 }, isMe, isTheirTurn, showActions);
+      }).join('');
+    } else {
+      const isMyTurn = data.phase === 'player_turn';
+      const meData = { hand: data.playerHand?.cards || [], hearts: data.playerHearts ?? 0 };
+      playersRowEl.innerHTML = renderBJPlayerBox(meData, true, isMyTurn, true);
+    }
 
     const msgEl = document.getElementById('bj-message');
     const overlayEl = document.getElementById('bj-result-overlay');
@@ -59,25 +113,23 @@
     const gameBtns     = document.getElementById('bj-game-buttons');
     const spectatorMsg = document.getElementById('bj-spectator-msg');
 
-    // 관전자 판별: mainPlayerId가 있고 나와 다르면 관전자
     const isSpectator = data.mainPlayerId && data.mainPlayerId !== currentUserId;
-    if (isSpectator) {
-      startBtns.style.display    = 'none';
-      gameBtns.style.display     = 'none';
-      spectatorMsg.style.display = 'block';
-    } else {
-      spectatorMsg.style.display = 'none';
+    if (spectatorMsg) spectatorMsg.style.display = isSpectator ? 'block' : 'none';
+    if (startBtns && gameBtns && !isSpectator) {
       if (data.phase === 'game_over') {
         startBtns.style.display = 'none';
         gameBtns.style.display = 'none';
       } else if (data.phase === 'betting' || data.phase === 'settlement') {
-        startBtns.style.display = 'flex'; gameBtns.style.display = 'none';
+        startBtns.style.display = 'flex';
+        gameBtns.style.display = 'none';
         const rematchArea = document.getElementById('rematch-area');
         if (rematchArea) { rematchArea.style.display = 'none'; rematchArea.classList.remove('visible'); }
       } else if (data.phase === 'player_turn') {
-        startBtns.style.display = 'none'; gameBtns.style.display = 'flex';
+        startBtns.style.display = 'none';
+        gameBtns.style.display = 'flex';
       } else {
-        startBtns.style.display = 'none'; gameBtns.style.display = 'none';
+        startBtns.style.display = 'none';
+        gameBtns.style.display = 'none';
       }
     }
   }
@@ -147,53 +199,12 @@
     return total;
   }
 
-  /** TABLE_SEAT_ORDER 기반: seat-bottom=나, 상대는 seat-top, seat-right, seat-left */
-  const BJ_OPPONENT_SEATS = ['seat-top', 'seat-right', 'seat-left'];
-
-  function renderBlackjackOtherPlayers(data) {
-    const playersEl = document.getElementById('blackjack-players');
-    if (!playersEl || !data || !data.players) {
-      if (playersEl) playersEl.innerHTML = '';
-      return;
-    }
-    const turnOrder = data.turnOrder || Object.keys(data.players);
-    const opponents = turnOrder
-      .filter(id => id !== currentUserId)
-      .map(userId => {
-        const p = data.players[userId];
-        return p ? { userId, hand: p.hand || [], hearts: p.hearts ?? 0 } : null;
-      })
-      .filter(Boolean);
-    playersEl.innerHTML = opponents.map((opp, i) => {
-      const seatClass = BJ_OPPONENT_SEATS[i] || 'seat-top';
-      const handInfo = { cards: opp.hand || [], score: handScoreFromCards(opp.hand || []) };
-      const cardsHtml = (handInfo.cards || []).map(card => {
-        if (card.hidden) return `<div class="bj-card hidden"></div>`;
-        const isRed = card.suit === '♥' || card.suit === '♦';
-        return `<div class="bj-card ${isRed ? 'red' : 'black'}">
-          <span class="bj-card-top">${card.value}</span>
-          <span class="bj-card-center">${card.suit}</span>
-          <span class="bj-card-bot">${card.value}</span>
-        </div>`;
-      }).join('');
-      const heartsText = renderBJHeartsBar(opp.hearts);
-      const isTheirTurn = data.phase === 'player_turn' && data.turnOrder && data.turnOrder[data.currentTurnIdx] === opp.userId;
-      return `<div class="table-seat blackjack-player-box ${seatClass} ${isTheirTurn ? 'my-turn' : ''}" data-user-id="${escapeHTML(opp.userId)}">
-        <span class="table-seat-name">${escapeHTML(opp.userId)}</span>
-        <span class="bj-hearts-simple">${heartsText}</span>
-        <div class="bj-hand bj-opponent-hand">${cardsHtml}</div>
-        <div class="bj-score">${handInfo.score > 0 ? handInfo.score : ''}</div>
-      </div>`;
-    }).join('');
-  }
-
   function renderBlackjackPVPState(data) {
+    renderBlackjackState(data);
     const adapted = adaptPVPToPVEData(data);
-    renderBlackjackState(adapted);
-    renderBlackjackOtherPlayers(data);
     const gameBtns = document.getElementById('bj-game-buttons');
     const startBtns = document.getElementById('bj-start-buttons');
-    if (gameBtns && adapted) {
+    if (gameBtns && startBtns && adapted) {
       const isMyTurn = adapted._isMyTurn && adapted.phase === 'player_turn';
       if (adapted.phase === 'player_turn') {
         startBtns.style.display = 'none';

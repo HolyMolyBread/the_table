@@ -573,38 +573,18 @@
           </div>
         </div>
 
-        <!-- Blackjack container -->
+        <!-- Blackjack container (보스 레이드 스타일) -->
         <div id="blackjack-container">
-          <div id="bj-status-bar">🃏 블랙잭 vs 딜러 AI (❤️ 하트 서바이벌)</div>
-          <div id="bj-table-wrap" class="table-layout-wrap">
-            <div id="blackjack-players"></div>
-            <div id="bj-center" class="bj-area" style="position:absolute;left:50%;top:35%;transform:translate(-50%,-50%);">
-              <div class="bj-area-header">
-                <span class="bj-area-title">🤖 딜러</span>
-                <span id="bj-dealer-hearts" class="bj-hearts-bar"></span>
-              </div>
-              <div id="bj-dealer-hand" class="bj-hand"></div>
-              <div id="bj-dealer-score" class="bj-score"></div>
+          <div id="bj-status-bar">🃏 블랙잭 보스 레이드 (❤️ 하트 서바이벌)</div>
+          <div id="bj-boss-area" class="bj-boss-area">
+            <div class="bj-area-header">
+              <span class="bj-area-title">👹 보스 (딜러)</span>
+              <span id="bj-dealer-hearts" class="bj-hearts-bar"></span>
             </div>
-            <div id="bj-me-slot" class="bj-area table-seat seat-bottom">
-              <div class="bj-area-header">
-                <span class="bj-area-title">👤 나</span>
-                <span id="bj-player-hearts" class="bj-hearts-bar"></span>
-              </div>
-              <div id="bj-player-hand" class="bj-hand"></div>
-              <div id="bj-player-score" class="bj-score"></div>
-              <div id="bj-actions">
-                <div id="bj-start-buttons">
-                  <button class="bj-btn bj-btn-bet" onclick="bjStart()">🎮 게임 시작</button>
-                </div>
-                <div id="bj-game-buttons" style="display:none">
-                  <button class="bj-btn bj-btn-hit"   onclick="bjHit()">Hit</button>
-                  <button class="bj-btn bj-btn-stand" onclick="bjStand()">Stand</button>
-                </div>
-              </div>
-            </div>
+            <div id="bj-dealer-hand" class="bj-hand"></div>
+            <div id="bj-dealer-score" class="bj-score"></div>
           </div>
-          <!-- 관전자 메시지 (Phase 4.3) -->
+          <div id="bj-players-row" class="bj-players-row"></div>
           <div id="bj-spectator-msg">👀 관전 중입니다</div>
           <div id="bj-message"></div>
         </div>

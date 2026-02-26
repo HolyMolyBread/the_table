@@ -78,11 +78,11 @@
       const myIdx = players.findIndex(p => p.userId === currentUserId);
       const RELATIVE_INDEX_TO_SEAT = { 1: 'seat-left', 2: 'seat-top', 3: 'seat-right' };
       const opponents = players
-        .map((p, playerIdx) => ({ ...p, playerIdx }))
-        .filter(p => p.userId !== currentUserId);
+        .map((p, playerIdx) => ({ ...p, playerIdx, relativeIdx: (playerIdx - myIdx + numPlayers) % numPlayers }))
+        .filter(p => p.userId !== currentUserId)
+        .sort((a, b) => a.relativeIdx - b.relativeIdx);
       playersEl.innerHTML = opponents.map((p) => {
-        const relativeIdx = (p.playerIdx - myIdx + numPlayers) % numPlayers;
-        const seatClass = opponents.length === 1 ? 'seat-left' : (RELATIVE_INDEX_TO_SEAT[relativeIdx] || 'seat-top');
+        const seatClass = opponents.length === 1 ? 'seat-left' : (RELATIVE_INDEX_TO_SEAT[p.relativeIdx] || 'seat-top');
         return `<div class="table-seat onecard-player-box ${seatClass} ${p.isTurn ? 'my-turn' : ''}" data-user-id="${escapeHTML(p.userId)}">
           <span class="table-seat-name">${escapeHTML(p.userId)}</span>
           <span class="table-seat-count">🃏 ${p.cardCount || 0}장</span>
