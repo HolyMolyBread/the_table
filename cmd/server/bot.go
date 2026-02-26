@@ -158,8 +158,12 @@ func makeBotProcess(bot *Client, room *Room, gamePrefix string) func(msg []byte)
 			if d.Turn != bot.UserID {
 				return
 			}
+			myColor := d.Colors[bot.UserID]
+			if myColor == 0 {
+				myColor = 1
+			}
 			time.Sleep(botThinkDelay)
-			r, c := botPickTicTacToe(d.Board)
+			r, c := botPickTicTacToe(d.Board, myColor)
 			if r < 0 {
 				return
 			}
@@ -177,8 +181,12 @@ func makeBotProcess(bot *Client, room *Room, gamePrefix string) func(msg []byte)
 			if d.Turn != bot.UserID {
 				return
 			}
+			myColor := d.Colors[bot.UserID]
+			if myColor == 0 {
+				myColor = 1
+			}
 			time.Sleep(botThinkDelay)
-			col := botPickConnect4(d.Board)
+			col := botPickConnect4(d.Board, myColor)
 			if col < 0 {
 				return
 			}
@@ -580,33 +588,224 @@ func isEmptyBoard(board [15][15]int) bool {
 	return true
 }
 
-func botPickTicTacToe(board [3][3]int) (r, c int) {
-	var empty [][2]int
+// tttWouldWin은 (r,c)에 color를 두었을 때 3목 완성인지 검사합니다.
+func tttWouldWin(board [3][3]int, r, c, color int) bool {
+	board[r][c] = color
+	defer func() { board[r][c] = 0 }()
+	// 가로
+	for row := 0; row < 3; row++ {
+		if board[row][0] == color && board[row][1] == color && board[row][2] == color {
+			return true
+		}
+	}
+	// 세로
+	for col := 0; col < 3; col++ {
+		if board[0][col] == color && board[1][col] == color && board[2][col] == color {
+			return true
+		}
+	}
+	// 대각선
+	if board[0][0] == color && board[1][1] == color && board[2][2] == color {
+		return true
+	}
+	if board[0][2] == color && board[1][1] == color && board[2][0] == color {
+		return true
+	}
+	return false
+}
+
+// tttWouldBlock은 (r,c)에 두면 상대(oppColor)의 승리를 막는지 검사합니다.
+func tttWouldBlock(board [3][3]int, r, c, oppColor int) bool {
+	return tttWouldWin(board, r, c, oppColor)
+}
+
+func botPickTicTacToe(board [3][3]int, myColor int) (r, c int) {
+	if myColor == 0 {
+		myColor = 1
+	}
+	oppColor := 3 - myColor
+
+	var winMoves, blockMoves, centerMoves, cornerMoves, otherMoves [][2]int
+
 	for i := 0; i < 3; i++ {
 		for j := 0; j < 3; j++ {
-			if board[i][j] == 0 {
-				empty = append(empty, [2]int{i, j})
+			if board[i][j] != 0 {
+				continue
+			}
+			cell := [2]int{i, j}
+			if tttWouldWin(board, i, j, myColor) {
+				winMoves = append(winMoves, cell)
+			} else if tttWouldBlock(board, i, j, oppColor) {
+				blockMoves = append(blockMoves, cell)
+			} else if i == 1 && j == 1 {
+				centerMoves = append(centerMoves, cell)
+			} else if (i == 0 || i == 2) && (j == 0 || j == 2) {
+				cornerMoves = append(cornerMoves, cell)
+			} else {
+				otherMoves = append(otherMoves, cell)
 			}
 		}
 	}
-	if len(empty) == 0 {
-		return -1, -1
-	}
-	pick := empty[rand.Intn(len(empty))]
-	return pick[0], pick[1]
-}
 
-func botPickConnect4(board [6][7]int) int {
-	var cols []int
-	for c := 0; c < 7; c++ {
-		if board[0][c] == 0 {
-			cols = append(cols, c)
+	for _, cand := range [][][2]int{winMoves, blockMoves, centerMoves, cornerMoves, otherMoves} {
+		if len(cand) > 0 {
+			pick := cand[rand.Intn(len(cand))]
+			return pick[0], pick[1]
 		}
 	}
-	if len(cols) == 0 {
+	return -1, -1
+}
+
+// c4Connect4 점수 상수
+const (
+	c4MyWin      = 10000
+	c4BlockWin   = 5000
+	c4CenterCol  = 100
+	c4AdjCol     = 50
+	c4MyThree    = 500
+	c4GiveOppWin = -10000 // 상대에게 승리 기회를 주는 수 감점
+)
+
+// c4GetRow는 col에 돌을 두었을 때 착지하는 행을 반환합니다. 꽉 찼으면 -1.
+func c4GetRow(board [6][7]int, col int) int {
+	for r := 5; r >= 0; r-- {
+		if board[r][col] == 0 {
+			return r
+		}
+	}
+	return -1
+}
+
+// c4CountDir는 (row,col)에서 방향 (dr,dc)로 연속된 color 개수를 셉니다.
+func c4CountDir(board [6][7]int, row, col, dr, dc, color int) int {
+	count := 1
+	for i := 1; i < 4; i++ {
+		r, c := row+dr*i, col+dc*i
+		if r < 0 || r >= 6 || c < 0 || c >= 7 || board[r][c] != color {
+			break
+		}
+		count++
+	}
+	for i := 1; i < 4; i++ {
+		r, c := row-dr*i, col-dc*i
+		if r < 0 || r >= 6 || c < 0 || c >= 7 || board[r][c] != color {
+			break
+		}
+		count++
+	}
+	return count
+}
+
+// c4CheckWin은 (row,col)에 color가 4목을 달성했는지 검사합니다.
+func c4CheckWin(board [6][7]int, row, col, color int) bool {
+	dirs := [4][2]int{{0, 1}, {1, 0}, {1, 1}, {1, -1}}
+	for _, d := range dirs {
+		if c4CountDir(board, row, col, d[0], d[1], color) >= 4 {
+			return true
+		}
+	}
+	return false
+}
+
+// c4HasThree는 (row,col)에 color를 두었을 때 3목 이상이 되는 방향이 있는지 검사합니다.
+func c4HasThree(board [6][7]int, row, col, color int) bool {
+	dirs := [4][2]int{{0, 1}, {1, 0}, {1, 1}, {1, -1}}
+	for _, d := range dirs {
+		if c4CountDir(board, row, col, d[0], d[1], color) >= 3 {
+			return true
+		}
+	}
+	return false
+}
+
+// c4OpponentCanWin은 board 상태에서 oppColor가 한 수로 이길 수 있는 열이 있는지 검사합니다.
+func c4OpponentCanWin(board [6][7]int, oppColor int) bool {
+	for col := 0; col < 7; col++ {
+		row := c4GetRow(board, col)
+		if row < 0 {
+			continue
+		}
+		board[row][col] = oppColor
+		wins := c4CheckWin(board, row, col, oppColor)
+		board[row][col] = 0
+		if wins {
+			return true
+		}
+	}
+	return false
+}
+
+func botPickConnect4(board [6][7]int, myColor int) int {
+	if myColor == 0 {
+		myColor = 1
+	}
+	oppColor := 3 - myColor
+
+	var bestCols []int
+	bestScore := -999999
+
+	for col := 0; col < 7; col++ {
+		row := c4GetRow(board, col)
+		if row < 0 {
+			continue
+		}
+
+		// 보드 복사 후 시뮬레이션 (원본 변경 방지)
+		var sim [6][7]int
+		for r := 0; r < 6; r++ {
+			for c := 0; c < 7; c++ {
+				sim[r][c] = board[r][c]
+			}
+		}
+
+		sim[row][col] = myColor
+		score := 0
+
+		// 내 4목 (승리)
+		if c4CheckWin(sim, row, col, myColor) {
+			score += c4MyWin
+		}
+		sim[row][col] = 0
+
+		// 상대 4목 차단: 이 위치에 상대가 두면 이기므로, 내가 두면 차단
+		sim[row][col] = oppColor
+		if c4CheckWin(sim, row, col, oppColor) {
+			score += c4BlockWin
+		}
+		sim[row][col] = 0
+
+		// 내 3목 (활성)
+		sim[row][col] = myColor
+		if c4HasThree(sim, row, col, myColor) {
+			score += c4MyThree
+		}
+
+		// 감점: 내가 둔 후 상대가 다음 수로 이길 수 있으면
+		if c4OpponentCanWin(sim, oppColor) {
+			score += c4GiveOppWin
+		}
+		sim[row][col] = 0
+
+		// 열 위치 보너스
+		switch col {
+		case 3:
+			score += c4CenterCol
+		case 2, 4:
+			score += c4AdjCol
+		}
+
+		if score > bestScore {
+			bestScore = score
+			bestCols = []int{col}
+		} else if score == bestScore {
+			bestCols = append(bestCols, col)
+		}
+	}
+
+	if len(bestCols) == 0 {
 		return -1
 	}
-	return cols[rand.Intn(len(cols))]
+	return bestCols[rand.Intn(len(bestCols))]
 }
 
 // SpawnBotsForPVE는 PVE 방에 유저가 입장했을 때 빈 자리를 봇으로 채웁니다.
