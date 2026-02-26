@@ -416,32 +416,35 @@ func makeBotProcess(bot *Client, room *Room, gamePrefix string) func(msg []byte)
 			if json.Unmarshal(base.Data, &data) != nil {
 				return
 			}
-			// PVP 블랙잭은 data["turn"] 사용, PVE는 data["currentTurn"] - 둘 다 지원
-			turnUser, _ := data["turn"].(string)
-			if turnUser == "" {
-				turnUser, _ = data["currentTurn"].(string)
-			}
-			if turnUser == "" {
-				// turnOrder + currentTurnIdx로부터 유도
-				if order, ok := data["turnOrder"].([]any); ok {
-					if idx, ok := data["currentTurnIdx"].(float64); ok && int(idx) < len(order) {
-						if u, ok := order[int(idx)].(string); ok {
-							turnUser = u
+			// phase가 player_turn일 때만 행동. turnOrder+currentTurnIdx(PVP) 또는 mainPlayerId(PVE)로 턴 유저 판별
+			phase, _ := data["phase"].(string)
+			if phase == "player_turn" {
+				turnUser, _ := data["turn"].(string)
+				if turnUser == "" {
+					turnUser, _ = data["currentTurn"].(string)
+				}
+				if turnUser == "" {
+					if order, ok := data["turnOrder"].([]any); ok {
+						if idx, ok := data["currentTurnIdx"].(float64); ok && int(idx) < len(order) {
+							if u, ok := order[int(idx)].(string); ok {
+								turnUser = u
+							}
 						}
 					}
 				}
+				if turnUser == "" {
+					turnUser, _ = data["mainPlayerId"].(string)
+				}
+				if turnUser == bot.UserID {
+					time.Sleep(botThinkDelay)
+					cmd := "hit"
+					if rand.Intn(100) < 30 {
+						cmd = "stand"
+					}
+					payload, _ := json.Marshal(map[string]any{"cmd": cmd})
+					room.Plugin.HandleAction(bot, "game_action", payload)
+				}
 			}
-			if turnUser != bot.UserID {
-				return
-			}
-			time.Sleep(botThinkDelay)
-			// Level 1: 70% hit, 30% stand
-			cmd := "hit"
-			if rand.Intn(100) < 30 {
-				cmd = "stand"
-			}
-			payload, _ := json.Marshal(map[string]any{"cmd": cmd})
-			room.Plugin.HandleAction(bot, "game_action", payload)
 		}
 		}()
 	}

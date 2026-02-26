@@ -87,9 +87,6 @@ func (g *BlackjackPVPGame) OnJoin(client *Client) {
 	g.mu.Lock()
 	defer g.mu.Unlock()
 
-	if client.IsBot {
-		return
-	}
 	if _, ok := g.players[client.UserID]; ok {
 		g.broadcastStateLocked("")
 		return
@@ -106,9 +103,6 @@ func (g *BlackjackPVPGame) OnLeave(client *Client, remainingCount int) {
 	g.mu.Lock()
 	defer g.mu.Unlock()
 
-	if client.IsBot {
-		return
-	}
 	delete(g.players, client.UserID)
 	delete(g.clientByUserID, client.UserID)
 	g.stopDealerLocked()
@@ -126,7 +120,7 @@ func (g *BlackjackPVPGame) HandleAction(client *Client, _ string, payload json.R
 		return
 	}
 	switch p.Cmd {
-	case "start":
+	case "start", "ready":
 		g.handleStart(client)
 	case "hit":
 		g.handleHit(client)
