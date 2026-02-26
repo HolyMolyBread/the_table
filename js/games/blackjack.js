@@ -122,3 +122,52 @@
     if (!ws || ws.readyState !== WebSocket.OPEN) return;
     sendGameAction({ cmd: 'stand' });
   }
+
+  /** PVP 데이터를 PVE 형식으로 변환 (기존 UI 재사용) */
+  function adaptPVPToPVEData(data) {
+    if (!data || !data.players) return data;
+    const me = data.players[currentUserId];
+    const handInfo = me ? { cards: me.hand || [], score: me.hand ? handScoreFromCards(me.hand) : 0 } : { cards: [], score: 0 };
+    const isMyTurn = data.turnOrder && data.turnOrder[data.currentTurnIdx] === currentUserId;
+    return {
+      phase: data.phase,
+      playerHand: handInfo,
+      dealerHand: { cards: data.dealerHand || [], score: handScoreFromCards(data.dealerHand || []) },
+      playerHearts: me ? me.hearts : 0,
+      dealerHearts: data.dealerHearts ?? 0,
+      message: data.message,
+      mainPlayerId: currentUserId,
+      gameOverPlayerWin: data.gameOverWin,
+      _isMyTurn: isMyTurn,
+      _turnOrder: data.turnOrder,
+      _currentTurnIdx: data.currentTurnIdx,
+    };
+  }
+  function handScoreFromCards(cards) {
+    let total = 0, aces = 0;
+    for (const c of cards) {
+      if (c.hidden) continue;
+      if (c.value === 'A') { total += 11; aces++; }
+      else if (['J','Q','K'].includes(c.value)) total += 10;
+      else total += parseInt(c.value, 10) || 0;
+    }
+    while (total > 21 && aces > 0) { total -= 10; aces--; }
+    return total;
+  }
+
+  function renderBlackjackPVPState(data) {
+    const adapted = adaptPVPToPVEData(data);
+    renderBlackjackState(adapted);
+    const gameBtns = document.getElementById('bj-game-buttons');
+    const startBtns = document.getElementById('bj-start-buttons');
+    if (gameBtns && adapted) {
+      const isMyTurn = adapted._isMyTurn && adapted.phase === 'player_turn';
+      if (adapted.phase === 'player_turn') {
+        startBtns.style.display = 'none';
+        gameBtns.style.display = isMyTurn ? 'flex' : 'none';
+      }
+    }
+  }
+
+  window.renderBlackjackPVPState = renderBlackjackPVPState;
+  window.adaptPVPToPVEData = adaptPVPToPVEData;

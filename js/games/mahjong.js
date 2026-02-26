@@ -50,12 +50,18 @@
 
     const playersEl = document.getElementById('mahjong-players');
     if (playersEl) {
-      const players = Array.isArray(data.players) ? Array.from({ length: 4 }, (_, i) => data.players[i] ?? null) : [null, null, null, null];
+      const is3p = Array.isArray(data.players) && data.players.length === 3;
+      const maxLen = is3p ? 3 : 4;
+      const players = Array.isArray(data.players) ? Array.from({ length: maxLen }, (_, i) => data.players[i] ?? null) : [null, null, null, null];
       const myIdx = players.findIndex(p => p && p.userId === currentUserId);
-      const opponentIndices = myIdx >= 0 ? [(myIdx + 2) % 4, (myIdx + 3) % 4, (myIdx + 1) % 4] : [0, 1, 2];
+      const opponentIndices = is3p
+        ? (myIdx >= 0 ? [(myIdx + 1) % 3, (myIdx + 2) % 3] : [0, 1])
+        : (myIdx >= 0 ? [(myIdx + 2) % 4, (myIdx + 3) % 4, (myIdx + 1) % 4] : [0, 1, 2]);
+      const seatOrder = is3p ? ['seat-right', 'seat-left'] : ['seat-top', 'seat-left', 'seat-right'];
+      playersEl.classList.toggle('mahjong-3p', is3p);
       playersEl.innerHTML = opponentIndices.map((idx, pos) => {
         const p = players[idx];
-        const seatClass = TABLE_SEAT_ORDER[pos] || 'seat-top';
+        const seatClass = seatOrder[pos] || 'seat-top';
         const discardsHtml = (p?.discards || []).map(t => getMahjongTileHTML(t.type || t.Type, t.value ?? t.Value ?? 0, false)).join('');
         const meldsHtml = renderMahjongMelds(p?.melds);
         const handHtml = Array(p?.handCount || 0).fill(0).map(() => getMahjongTileHTML('', 0, true)).join('');

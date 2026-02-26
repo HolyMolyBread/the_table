@@ -67,11 +67,15 @@ func newRoom(id string) *Room {
 		clients: make(map[*Client]bool),
 	}
 
-	for prefix, factory := range pluginRegistry {
-		if strings.HasPrefix(id, prefix) {
-			room.Plugin = factory(room)
-			break
+	// 가장 긴 접두사 우선 매칭 (blackjack_pve가 blackjack보다 먼저 매칭되도록)
+	var bestPrefix string
+	for prefix := range pluginRegistry {
+		if strings.HasPrefix(id, prefix) && len(prefix) > len(bestPrefix) {
+			bestPrefix = prefix
 		}
+	}
+	if bestPrefix != "" {
+		room.Plugin = pluginRegistry[bestPrefix](room)
 	}
 
 	if room.Plugin != nil {
@@ -140,7 +144,27 @@ func (m *RoomManager) JoinRoom(roomID, userID string, client *Client) {
 		m.leaveRoom(client)
 	}
 
+	isPVE := strings.Contains(roomID, "_pve_")
 	room := m.getOrCreateRoom(roomID)
+
+	// PVE 방: 이미 사람(Human) 1명이 있으면 다른 사람 입장 차단
+	if isPVE && !client.IsBot {
+		room.mu.Lock()
+		humanCount := 0
+		for c := range room.clients {
+			if !c.IsBot {
+				humanCount++
+			}
+		}
+		room.mu.Unlock()
+		if humanCount >= 1 {
+			client.SendJSON(ServerResponse{
+				Type:    "error",
+				Message: "PVE 모드는 혼자서만 플레이할 수 있습니다.",
+			})
+			return
+		}
+	}
 
 	room.mu.Lock()
 	room.clients[client] = true
@@ -165,6 +189,15 @@ func (m *RoomManager) JoinRoom(roomID, userID string, client *Client) {
 	// ※ DB 연동(전적 복구)은 auth 액션 처리 시점으로 이동됨
 	if room.Plugin != nil {
 		room.Plugin.OnJoin(client)
+	}
+	// PVE 방: human 입장 직후 빈 자리에 봇 자동 소환
+	if isPVE && !client.IsBot {
+		parts := strings.Split(roomID, "_pve_")
+		gamePrefix := "blackjack"
+		if len(parts) >= 1 && parts[0] != "" {
+			gamePrefix = parts[0]
+		}
+		SpawnBotsForPVE(m, room, gamePrefix)
 	}
 }
 

@@ -1598,6 +1598,8 @@ header {
   min-height: 440px !important;
   margin-bottom: 60px !important;
 }
+
+/* 3인 마작: Top 자리 없음, Right/Left만 렌더링됨 */
 #mahjong-center {
   top: 38% !important;
 }

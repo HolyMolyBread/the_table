@@ -361,7 +361,7 @@
     </ol>
   `;
   const GAME_VIEW_IDS = ['board-placeholder', 'gomoku-container', 'blackjack-container', 'tictactoe-container', 'connect4-container', 'indian-container', 'holdem-container', 'sevenpoker-container', 'thief-container', 'onecard-container', 'mahjong-container', 'alkkagi-container'];
-  const PREFIX_TO_CONTAINER = { omok: 'gomoku-container', blackjack: 'blackjack-container', tictactoe: 'tictactoe-container', connect4: 'connect4-container', indian: 'indian-container', holdem: 'holdem-container', sevenpoker: 'sevenpoker-container', thief: 'thief-container', onecard: 'onecard-container', mahjong: 'mahjong-container', alkkagi: 'alkkagi-container' };
+  const PREFIX_TO_CONTAINER = { omok: 'gomoku-container', blackjack: 'blackjack-container', tictactoe: 'tictactoe-container', connect4: 'connect4-container', indian: 'indian-container', holdem: 'holdem-container', sevenpoker: 'sevenpoker-container', thief: 'thief-container', onecard: 'onecard-container', mahjong: 'mahjong-container', mahjong3: 'mahjong-container', alkkagi: 'alkkagi-container' };
   const GAME_STATE_HANDLERS = {
     tictactoe_state:  { logKey: 'ttt-state',       show: () => { if (typeof window.showTicTacToeUI === 'function') window.showTicTacToeUI(); },  render: (data) => { if (typeof window.renderTicTacToe === 'function') window.renderTicTacToe(data); } },
     connect4_state:   { logKey: 'c4-state',       show: () => { if (typeof window.showConnect4UI === 'function') window.showConnect4UI(); },   render: (data) => { if (typeof window.renderConnect4 === 'function') window.renderConnect4(data); } },
@@ -371,9 +371,10 @@
     thief_state:      { logKey: 'thief-state',    show: () => { if (typeof window.showThiefUI === 'function') window.showThiefUI(); },      render: (data) => { if (typeof window.renderThief === 'function') window.renderThief(data); } },
     onecard_state:    { logKey: 'onecard-state',  show: () => { if (typeof window.showOneCardUI === 'function') window.showOneCardUI(); },     render: (data) => { if (typeof window.renderOneCard === 'function') window.renderOneCard(data); } },
     mahjong_state:    { logKey: 'mahjong-state',  show: () => { if (typeof window.showMahjongUI === 'function') window.showMahjongUI(); },   render: (data) => { if (typeof window.renderMahjong === 'function') window.renderMahjong(data); } },
+    mahjong3_state:   { logKey: 'mahjong3-state', show: () => { if (typeof window.showMahjongUI === 'function') window.showMahjongUI(); },   render: (data) => { if (typeof window.renderMahjong === 'function') window.renderMahjong(data); } },
     alkkagi_state:    { logKey: 'alkkagi-state',  show: () => { if (typeof window.showAlkkagiUI === 'function') window.showAlkkagiUI(); },    render: (data) => { if (typeof window.renderAlkkagi === 'function') window.renderAlkkagi(data); } },
   };
-  const PREFIX_TO_TIMER = { omok: ['status-seconds', 'status-timer-block'], tictactoe: ['ttt-seconds', 'ttt-timer-block'], connect4: ['c4-seconds', 'c4-timer-block'], indian: ['indian-seconds', 'indian-timer-block'], holdem: ['holdem-seconds', 'holdem-timer-block'], sevenpoker: ['sevenpoker-seconds', 'sevenpoker-timer-block'], thief: ['thief-seconds', 'thief-timer-block'], onecard: ['onecard-seconds', 'onecard-timer-block'], mahjong: ['mahjong-seconds', 'mahjong-timer-block'] };
+  const PREFIX_TO_TIMER = { omok: ['status-seconds', 'status-timer-block'], tictactoe: ['ttt-seconds', 'ttt-timer-block'], connect4: ['c4-seconds', 'c4-timer-block'], indian: ['indian-seconds', 'indian-timer-block'], holdem: ['holdem-seconds', 'holdem-timer-block'], sevenpoker: ['sevenpoker-seconds', 'sevenpoker-timer-block'], thief: ['thief-seconds', 'thief-timer-block'], onecard: ['onecard-seconds', 'onecard-timer-block'], mahjong: ['mahjong-seconds', 'mahjong-timer-block'], mahjong3: ['mahjong-seconds', 'mahjong-timer-block'] };
 
   // Debug panel element references
   const logOutput  = document.getElementById('log-output');
@@ -549,8 +550,8 @@
   }
   function showOpponentRecordModal(userId, records) {
     const fmt = r => r ? `${r.wins}승 ${r.losses}패 ${r.draws}무` : '0승 0패 0무';
-    const games = ['omok', 'tictactoe', 'connect4', 'holdem', 'sevenpoker', 'indian', 'blackjack', 'onecard', 'thief', 'mahjong', 'alkkagi'];
-    const labels = { total: '전체', omok: '🀱 오목', tictactoe: '⭕❌ 틱택토', connect4: '🔴🟡 4목', holdem: '♠️ 텍사스 홀덤', sevenpoker: '🃏 세븐 포커', indian: '🃏 인디언 포커', blackjack: '🃏 블랙잭', onecard: '🃏 원카드', thief: '🃏 도둑잡기', mahjong: '🀄 마작', alkkagi: '⚫ 알까기' };
+    const games = ['omok', 'tictactoe', 'connect4', 'holdem', 'sevenpoker', 'indian', 'blackjack_pve', 'blackjack', 'onecard', 'thief', 'mahjong', 'alkkagi'];
+    const labels = { total: '전체', omok: '🀱 오목', tictactoe: '⭕❌ 틱택토', connect4: '🔴🟡 4목', holdem: '♠️ 텍사스 홀덤', sevenpoker: '🃏 세븐 포커', indian: '🃏 인디언 포커', blackjack_pve: '🃏 블랙잭 (PVE)', blackjack: '🃏 블랙잭 (PVP 레이드)', onecard: '🃏 원카드', thief: '🃏 도둑잡기', mahjong: '🀄 마작', alkkagi: '⚫ 알까기' };
     let html = '';
     html += `<div class="opponent-record-row"><span class="opponent-record-label">${labels.total}</span><span class="opponent-record-val">${fmt(records && records.total)}</span></div>`;
     for (const key of games) {
@@ -689,7 +690,8 @@
       else if (roomId.startsWith('sevenpoker')) titleEl.textContent = '🃏 세븐 포커';
       else if (roomId.startsWith('thief'))     titleEl.textContent = '🃏 도둑잡기';
       else if (roomId.startsWith('onecard'))   titleEl.textContent = '🃏 원카드';
-      else if (roomId.startsWith('mahjong'))   titleEl.textContent = '🀄 마작';
+      else if (roomId.startsWith('mahjong3'))  titleEl.textContent = '🀄 마작 (3인)';
+      else if (roomId.startsWith('mahjong'))   titleEl.textContent = '🀄 마작 (4인)';
       else if (roomId.startsWith('alkkagi'))   titleEl.textContent = '⚫ 알까기';
       else                                     titleEl.textContent = roomId;
 
@@ -699,9 +701,9 @@
       document.getElementById('room-code-badge').classList.add('visible');
 
       const rulesBtn = document.getElementById('btn-ingame-rules');
-      rulesBtn.style.display = (roomId.startsWith('omok') || roomId.startsWith('blackjack') || roomId.startsWith('tictactoe') || roomId.startsWith('connect4') || roomId.startsWith('indian') || roomId.startsWith('holdem') || roomId.startsWith('sevenpoker') || roomId.startsWith('thief') || roomId.startsWith('onecard') || roomId.startsWith('mahjong') || roomId.startsWith('alkkagi')) ? '' : 'none';
+      rulesBtn.style.display = (roomId.startsWith('omok') || roomId.startsWith('blackjack') || roomId.startsWith('tictactoe') || roomId.startsWith('connect4') || roomId.startsWith('indian') || roomId.startsWith('holdem') || roomId.startsWith('sevenpoker') || roomId.startsWith('thief') || roomId.startsWith('onecard') || roomId.startsWith('mahjong') || roomId.startsWith('mahjong3') || roomId.startsWith('alkkagi')) ? '' : 'none';
       const addBotBtn = document.getElementById('btn-add-bot');
-      addBotBtn.style.display = (roomId.startsWith('omok') || roomId.startsWith('connect4') || roomId.startsWith('tictactoe') || roomId.startsWith('indian') || roomId.startsWith('holdem') || roomId.startsWith('sevenpoker') || roomId.startsWith('thief') || roomId.startsWith('onecard') || roomId.startsWith('mahjong') || roomId.startsWith('alkkagi')) ? '' : 'none';
+      addBotBtn.style.display = (roomId.startsWith('omok') || roomId.startsWith('connect4') || roomId.startsWith('tictactoe') || roomId.startsWith('indian') || roomId.startsWith('holdem') || roomId.startsWith('sevenpoker') || roomId.startsWith('thief') || roomId.startsWith('onecard') || roomId.startsWith('mahjong') || roomId.startsWith('mahjong3') || roomId.startsWith('alkkagi')) ? '' : 'none';
 
       if (inputUserId) inputUserId.value = userId;
       if (inputRoomId) inputRoomId.value = roomId;
@@ -713,8 +715,8 @@
       if (!roomId.startsWith('blackjack')) {
         readyArea.style.display = 'flex';
         if (btnReady) btnReady.disabled = false;
-        if (readyCountEl) readyCountEl.textContent = roomId.startsWith('mahjong') ? '0/4' : '0/0';
-        if (readyHintEl) readyHintEl.textContent = roomId.startsWith('mahjong') ? '4인이 모두 준비해야 게임이 시작됩니다' : '전원이 준비해야 게임이 시작됩니다';
+        if (readyCountEl) readyCountEl.textContent = roomId.startsWith('mahjong3') ? '0/3' : (roomId.startsWith('mahjong') ? '0/4' : '0/0');
+        if (readyHintEl) readyHintEl.textContent = roomId.startsWith('mahjong3') ? '3인이 모두 준비해야 게임이 시작됩니다' : (roomId.startsWith('mahjong') ? '4인이 모두 준비해야 게임이 시작됩니다' : '전원이 준비해야 게임이 시작됩니다');
       } else {
         readyArea.style.display = 'none';
       }
@@ -770,7 +772,8 @@
     const fmt = r => r ? `${r.wins}승 ${r.losses}패 ${r.draws}무` : '0승 0패 0무';
     if (records.total)      document.getElementById('record-total').textContent      = fmt(records.total);
     if (records.omok)       document.getElementById('record-omok').textContent       = fmt(records.omok);
-    if (records.blackjack)  document.getElementById('record-blackjack').textContent  = fmt(records.blackjack);
+    if (records.blackjack_pve) document.getElementById('record-blackjack-pve').textContent = fmt(records.blackjack_pve);
+    if (records.blackjack)   document.getElementById('record-blackjack').textContent   = fmt(records.blackjack);
     if (records.tictactoe)  document.getElementById('record-tictactoe').textContent = fmt(records.tictactoe);
     if (records.connect4)   document.getElementById('record-connect4').textContent   = fmt(records.connect4);
     if (records.indian)     document.getElementById('record-indian').textContent     = fmt(records.indian);
@@ -908,6 +911,7 @@
                  : currentRoomId.startsWith('sevenpoker') ? 'sevenpoker'
                  : currentRoomId.startsWith('thief')    ? 'thief'
                  : currentRoomId.startsWith('onecard')  ? 'onecard'
+                 : currentRoomId.startsWith('mahjong3')  ? 'mahjong'
                  : currentRoomId.startsWith('mahjong')   ? 'mahjong'
                  : currentRoomId.startsWith('alkkagi')   ? 'alkkagi'
                  : null;
@@ -1009,7 +1013,11 @@
             case 'error': {
               addLog('error', raw);
               let errMsg = parsed.message || '서버 오류가 발생했습니다.';
-              if (currentRoomId && currentRoomId.startsWith('mahjong') && /4명|인원/.test(errMsg)) {
+              if (currentRoomId && currentRoomId.startsWith('mahjong3') && /3인|인원/.test(errMsg)) {
+                errMsg = '3인 마작입니다. 인원을 기다려주세요.';
+                const btnReady = document.getElementById('btn-ready');
+                if (btnReady) btnReady.disabled = false;
+              } else if (currentRoomId && currentRoomId.startsWith('mahjong') && /4명|인원/.test(errMsg)) {
                 errMsg = '4인 대전 전용 게임입니다. 인원을 기다려주세요.';
                 const btnReady = document.getElementById('btn-ready');
                 if (btnReady) btnReady.disabled = false;
@@ -1120,6 +1128,31 @@
               showBlackjackUI();
               renderBlackjackState(parsed.data);
               break;
+            case 'blackjack_pvp_state':
+              addLog('bj-pvp-state', raw);
+              showBlackjackUI();
+              if (typeof window.renderBlackjackPVPState === 'function') {
+                window.renderBlackjackPVPState(parsed.data);
+              } else if (typeof window.adaptPVPToPVEData === 'function') {
+                renderBlackjackState(window.adaptPVPToPVEData(parsed.data));
+              } else {
+                renderBlackjackState(parsed.data);
+              }
+              break;
+            case 'dealer_action':
+              addLog('bj-dealer', raw);
+              if (parsed.data && parsed.data.players) {
+                if (typeof window.renderBlackjackPVPState === 'function') {
+                  window.renderBlackjackPVPState(parsed.data);
+                } else if (typeof window.adaptPVPToPVEData === 'function') {
+                  renderBlackjackState(window.adaptPVPToPVEData(parsed.data));
+                } else {
+                  renderBlackjackState(parsed.data);
+                }
+              } else {
+                renderBlackjackState(parsed.data);
+              }
+              break;
             case 'thief_hover':
               if (parsed.targetId != null && typeof parsed.index === 'number') {
                 thiefHoveredTargetId = parsed.targetId;
@@ -1127,7 +1160,7 @@
                 if (lastThiefState) renderThief(lastThiefState);
               }
               break;
-            case 'tictactoe_state': case 'connect4_state': case 'indian_state': case 'holdem_state': case 'sevenpoker_state': case 'thief_state': case 'onecard_state': case 'mahjong_state': case 'alkkagi_state': {
+            case 'tictactoe_state': case 'connect4_state': case 'indian_state': case 'holdem_state': case 'sevenpoker_state': case 'thief_state': case 'onecard_state': case 'mahjong_state': case 'mahjong3_state': case 'alkkagi_state': {
               document.getElementById('btn-takeover').style.display = 'none';
               ['status-turn-user', 'ttt-status', 'c4-status', 'indian-status', 'thief-status', 'onecard-status', 'mahjong-status', 'alkkagi-status'].forEach(id => {
                 const el = document.getElementById(id);
@@ -1148,10 +1181,6 @@
             case 'poker_showdown_result':
               addLog('poker-showdown', raw);
               showPokerShowdownOverlay(parsed.data);
-              break;
-            case 'dealer_action':
-              addLog('bj-dealer', raw);
-              renderBlackjackState(parsed.data);
               break;
             case 'record_update': {
               addLog('record', raw);
@@ -1199,6 +1228,18 @@
     if (!currentUserId) { showToast('먼저 로그인하세요.', 'error'); return; }
     const code   = genRoomCode();
     const roomId = prefix + '_' + code;
+    if (!ws || ws.readyState !== WebSocket.OPEN) {
+      pendingJoin = { roomId };
+      connect();
+    } else {
+      sendJoin(roomId);
+    }
+  }
+
+  function startPVE(prefix) {
+    if (!currentUserId) { showToast('먼저 로그인하세요.', 'error'); return; }
+    const code   = genRoomCode();
+    const roomId = prefix + '_pve_' + code;
     if (!ws || ws.readyState !== WebSocket.OPEN) {
       pendingJoin = { roomId };
       connect();
@@ -1339,6 +1380,7 @@
                  : currentRoomId.startsWith('sevenpoker') ? 'sevenpoker'
                  : currentRoomId.startsWith('thief') ? 'thief'
                  : currentRoomId.startsWith('onecard') ? 'onecard'
+                 : currentRoomId.startsWith('mahjong3') ? 'mahjong3'
                  : currentRoomId.startsWith('mahjong') ? 'mahjong'
                  : null;
     if (!prefix || !PREFIX_TO_TIMER[prefix]) return;

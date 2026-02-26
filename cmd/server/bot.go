@@ -16,17 +16,20 @@ const botThinkDelay = 1500 * time.Millisecond
 func SpawnBot(m *RoomManager, room *Room, gamePrefix string) error {
 	prefix := strings.ToLower(strings.TrimSpace(gamePrefix))
 	switch prefix {
-	case "omok", "connect4", "tictactoe", "indian", "holdem", "sevenpoker", "thief", "onecard", "mahjong":
+	case "omok", "connect4", "tictactoe", "indian", "holdem", "sevenpoker", "thief", "onecard", "mahjong", "mahjong3":
 		// 지원하는 게임
 	default:
 		log.Printf("[BOT] 지원하지 않는 게임 접두사: %s", gamePrefix)
 		return nil // 에러 대신 무시
 	}
 
-	// 인원 제한: 1:1 게임은 2명, 다인(holdem, sevenpoker, thief, onecard)은 4명
+	// 인원 제한: 1:1 게임은 2명, 다인(holdem, sevenpoker, thief, onecard)은 4명, mahjong3은 3명
 	maxPlayers := 2
 	if prefix == "holdem" || prefix == "sevenpoker" || prefix == "thief" || prefix == "onecard" || prefix == "mahjong" {
 		maxPlayers = 4
+	}
+	if prefix == "mahjong3" {
+		maxPlayers = 3
 	}
 	if room.count() >= maxPlayers {
 		log.Printf("[BOT] room:[%s] 인원이 가득 찼습니다", room.ID)
@@ -52,6 +55,7 @@ func SpawnBot(m *RoomManager, room *Room, gamePrefix string) error {
 			"thief":      {},
 			"onecard":    {},
 			"mahjong":    {},
+			"mahjong3":   {},
 		},
 	}
 
@@ -75,8 +79,8 @@ func SpawnBot(m *RoomManager, room *Room, gamePrefix string) error {
 	data, _ := json.Marshal(resp)
 	room.broadcastAll(data)
 
-	// 마작은 플러그인 OnJoin에서 ready_update를 전송하므로 여기서 보내지 않음 (ReadyCount 0으로 꼬이는 버그 방지)
-	if prefix != "mahjong" {
+	// 마작/삼마는 플러그인 OnJoin에서 ready_update를 전송하므로 여기서 보내지 않음 (ReadyCount 0으로 꼬이는 버그 방지)
+	if prefix != "mahjong" && prefix != "mahjong3" {
 		m.broadcastRoomUpdate(room)
 	}
 
@@ -326,6 +330,28 @@ func makeBotProcess(bot *Client, room *Room, gamePrefix string) func(msg []byte)
 				room.Plugin.HandleAction(bot, "game_action", payload)
 			}()
 
+		case "mahjong3_state":
+			if gamePrefix != "mahjong3" {
+				return
+			}
+			var d MahjongData
+			if json.Unmarshal(base.Data, &d) != nil {
+				return
+			}
+			if d.CurrentTurn != bot.UserID {
+				return
+			}
+			myHand := d.MyHand
+			if len(myHand) != 14 {
+				return
+			}
+			go func() {
+				time.Sleep(botThinkDelay)
+				idx := rand.Intn(14)
+				payload, _ := json.Marshal(map[string]any{"cmd": "discard", "index": idx})
+				room.Plugin.HandleAction(bot, "game_action", payload)
+			}()
+
 		case "onecard_state":
 			if gamePrefix != "onecard" {
 				return
@@ -429,6 +455,24 @@ func botPickConnect4(board [6][7]int) int {
 		return -1
 	}
 	return cols[rand.Intn(len(cols))]
+}
+
+// SpawnBotsForPVE는 PVE 방에 유저가 입장했을 때 빈 자리를 봇으로 채웁니다.
+func SpawnBotsForPVE(m *RoomManager, room *Room, gamePrefix string) {
+	prefix := strings.ToLower(strings.TrimSpace(gamePrefix))
+	// 블랙잭은 딜러 AI만 사용하므로 봇 소환 불필요
+	if prefix == "blackjack" {
+		return
+	}
+	maxPlayers := 2
+	if prefix == "holdem" || prefix == "sevenpoker" || prefix == "thief" || prefix == "onecard" || prefix == "mahjong" {
+		maxPlayers = 4
+	}
+	for room.count() < maxPlayers {
+		if err := SpawnBot(m, room, prefix); err != nil {
+			return
+		}
+	}
 }
 
 func botPickOneCard(d OneCardData) int {

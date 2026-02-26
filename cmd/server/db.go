@@ -94,10 +94,13 @@ type gameRecordRow struct {
 // ── 이름 매핑 헬퍼 ────────────────────────────────────────────────────────────
 
 // gameDBName은 인메모리 게임 키를 DB의 game_name 및 is_pve 플래그로 변환합니다.
+// PVE: blackjack_pve / PVP 레이드: blackjack (명확히 구분)
 func gameDBName(game string) (dbName string, isPVE bool) {
 	switch game {
-	case "blackjack":
+	case "blackjack_pve":
 		return "blackjack_pve", true
+	case "blackjack":
+		return "blackjack", false
 	case "omok":
 		return "omok_pvp", false
 	default:
@@ -109,6 +112,8 @@ func gameDBName(game string) (dbName string, isPVE bool) {
 func gameMemKey(dbName string) string {
 	switch dbName {
 	case "blackjack_pve":
+		return "blackjack_pve"
+	case "blackjack":
 		return "blackjack"
 	case "omok_pvp":
 		return "omok"
@@ -266,9 +271,10 @@ func (d *DBClient) LoadUserRecords(userUUID string, token string) map[string]*Ga
 	}
 
 	records := map[string]*GameRecord{
-		"total":     {},
-		"omok":      {},
-		"blackjack": {},
+		"total":         {},
+		"omok":          {},
+		"blackjack_pve": {},
+		"blackjack":     {},
 	}
 	for _, row := range rows {
 		memKey := gameMemKey(row.GameName)
@@ -277,9 +283,12 @@ func (d *DBClient) LoadUserRecords(userUUID string, token string) map[string]*Ga
 			Losses: row.Losses,
 			Draws:  row.Draws,
 		}
-		records["total"].Wins += row.Wins
-		records["total"].Losses += row.Losses
-		records["total"].Draws += row.Draws
+		// PVE 전적은 메인 랭킹(total)에서 제외 (blackjack_pve만, blackjack=PVP 레이드는 포함)
+		if row.GameName != "blackjack_pve" {
+			records["total"].Wins += row.Wins
+			records["total"].Losses += row.Losses
+			records["total"].Draws += row.Draws
+		}
 	}
 	log.Printf("[DB] 전적 복구 [%s]: total=%dW/%dL/%dD",
 		userUUID[:min(8, len(userUUID))],
