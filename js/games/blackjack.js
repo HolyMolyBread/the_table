@@ -15,11 +15,13 @@
     const name = isMe ? '나' : (playerData?.userId ? escapeHTML(playerData.userId) : '—');
     const cardsHtml = (handInfo.cards || []).map(card => {
       if (card.hidden) return `<div class="bj-card hidden"></div>`;
-      const isRed = card.suit === '♥' || card.suit === '♦';
+      const suit = card.suit || card.Suit || '';
+      const value = card.value || card.Value || '?';
+      const isRed = suit === '♥' || suit === '♦';
       return `<div class="bj-card ${isRed ? 'red' : 'black'}">
-        <span class="bj-card-top">${card.value}</span>
-        <span class="bj-card-center">${card.suit}</span>
-        <span class="bj-card-bot">${card.value}</span>
+        <span class="bj-card-top">${value}</span>
+        <span class="bj-card-center">${suit}</span>
+        <span class="bj-card-bot">${value}</span>
       </div>`;
     }).join('');
     const heartsText = renderBJHeartsBar(hearts);
@@ -47,27 +49,32 @@
 
   function renderBlackjackState(data) {
     if (!data) return;
-    renderBJHand('bj-dealer-hand', 'bj-dealer-score', data.dealerHand);
+    const dealerHand = data.DealerHand || data.dealerHand || [];
+    const dealerHandInfo = Array.isArray(dealerHand) ? { cards: dealerHand, score: handScoreFromCards(dealerHand) } : dealerHand;
+    renderBJHand('bj-dealer-hand', 'bj-dealer-score', dealerHandInfo);
     const dealerHeartsEl = document.getElementById('bj-dealer-hearts');
-    if (dealerHeartsEl) dealerHeartsEl.innerHTML = renderBJHeartsBar(data.dealerHearts ?? 10);
+    if (dealerHeartsEl) dealerHeartsEl.innerHTML = renderBJHeartsBar(data.DealerHearts ?? data.dealerHearts ?? 10);
 
     const playersRowEl = document.getElementById('bj-players-row');
     if (!playersRowEl) return;
 
-    if (data.players) {
-      const turnOrder = data.turnOrder || Object.keys(data.players);
+    const players = data.Players || data.players;
+    if (players) {
+      const turnOrder = data.turnOrder || data.TurnOrder || Object.keys(players);
       const numPlayers = turnOrder.length;
       const myIdx = turnOrder.indexOf(currentUserId);
+      const currentTurnIdx = data.currentTurnIdx ?? data.CurrentTurnIdx ?? 0;
       const ordered = turnOrder
         .map((userId, i) => ({ userId, playerIdx: i, relativeIdx: (i - myIdx + numPlayers) % numPlayers }))
         .sort((a, b) => a.relativeIdx - b.relativeIdx);
-      const isMyTurn = data.phase === 'player_turn' && data.turnOrder && data.turnOrder[data.currentTurnIdx] === currentUserId;
       playersRowEl.innerHTML = ordered.map(({ userId }) => {
-        const p = data.players[userId];
+        const p = players[userId];
+        const hand = p ? (p.Hand || p.hand || []) : [];
+        const hearts = p ? (p.Hearts ?? p.hearts ?? 0) : 0;
         const isMe = userId === currentUserId;
-        const isTheirTurn = data.phase === 'player_turn' && data.turnOrder && data.turnOrder[data.currentTurnIdx] === userId;
+        const isTheirTurn = data.phase === 'player_turn' && turnOrder[currentTurnIdx] === userId;
         const showActions = isMe;
-        return renderBJPlayerBox(p ? { ...p, userId } : { userId, hand: [], hearts: 0 }, isMe, isTheirTurn, showActions);
+        return renderBJPlayerBox({ userId, hand, hearts }, isMe, isTheirTurn, showActions);
       }).join('');
     } else {
       const isMyTurn = data.phase === 'player_turn';
@@ -142,11 +149,13 @@
     }
     handEl.innerHTML = handInfo.cards.map(card => {
       if (card.hidden) return `<div class="bj-card hidden"></div>`;
-      const isRed = card.suit === '♥' || card.suit === '♦';
+      const suit = card.suit || card.Suit || '';
+      const value = card.value || card.Value || '?';
+      const isRed = suit === '♥' || suit === '♦';
       return `<div class="bj-card ${isRed ? 'red' : 'black'}">
-        <span class="bj-card-top">${card.value}</span>
-        <span class="bj-card-center">${card.suit}</span>
-        <span class="bj-card-bot">${card.value}</span>
+        <span class="bj-card-top">${value}</span>
+        <span class="bj-card-center">${suit}</span>
+        <span class="bj-card-bot">${value}</span>
       </div>`;
     }).join('');
     const score = handInfo.score;
@@ -156,7 +165,7 @@
 
   function bjStart() {
     if (!ws || ws.readyState !== WebSocket.OPEN || !currentRoomId) return;
-    sendGameAction({ cmd: 'start' });
+    sendGameAction({ cmd: 'ready' });
   }
   function bjHit() {
     if (!ws || ws.readyState !== WebSocket.OPEN) return;
@@ -167,33 +176,37 @@
     sendGameAction({ cmd: 'stand' });
   }
 
-  /** PVP 데이터를 PVE 형식으로 변환 (기존 UI 재사용) */
+  /** PVP 데이터를 PVE 형식으로 변환 (서버 JSON 필드명: Players, DealerHand) */
   function adaptPVPToPVEData(data) {
-    if (!data || !data.players) return data;
-    const me = data.players[currentUserId];
-    const handInfo = me ? { cards: me.hand || [], score: me.hand ? handScoreFromCards(me.hand) : 0 } : { cards: [], score: 0 };
-    const isMyTurn = data.turnOrder && data.turnOrder[data.currentTurnIdx] === currentUserId;
+    const players = data?.Players || data?.players;
+    if (!data || !players) return data;
+    const dealerHand = data.DealerHand || data.dealerHand || [];
+    const me = players[currentUserId];
+    const handInfo = me ? { cards: me.Hand || me.hand || [], score: (me.Hand || me.hand) ? handScoreFromCards(me.Hand || me.hand) : 0 } : { cards: [], score: 0 };
+    const turnOrder = data.turnOrder || data.TurnOrder;
+    const isMyTurn = turnOrder && turnOrder[data.currentTurnIdx ?? data.CurrentTurnIdx] === currentUserId;
     return {
       phase: data.phase,
       playerHand: handInfo,
-      dealerHand: { cards: data.dealerHand || [], score: handScoreFromCards(data.dealerHand || []) },
-      playerHearts: me ? me.hearts : 0,
-      dealerHearts: data.dealerHearts ?? 0,
+      dealerHand: { cards: dealerHand, score: handScoreFromCards(dealerHand) },
+      playerHearts: me ? (me.Hearts ?? me.hearts) : 0,
+      dealerHearts: data.DealerHearts ?? data.dealerHearts ?? 0,
       message: data.message,
       mainPlayerId: currentUserId,
       gameOverPlayerWin: data.gameOverWin,
       _isMyTurn: isMyTurn,
-      _turnOrder: data.turnOrder,
-      _currentTurnIdx: data.currentTurnIdx,
+      _turnOrder: turnOrder,
+      _currentTurnIdx: data.currentTurnIdx ?? data.CurrentTurnIdx,
     };
   }
   function handScoreFromCards(cards) {
     let total = 0, aces = 0;
-    for (const c of cards) {
+    for (const c of cards || []) {
       if (c.hidden) continue;
-      if (c.value === 'A') { total += 11; aces++; }
-      else if (['J','Q','K'].includes(c.value)) total += 10;
-      else total += parseInt(c.value, 10) || 0;
+      const v = c.value || c.Value || '';
+      if (v === 'A') { total += 11; aces++; }
+      else if (['J','Q','K'].includes(v)) total += 10;
+      else total += parseInt(v, 10) || 0;
     }
     while (total > 21 && aces > 0) { total -= 10; aces--; }
     return total;

@@ -120,7 +120,7 @@ func (g *BlackjackPVPGame) HandleAction(client *Client, _ string, payload json.R
 		return
 	}
 	switch p.Cmd {
-	case "start", "ready":
+	case "ready":
 		g.handleStart(client)
 	case "hit":
 		g.handleHit(client)
