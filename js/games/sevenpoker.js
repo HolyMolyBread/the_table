@@ -47,12 +47,12 @@
       }
 
       playersEl.className = '';
-      playersEl.style.cssText = 'display: flex; flex-direction: column; gap: 16px; align-items: center; width: 100%;';
+      playersEl.style.cssText = 'display: flex; flex-direction: column; gap: 16px; align-items: stretch; width: 100%; max-width: 100%; padding: 0 8px;';
       playersEl.innerHTML = `
-        <div style="display:flex; justify-content:center; gap:10px; flex-wrap:wrap; width:100%;">
+        <div style="display:flex; justify-content:center; gap:12px; flex-wrap:wrap; width:100%;">
           ${opponents.map(renderPlayerBox).join('')}
         </div>
-        <div style="display:flex; justify-content:center; gap:10px; width:100%;">
+        <div style="display:flex; justify-content:center; gap:12px; width:100%;">
           ${me ? renderPlayerBox(me) : ''}
         </div>`;
     }

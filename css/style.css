@@ -1197,7 +1197,7 @@ header {
 /* ══ SEVEN POKER ═════════════════════════════════════════════════════════ */
 #sevenpoker-container {
   display: none; flex-direction: column; align-items: center; gap: 12px;
-  width: 100%; max-width: 520px;
+  width: 100%; max-width: 800px;
 }
 #sevenpoker-round-bar {
   font-size: 13px; font-weight: 600; color: var(--text-secondary);
@@ -1228,11 +1228,11 @@ header {
 }
 .sevenpoker-player-stars { font-size: 14px; font-weight: 700; color: var(--gold); }
 .sevenpoker-player-status { font-size: 11px; color: var(--text-muted); }
-.sevenpoker-player-cards { display: flex; gap: 4px; flex-wrap: wrap; }
+.sevenpoker-player-cards { display: flex; gap: 4px; flex-wrap: nowrap !important; }
 
-/* 상대방 카드: 겹쳐서 보여주기 (Compact Mode) */
+/* 상대방 카드: 겹쳐서 보여주기 (7장 한 줄) */
 .sevenpoker-player-box.is-opponent .holdem-card {
-  margin-left: -30px;
+  margin-left: -32px;
   transition: margin-left 0.3s ease, transform 0.2s ease;
   box-shadow: -2px 0 5px rgba(0,0,0,0.3);
 }
@@ -1254,6 +1254,15 @@ header {
 .sevenpoker-player-box.is-me {
   border-color: var(--accent);
   background: rgba(88, 166, 255, 0.05);
+}
+
+/* 선택 창: 액션 버튼 위에 강조 표시 */
+#sevenpoker-choice-box {
+  background: rgba(0, 0, 0, 0.9) !important;
+  border: 3px solid var(--accent) !important;
+  border-radius: 12px !important;
+  padding: 20px !important;
+  box-shadow: 0 8px 32px rgba(88, 166, 255, 0.25), 0 0 0 1px rgba(88, 166, 255, 0.1);
 }
 
 /* ══ DEBUG PANEL (slide-in from right) ══════════════════════════════════ */

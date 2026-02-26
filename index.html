@@ -650,14 +650,14 @@
           <div id="sevenpoker-players-wrap">
             <div id="sevenpoker-players" class="sevenpoker-players-grid"></div>
           </div>
-          <div id="sevenpoker-actions">
-            <button id="btn-sevenpoker-check" class="holdem-btn" onclick="sevenpokerCheck()" disabled>✅ 체크 (⭐ -1)</button>
-            <button id="btn-sevenpoker-fold"  class="holdem-btn" onclick="sevenpokerFold()"  disabled>🏳️ 폴드</button>
-          </div>
-          <div id="sevenpoker-choice-box" style="display:none; margin-top:10px; padding:12px; background:var(--bg-secondary); border-radius:8px; text-align:center;">
+          <div id="sevenpoker-choice-box" style="display:none; margin-top:10px; margin-bottom:10px; padding:16px; text-align:center;">
             <p style="font-size:13px; margin-bottom:12px; color:var(--gold); font-weight:700;">1장을 ❌버리고 1장을 👁️공개하세요.</p>
             <div id="sp-choice-cards" style="display:flex; gap:10px; justify-content:center; margin-bottom:12px; flex-wrap:wrap;"></div>
             <button onclick="sendSevenPokerChoice()" class="indian-btn" id="btn-sp-choice-submit" disabled>선택 완료</button>
+          </div>
+          <div id="sevenpoker-actions">
+            <button id="btn-sevenpoker-check" class="holdem-btn" onclick="sevenpokerCheck()" disabled>✅ 체크 (⭐ -1)</button>
+            <button id="btn-sevenpoker-fold"  class="holdem-btn" onclick="sevenpokerFold()"  disabled>🏳️ 폴드</button>
           </div>
           <div class="poker-hand-guide">
             <div class="poker-hand-guide-title">📋 포커 족보 가이드 (강한 순서)</div>
