@@ -229,11 +229,7 @@ func makeBotProcess(bot *Client, room *Room, gamePrefix string) func(msg []byte)
 			if gamePrefix != "sevenpoker" {
 				return
 			}
-			var d struct {
-				Phase        string `json:"phase"`
-				CurrentTurn  string `json:"currentTurn"`
-				MyChoiceDone bool   `json:"myChoiceDone"`
-			}
+			var d SevenPokerData
 			if json.Unmarshal(base.Data, &d) != nil {
 				return
 			}
@@ -243,11 +239,7 @@ func makeBotProcess(bot *Client, room *Room, gamePrefix string) func(msg []byte)
 					return
 				}
 				time.Sleep(botThinkDelay)
-				discardIdx := rand.Intn(4)
-				openIdx := rand.Intn(4)
-				for openIdx == discardIdx {
-					openIdx = rand.Intn(4)
-				}
+				discardIdx, openIdx := botPickSevenPokerChoice(d, bot.UserID)
 				payload, _ := json.Marshal(map[string]any{"cmd": "choice", "discardIdx": discardIdx, "openIdx": openIdx})
 				room.Plugin.HandleAction(bot, "game_action", payload)
 				return
@@ -257,10 +249,7 @@ func makeBotProcess(bot *Client, room *Room, gamePrefix string) func(msg []byte)
 				return
 			}
 			time.Sleep(botThinkDelay)
-			cmd := "check"
-			if rand.Intn(100) < 5 {
-				cmd = "fold"
-			}
+			cmd := botPickSevenPokerBet(d, bot.UserID)
 			payload, _ := json.Marshal(map[string]any{"cmd": cmd})
 			room.Plugin.HandleAction(bot, "game_action", payload)
 
@@ -954,5 +943,128 @@ func botPickIndian(d IndianData) string {
 			return "showdown"
 		}
 		return "give_up"
+	}
+}
+
+// botPickSevenPokerChoice는 4장 중 버릴 카드(discardIdx)와 공개할 카드(openIdx)를 선택합니다.
+// discardIdx: 페어가 아니면서 숫자가 낮은 카드. openIdx: 남은 카드 중 가장 높은 숫자/문양.
+func botPickSevenPokerChoice(d SevenPokerData, myUserID string) (discardIdx, openIdx int) {
+	var myCards []Card
+	for _, p := range d.Players {
+		if p.UserID == myUserID && len(p.Cards) >= 4 {
+			myCards = p.Cards[0:4]
+			break
+		}
+	}
+	if len(myCards) < 4 {
+		d, o := rand.Intn(4), rand.Intn(4)
+		for o == d {
+			o = rand.Intn(4)
+		}
+		return d, o
+	}
+
+	// 각 카드의 rank 빈도 계산 (페어 여부 판단)
+	rankCount := make(map[int]int)
+	for _, c := range myCards {
+		rankCount[cardRank(c)]++
+	}
+
+	// discardIdx: 페어가 아닌 카드 중 가장 낮은 숫자. 모두 페어면 가장 낮은 카드.
+	discardIdx = 0
+	bestDiscardPriority := 999
+	for i, c := range myCards {
+		r := cardRank(c)
+		s := suitRank(c)
+		isPair := rankCount[r] >= 2
+		// 페어면 우선 유지(높은 priority). 싱글톤 중 낮은 숫자 우선 버림.
+		priority := r*10 + s
+		if isPair {
+			priority += 200
+		}
+		if priority < bestDiscardPriority {
+			bestDiscardPriority = priority
+			discardIdx = i
+		}
+	}
+
+	// openIdx: discardIdx 제외한 3장 중 가장 높은 숫자, 동점이면 문양 좋은 것
+	openIdx = -1
+	openScore := -1
+	for i, c := range myCards {
+		if i == discardIdx {
+			continue
+		}
+		r := cardRank(c)
+		s := suitRank(c)
+		score := r*10 + s
+		if score > openScore {
+			openScore = score
+			openIdx = i
+		}
+	}
+	if openIdx < 0 {
+		for i := 0; i < 4; i++ {
+			if i != discardIdx {
+				openIdx = i
+				break
+			}
+		}
+	}
+	return discardIdx, openIdx
+}
+
+// botPickSevenPokerBet는 현재 7장(또는 그 이하)의 족보를 기반으로 check/fold를 결정합니다.
+func botPickSevenPokerBet(d SevenPokerData, myUserID string) string {
+	var myCards []Card
+	for _, p := range d.Players {
+		if p.UserID == myUserID {
+			for _, c := range p.Cards {
+				if c.Suit != "" || c.Value != "" {
+					myCards = append(myCards, c)
+				}
+			}
+			break
+		}
+	}
+
+	// 상대 배팅 여부
+	opponentBet := false
+	for _, p := range d.Players {
+		if p.UserID != myUserID && p.IsActive && p.Status == "check" {
+			opponentBet = true
+			break
+		}
+	}
+
+	rank := 1
+	if len(myCards) >= 5 {
+		score := EvaluateHand(myCards)
+		rank = int(score >> 20)
+		if rank <= 0 {
+			rank = 1
+		}
+	}
+
+	r := rand.Intn(100)
+	switch {
+	case rank >= 4: // 트리플 이상: 80% Raise, 20% Call → check만 가능하므로 95% check
+		if r < 95 {
+			return "check"
+		}
+		return "fold"
+	case rank == 3: // 투페어: 90% Call, 10% Check
+		if r < 90 {
+			return "check"
+		}
+		return "fold"
+	default: // 원페어 이하: 상대 배팅 시 70% Fold, 30% 뻥카 Call
+		if opponentBet {
+			if r < 70 {
+				return "fold"
+			}
+			return "check"
+		}
+		return "check"
 	}
 }
