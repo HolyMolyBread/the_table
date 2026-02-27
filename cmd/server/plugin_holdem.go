@@ -72,6 +72,7 @@ type HoldemGame struct {
 	startReady       map[*Client]bool
 	rematchReady     map[*Client]bool
 	stopTick         chan struct{}
+	roundStartStars  [holdemMaxPlayers]int // 라운드 시작 직후(참가비 차감 후) 별 개수
 	mu               sync.Mutex
 }
 
@@ -493,13 +494,14 @@ func (g *HoldemGame) resolveShowdownLocked() {
 		idx := survivors[0]
 		g.stars[idx] += totalPot
 		g.stopTurnTimerLocked()
+		delta := g.stars[idx] - g.roundStartStars[idx]
 		showdownData, _ := json.Marshal(map[string]any{
 			"type": "poker_showdown_result",
 			"roomId": g.room.ID,
 			"data": map[string]any{
 				"winnerId":    g.players[idx].UserID,
 				"winningHand": "단독생존",
-				"participants": []PokerShowdownParticipant{{UserID: g.players[idx].UserID, HandName: "단독생존"}},
+				"participants": []PokerShowdownParticipant{{UserID: g.players[idx].UserID, HandName: "단독생존", DeltaStars: delta}},
 			},
 		})
 		g.room.broadcastAll(showdownData)
@@ -552,10 +554,12 @@ func (g *HoldemGame) resolveShowdownLocked() {
 	winReason := HandWinReason(bestScore)
 	participants := make([]PokerShowdownParticipant, len(survivors))
 	for i, idx := range survivors {
+		delta := g.stars[idx] - g.roundStartStars[idx]
 		p := PokerShowdownParticipant{
-			UserID:   g.players[idx].UserID,
-			HandName: HandRankWithDetail(scores[i]),
-			WinReason: HandWinReason(scores[i]),
+			UserID:     g.players[idx].UserID,
+			HandName:   HandRankWithDetail(scores[i]),
+			WinReason:  HandWinReason(scores[i]),
+			DeltaStars: delta,
 		}
 		participants[i] = p
 	}
@@ -689,6 +693,9 @@ func (g *HoldemGame) startRoundLocked() {
 			g.stars[i]--
 			g.pot++
 		}
+	}
+	for i := 0; i < holdemMaxPlayers; i++ {
+		g.roundStartStars[i] = g.stars[i]
 	}
 
 	for i := 0; i < holdemMaxPlayers; i++ {

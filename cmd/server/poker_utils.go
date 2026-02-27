@@ -297,10 +297,11 @@ func straightValue(sorted []int) int {
 
 // PokerShowdownParticipant는 쇼다운 참가자 정보입니다.
 type PokerShowdownParticipant struct {
-	UserID              string `json:"userId"`
-	HandName            string `json:"handName"`
-	WinReason           string `json:"winReason,omitempty"`           // "A Kicker", "Spade" 등 승리 요인
-	HighCardHighlightIdx int   `json:"highCardHighlightIdx,omitempty"` // 하이카드 시 톱 카드 인덱스 (0~6)
+	UserID               string `json:"userId"`
+	HandName             string `json:"handName"`
+	WinReason            string `json:"winReason,omitempty"`            // "A Kicker", "Spade" 등 승리 요인
+	HighCardHighlightIdx int    `json:"highCardHighlightIdx,omitempty"` // 하이카드 시 톱 카드 인덱스 (0~6)
+	DeltaStars           int    `json:"deltaStars,omitempty"`           // roundStart 대비 별 변동량
 }
 
 // PokerShowdownResultData는 poker_showdown_result 메시지의 data 필드입니다.

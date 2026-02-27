@@ -149,7 +149,14 @@
 
     let html = '';
     participants.forEach(p => {
-      html += `<div class="poker-showdown-row"><span>${escapeHTML(p.userId || '')}</span><span>${escapeHTML(p.handName || '-')}</span></div>`;
+      const delta = p.deltaStars ?? 0;
+      let deltaHtml = '';
+      if (delta > 0) {
+        deltaHtml = ` <span style="color:var(--success);">(+${delta})</span>`;
+      } else if (delta < 0) {
+        deltaHtml = ` <span style="color:var(--danger);">(${delta})</span>`;
+      }
+      html += `<div class="poker-showdown-row"><span>${escapeHTML(p.userId || '')}${deltaHtml}</span><span>${escapeHTML(p.handName || '-')}</span></div>`;
     });
     partEl.innerHTML = html || '<div class="poker-showdown-row">—</div>';
 
