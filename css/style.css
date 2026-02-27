@@ -1077,10 +1077,11 @@ header {
   background-image: linear-gradient(to bottom, #fff, #f0f0f0) !important;
   color: #111111 !important;
   border: 1px solid #999; border-radius: 4px;
+  border-bottom: 2px solid rgba(0,0,0,0.15);
   box-shadow: 2px 2px 4px rgba(0,0,0,0.3);
   font-family: "Segoe UI Symbol", "Apple Color Emoji", "Noto Sans JP", sans-serif;
   cursor: pointer; user-select: none; transition: transform 0.1s;
-  line-height: 1; margin: 1px;
+  line-height: 1; margin: 2px;
 }
 .mahjong-tile:hover { transform: translateY(-8px); border-color: var(--accent); }
 .mahjong-tile.hidden {
@@ -1094,7 +1095,12 @@ header {
   transform-origin: bottom center !important;
   margin-bottom: -10px !important;
 }
-.mahjong-hand { display: flex; flex-wrap: nowrap; padding: 10px; justify-content: center; }
+.mahjong-hand {
+  display: flex; flex-wrap: nowrap; padding: 10px; justify-content: center;
+  background-color: #3d2b1f;
+  border-radius: 6px;
+  box-shadow: inset 0 2px 4px rgba(0,0,0,0.3), 0 4px 8px rgba(0,0,0,0.4);
+}
 .mahjong-discards {
   display: grid; grid-template-columns: repeat(6, 36px); gap: 2px;
   background: rgba(0,0,0,0.2); padding: 8px; border-radius: 8px;
@@ -1745,35 +1751,45 @@ header {
 .table-seat.seat-bottom .mahjong-hand {
   gap: 0 !important;
 }
-.mahjong-tile {
-  margin: 0 -1px !important;
+.table-seat.seat-bottom .mahjong-tile {
+  margin: 0 1px !important;
 }
 
-/* 옆쪽 좌석 패 회전: 입체적 레이아웃 */
+/* 옆쪽 좌석 패: 세로 트레이 레이아웃 (flex-direction: column) */
 .table-seat.seat-left .opponent-hand {
+  flex-direction: column !important;
   transform: rotate(90deg) !important;
   transform-origin: center !important;
   margin: 8px 0 !important;
 }
 .table-seat.seat-right .opponent-hand {
+  flex-direction: column !important;
   transform: rotate(-90deg) !important;
   transform-origin: center !important;
   margin: 8px 0 !important;
 }
 
-/* 상대방 패 압축 (24x36, 다닥다닥) */
+/* 상대방 패: 좌/우는 세로 트레이, 상단은 가로 트레이 */
 .opponent-hand {
-  gap: 0 !important;
-  padding: 4px !important;
+  flex-direction: column !important;
+  gap: 2px !important;
+  padding: 6px 4px !important;
+}
+.table-seat.seat-top .opponent-hand {
+  flex-direction: row !important;
+}
+.table-seat.seat-top .opponent-hand .mahjong-tile {
+  margin: 0 2px !important;
 }
 .opponent-hand .mahjong-tile,
 .opponent-hand .mahjong-tile.hidden {
   width: 24px !important;
   height: 36px !important;
   font-size: 20px !important;
-  margin-left: -14px !important;
+  margin: 2px 0 !important;
+  border-bottom: 2px solid rgba(0,0,0,0.2) !important;
   box-shadow: -2px 0 4px rgba(0,0,0,0.4) !important;
 }
 .opponent-hand .mahjong-tile:first-child {
-  margin-left: 0 !important;
+  margin-top: 0 !important;
 }

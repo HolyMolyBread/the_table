@@ -26,6 +26,7 @@ type PVPBJData struct {
 	CurrentTurnIdx int                     `json:"currentTurnIdx"`
 	DealerHand     []Card                  `json:"dealerHand"`
 	DealerHearts   int                     `json:"dealerHearts"`
+	ReadyStatus    map[string]bool         `json:"readyStatus,omitempty"`
 	Message        string                 `json:"message,omitempty"`
 	GameOverWin    bool                    `json:"gameOverWin,omitempty"`
 }
@@ -57,6 +58,7 @@ type BlackjackPVPGame struct {
 
 	players        map[string]*PVPBJPlayer
 	clientByUserID map[string]*Client
+	readyStatus    map[string]bool
 	turnOrder      []string
 	currentTurnIdx int
 	dealerHand     []Card
@@ -72,6 +74,7 @@ func NewBlackjackPVPGame(room *Room) *BlackjackPVPGame {
 		room:           room,
 		players:        make(map[string]*PVPBJPlayer),
 		clientByUserID: make(map[string]*Client),
+		readyStatus:    make(map[string]bool),
 		turnOrder:      nil,
 		phase:          BJPVPBetting,
 	}
@@ -95,7 +98,7 @@ func (g *BlackjackPVPGame) OnJoin(client *Client) {
 	g.clientByUserID[client.UserID] = client
 
 	n := len(g.players)
-	msg := fmt.Sprintf("🃏 PVP 딜러 레이드 블랙잭! (%d명 대기 중) [게임 시작] 버튼을 누르세요.", n)
+	msg := fmt.Sprintf("🃏 PVP 딜러 레이드 블랙잭! (%d명 대기 중) [준비] 버튼을 누르세요.", n)
 	g.broadcastStateLocked(msg)
 }
 
@@ -105,6 +108,7 @@ func (g *BlackjackPVPGame) OnLeave(client *Client, remainingCount int) {
 
 	delete(g.players, client.UserID)
 	delete(g.clientByUserID, client.UserID)
+	delete(g.readyStatus, client.UserID)
 	g.stopDealerLocked()
 	if len(g.players) == 0 {
 		g.resetLocked()
@@ -121,7 +125,7 @@ func (g *BlackjackPVPGame) HandleAction(client *Client, _ string, payload json.R
 	}
 	switch p.Cmd {
 	case "ready":
-		g.handleStart(client)
+		g.handleReady(client)
 	case "hit":
 		g.handleHit(client)
 	case "stand":
@@ -135,25 +139,43 @@ func (g *BlackjackPVPGame) HandleAction(client *Client, _ string, payload json.R
 
 // ── 액션 핸들러 ──────────────────────────────────────────────────────────────
 
-func (g *BlackjackPVPGame) handleStart(client *Client) {
+func (g *BlackjackPVPGame) handleReady(client *Client) {
 	g.mu.Lock()
+	defer g.mu.Unlock()
 
 	if _, ok := g.players[client.UserID]; !ok {
-		g.mu.Unlock()
 		client.SendJSON(ServerResponse{Type: "error", Message: "이 테이블의 플레이어가 아닙니다."})
 		return
 	}
 	if g.phase != BJPVPBetting && g.phase != BJPVPSettlement {
-		g.mu.Unlock()
-		client.SendJSON(ServerResponse{Type: "error", Message: "지금은 게임을 시작할 수 없습니다."})
+		client.SendJSON(ServerResponse{Type: "error", Message: "지금은 준비할 수 없습니다."})
 		return
 	}
 	if g.phase == BJPVPGameOver {
-		g.mu.Unlock()
 		client.SendJSON(ServerResponse{Type: "error", Message: "게임이 종료되었습니다. [한 판 더] 버튼으로 리매치하세요."})
 		return
 	}
 
+	g.readyStatus[client.UserID] = true
+
+	// 전원(인간+봇) 준비 시에만 실제 게임 시작
+	allReady := true
+	for uid := range g.players {
+		if !g.readyStatus[uid] {
+			allReady = false
+			break
+		}
+	}
+	if allReady && len(g.players) > 0 {
+		// readyStatus 초기화 후 handleStart 로직 실행
+		g.readyStatus = make(map[string]bool)
+		g.handleStartLocked()
+		return
+	}
+	g.broadcastStateLocked("")
+}
+
+func (g *BlackjackPVPGame) handleStartLocked() {
 	if !g.gameStarted {
 		n := len(g.players)
 		g.dealerHearts = n * 10
@@ -203,7 +225,6 @@ func (g *BlackjackPVPGame) handleStart(client *Client) {
 		}
 	}
 	g.advanceToNextPlayerOrDealerLocked()
-	g.mu.Unlock()
 }
 
 func (g *BlackjackPVPGame) advanceToNextPlayerOrDealerLocked() {
@@ -471,7 +492,8 @@ func (g *BlackjackPVPGame) handleRematch(client *Client) {
 		p.State = "playing"
 	}
 	g.phase = BJPVPBetting
-	g.broadcastStateLocked("🔄 리매치! [게임 시작] 버튼을 누르세요.")
+	g.readyStatus = make(map[string]bool)
+	g.broadcastStateLocked("🔄 리매치! [준비] 버튼을 누르세요.")
 }
 
 // ── 헬퍼 ──────────────────────────────────────────────────────────────────────
@@ -495,6 +517,7 @@ func (g *BlackjackPVPGame) stopDealerLocked() {
 func (g *BlackjackPVPGame) resetLocked() {
 	g.stopDealerLocked()
 	g.phase = BJPVPBetting
+	g.readyStatus = make(map[string]bool)
 	g.deck = nil
 	g.dealerHand = nil
 	g.turnOrder = nil
@@ -521,6 +544,10 @@ func (g *BlackjackPVPGame) makePVPBJDataLocked(msg string) PVPBJData {
 	copy(dealerCopy, g.dealerHand)
 	turnOrderCopy := make([]string, len(g.turnOrder))
 	copy(turnOrderCopy, g.turnOrder)
+	readyCopy := make(map[string]bool)
+	for uid, v := range g.readyStatus {
+		readyCopy[uid] = v
+	}
 
 	return PVPBJData{
 		Phase:          string(g.phase),
@@ -529,6 +556,7 @@ func (g *BlackjackPVPGame) makePVPBJDataLocked(msg string) PVPBJData {
 		CurrentTurnIdx: g.currentTurnIdx,
 		DealerHand:     dealerCopy,
 		DealerHearts:   g.dealerHearts,
+		ReadyStatus:    readyCopy,
 		Message:        msg,
 		GameOverWin:    g.phase == BJPVPGameOver && g.dealerHearts <= 0,
 	}

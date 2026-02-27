@@ -9,10 +9,13 @@
     return `❤️ x ${n}`;
   }
 
-  function renderBJPlayerBox(playerData, isMe, isTheirTurn, showActions) {
+  function renderBJPlayerBox(playerData, isMe, isTheirTurn, showActions, isReady) {
     const handInfo = playerData?.hand ? { cards: playerData.hand, score: handScoreFromCards(playerData.hand) } : { cards: [], score: 0 };
     const hearts = playerData?.hearts ?? 0;
     const name = isMe ? '나' : (playerData?.userId ? escapeHTML(playerData.userId) : '—');
+    const ready = isReady === true;
+    const readyBtnText = ready ? '✓ 준비 완료' : '준비';
+    const readyBtnDisabled = ready ? ' disabled' : '';
     const cardsHtml = (handInfo.cards || []).map(card => {
       if (card.hidden) return `<div class="bj-card hidden"></div>`;
       const suit = card.suit || card.Suit || '';
@@ -28,7 +31,7 @@
     const actionsHtml = showActions ? `
       <div class="bj-player-actions">
         <div id="bj-start-buttons">
-          <button class="bj-btn bj-btn-bet" onclick="bjStart()">🎮 게임 시작</button>
+          <button class="bj-btn bj-btn-bet" id="bj-ready-btn" onclick="bjStart()"${readyBtnDisabled}>${readyBtnText}</button>
         </div>
         <div id="bj-game-buttons" style="display:none">
           <button class="bj-btn bj-btn-hit" onclick="bjHit()">Hit</button>
@@ -67,6 +70,7 @@
       const ordered = turnOrder
         .map((userId, i) => ({ userId, playerIdx: i, relativeIdx: (i - myIdx + numPlayers) % numPlayers }))
         .sort((a, b) => a.relativeIdx - b.relativeIdx);
+      const readyStatus = data.ReadyStatus || data.readyStatus || {};
       playersRowEl.innerHTML = ordered.map(({ userId }) => {
         const p = players[userId];
         const hand = p ? (p.Hand || p.hand || []) : [];
@@ -74,12 +78,15 @@
         const isMe = userId === currentUserId;
         const isTheirTurn = data.phase === 'player_turn' && turnOrder[currentTurnIdx] === userId;
         const showActions = isMe;
-        return renderBJPlayerBox({ userId, hand, hearts }, isMe, isTheirTurn, showActions);
+        const isReady = !!readyStatus[userId];
+        return renderBJPlayerBox({ userId, hand, hearts }, isMe, isTheirTurn, showActions, isReady);
       }).join('');
     } else {
       const isMyTurn = data.phase === 'player_turn';
       const meData = { hand: data.playerHand?.cards || [], hearts: data.playerHearts ?? 0 };
-      playersRowEl.innerHTML = renderBJPlayerBox(meData, true, isMyTurn, true);
+      const readyStatus = data.ReadyStatus || data.readyStatus || {};
+      const isReady = !!readyStatus[currentUserId];
+      playersRowEl.innerHTML = renderBJPlayerBox(meData, true, isMyTurn, true, isReady);
     }
 
     const msgEl = document.getElementById('bj-message');
