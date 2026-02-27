@@ -11,14 +11,103 @@
 
   let alkkagiMyColor = 0;
   let alkkagiMyTurn = false;
-  let alkkagiDragging = false;
-  let alkkagiDragStone = null;
-  let alkkagiStartPos = { x: 0, y: 0 };
-  let alkkagiCurrentPos = { x: 0, y: 0 };
   window.alkkagiJustFlicked = false;
 
   const ALKKAGI_W = 420, ALKKAGI_H = 420;
   const ALKKAGI_CELL = 28;
+  const ALKKAGI_GRID = 15;
+
+  const ALKKAGI_CHESS = {
+    K: { maxPower: 0.06, mass: 2.0 },
+    Q: { maxPower: 0.08, mass: 1.5 },
+    R: { maxPower: 0.07, mass: 1.2 },
+    B: { maxPower: 0.07, mass: 1.2 },
+    N: { maxPower: 0.075, mass: 1.0 },
+    P: { maxPower: 0.05, mass: 0.8 }
+  };
+
+  let alkkagiSelectedStone = null;
+  let alkkagiValidGuides = [];
+  let alkkagiStonesData = [];
+
+  function pxToCell(x, y) {
+    return {
+      col: Math.floor(x / ALKKAGI_CELL),
+      row: Math.floor(y / ALKKAGI_CELL)
+    };
+  }
+
+  function cellToPx(col, row) {
+    return {
+      x: (col + 0.5) * ALKKAGI_CELL,
+      y: (row + 0.5) * ALKKAGI_CELL
+    };
+  }
+
+  function getValidChessMoves(stone, allStones) {
+    const occupied = {};
+    allStones.forEach(s => {
+      const c = pxToCell(s.x, s.y);
+      occupied[`${c.col},${c.row}`] = s.color;
+    });
+    const sc = pxToCell(stone.x, stone.y);
+    const col = sc.col;
+    const row = sc.row;
+    const role = (stone.role || 'P').toUpperCase();
+    const color = stone.color;
+    const moves = [];
+
+    const inBounds = (c, r) => c >= 0 && c < ALKKAGI_GRID && r >= 0 && r < ALKKAGI_GRID;
+    const isFriendly = (c, r) => occupied[`${c},${r}`] === color;
+    const isEnemy = (c, r) => {
+      const oc = occupied[`${c},${r}`];
+      return oc && oc !== color;
+    };
+    const addIfValid = (c, r, stopAtPiece) => {
+      if (!inBounds(c, r)) return false;
+      if (isFriendly(c, r)) return true;
+      moves.push({ col: c, row: r });
+      if (isEnemy(c, r) || stopAtPiece) return true;
+      return false;
+    };
+
+    if (role === 'K') {
+      for (let dc = -1; dc <= 1; dc++) {
+        for (let dr = -1; dr <= 1; dr++) {
+          if (dc === 0 && dr === 0) continue;
+          addIfValid(col + dc, row + dr, true);
+        }
+      }
+    } else if (role === 'R') {
+      for (const [dc, dr] of [[1,0],[-1,0],[0,1],[0,-1]]) {
+        for (let d = 1; d < ALKKAGI_GRID; d++) {
+          if (addIfValid(col + dc * d, row + dr * d, true)) break;
+        }
+      }
+    } else if (role === 'B') {
+      for (const [dc, dr] of [[1,1],[1,-1],[-1,1],[-1,-1]]) {
+        for (let d = 1; d < ALKKAGI_GRID; d++) {
+          if (addIfValid(col + dc * d, row + dr * d, true)) break;
+        }
+      }
+    } else if (role === 'Q') {
+      for (const [dc, dr] of [[1,0],[-1,0],[0,1],[0,-1],[1,1],[1,-1],[-1,1],[-1,-1]]) {
+        for (let d = 1; d < ALKKAGI_GRID; d++) {
+          if (addIfValid(col + dc * d, row + dr * d, true)) break;
+        }
+      }
+    } else if (role === 'N') {
+      const jumps = [[2,1],[2,-1],[-2,1],[-2,-1],[1,2],[1,-2],[-1,2],[-1,-2]];
+      jumps.forEach(([dc, dr]) => addIfValid(col + dc, row + dr, true));
+    } else {
+      const forward = color === 1 ? -1 : 1;
+      addIfValid(col, row + forward, true);
+      if ((color === 1 && row === 14) || (color === 2 && row === 0)) {
+        addIfValid(col, row + forward * 2, true);
+      }
+    }
+    return moves;
+  }
 
   function showAlkkagiUI() {
     switchGameView('alkkagi');
@@ -163,18 +252,23 @@
     const world = engine.world;
 
     const stoneRadius = 18;
-    const stoneOpts = { friction: 0.01, frictionAir: 0.008, restitution: 0.6, density: 0.001 };
+    const baseDensity = 0.001;
 
     const stones = data.stones || [];
+    alkkagiStonesData = stones.map(s => ({ ...s }));
     stones.forEach(s => {
       const fill = s.color === 1 ? '#111' : '#f5f5f5';
       const stroke = s.color === 1 ? '#333' : '#ccc';
+      const role = (s.role || 'P').toUpperCase();
+      const mass = (ALKKAGI_CHESS[role] || ALKKAGI_CHESS.P).mass;
       const body = M.Bodies.circle(s.x || 100, s.y || 100, stoneRadius, {
-        ...stoneOpts,
+        friction: 0.01, frictionAir: 0.008, restitution: 0.6,
+        density: baseDensity * mass,
         render: { fillStyle: fill, strokeStyle: stroke, lineWidth: 2 },
       });
       body.alkkagiId = s.id;
       body.alkkagiColor = s.color;
+      body.alkkagiRole = role;
       alkkagiBodies[s.id] = body;
       M.World.add(world, body);
     });
@@ -209,21 +303,19 @@
     });
 
     M.Events.on(render, 'afterRender', function() {
-      if (!alkkagiDragging || !alkkagiDragStone) return;
-      const ctx = render.context;
-      const body = alkkagiDragStone;
-      const dx = alkkagiStartPos.x - alkkagiCurrentPos.x;
-      const dy = alkkagiStartPos.y - alkkagiCurrentPos.y;
-      const len = Math.sqrt(dx * dx + dy * dy) || 1;
-      const ux = dx / len;
-      const uy = dy / len;
-      const lineLen = Math.min(len * 2, 80);
-      ctx.strokeStyle = '#c00';
-      ctx.lineWidth = 3;
-      ctx.beginPath();
-      ctx.moveTo(body.position.x, body.position.y);
-      ctx.lineTo(body.position.x + ux * lineLen, body.position.y + uy * lineLen);
-      ctx.stroke();
+      if (alkkagiSelectedStone && alkkagiValidGuides.length > 0) {
+        const ctx = render.context;
+        ctx.fillStyle = 'rgba(255,255,255,0.5)';
+        ctx.strokeStyle = 'rgba(255,255,255,0.8)';
+        ctx.lineWidth = 2;
+        alkkagiValidGuides.forEach(g => {
+          const p = cellToPx(g.col, g.row);
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, 14, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.stroke();
+        });
+      }
     });
 
     const runner = M.Runner.create();
@@ -260,6 +352,7 @@
               velX: b.velocity.x,
               velY: b.velocity.y,
               color: b.alkkagiColor,
+              role: b.alkkagiRole || 'P',
             });
           }
         });
@@ -306,51 +399,84 @@
       return true;
     }
 
+    function getStonesForMoves() {
+      const list = [];
+      Object.keys(alkkagiBodies).forEach(id => {
+        const b = alkkagiBodies[id];
+        if (b && world.bodies.includes(b)) {
+          list.push({ x: b.position.x, y: b.position.y, color: b.alkkagiColor });
+        }
+      });
+      return list;
+    }
+
+    function hitTestGuide(pos) {
+      for (let i = 0; i < alkkagiValidGuides.length; i++) {
+        const g = alkkagiValidGuides[i];
+        const p = cellToPx(g.col, g.row);
+        const dx = pos.x - p.x;
+        const dy = pos.y - p.y;
+        if (dx * dx + dy * dy <= 20 * 20) return i;
+      }
+      return -1;
+    }
+
     render.canvas.addEventListener('pointerdown', function(e) {
       const pos = canvasToWorld(e);
       if (!alkkagiMyTurn || alkkagiMyColor === 0 || !allStonesStopped()) return;
+
+      const guideIdx = hitTestGuide(pos);
+      if (guideIdx >= 0 && alkkagiSelectedStone) {
+        const body = alkkagiSelectedStone;
+        const g = alkkagiValidGuides[guideIdx];
+        const targetPx = cellToPx(g.col, g.row);
+        const dx = targetPx.x - body.position.x;
+        const dy = targetPx.y - body.position.y;
+        const dist = Math.sqrt(dx * dx + dy * dy) || 1;
+        const cellDist = dist / ALKKAGI_CELL;
+        const role = (body.alkkagiRole || 'P').toUpperCase();
+        const cfg = ALKKAGI_CHESS[role] || ALKKAGI_CHESS.P;
+        const massFactor = cfg.mass;
+        let forceMag = Math.min(cellDist * 0.015, cfg.maxPower) * massFactor;
+        forceMag = Math.min(forceMag, cfg.maxPower * massFactor);
+        const ux = dx / dist;
+        const uy = dy / dist;
+        let fx = ux * forceMag;
+        let fy = uy * forceMag;
+        if (cellDist >= 3) {
+          const varianceDeg = (Math.random() - 0.5) * 6;
+          const angle = Math.atan2(fy, fx);
+          const newAngle = angle + (varianceDeg * Math.PI / 180);
+          const mag = Math.sqrt(fx * fx + fy * fy);
+          fx = mag * Math.cos(newAngle);
+          fy = mag * Math.sin(newAngle);
+        }
+        if (window.SoundManager) window.SoundManager.playPianoNote(98, 0.2);
+        if (typeof sendGameAction === 'function') {
+          sendGameAction({ cmd: 'flick', id: body.alkkagiId, forceX: fx, forceY: fy });
+        }
+        window.alkkagiJustFlicked = true;
+        alkkagiSelectedStone = null;
+        alkkagiValidGuides = [];
+        return;
+      }
+
       const bodies = Object.values(alkkagiBodies).filter(b => b && b.alkkagiColor === alkkagiMyColor);
       const hit = M.Query.point(bodies, pos);
       if (hit.length > 0) {
-        alkkagiDragging = true;
-        alkkagiDragStone = hit[0];
-        alkkagiStartPos = { x: pos.x, y: pos.y };
-        alkkagiCurrentPos = { x: pos.x, y: pos.y };
+        const body = hit[0];
+        const stoneData = { x: body.position.x, y: body.position.y, color: body.alkkagiColor, role: body.alkkagiRole };
+        alkkagiValidGuides = getValidChessMoves(stoneData, getStonesForMoves());
+        alkkagiSelectedStone = body;
+        if (window.SoundManager) {
+          window.SoundManager.playPianoNote(523.25, 0.15);
+          setTimeout(() => { if (window.SoundManager) window.SoundManager.playPianoNote(659.25, 0.15); }, 80);
+        }
+      } else {
+        alkkagiSelectedStone = null;
+        alkkagiValidGuides = [];
       }
     });
-
-    window.addEventListener('pointermove', function(e) {
-      if (alkkagiDragging) {
-        alkkagiCurrentPos = canvasToWorld(e);
-      }
-    });
-
-    function handlePointerUp(e) {
-      if (!alkkagiDragging || !alkkagiDragStone) return;
-      const pos = canvasToWorld(e);
-      alkkagiCurrentPos = { x: pos.x, y: pos.y };
-      const dx = alkkagiStartPos.x - alkkagiCurrentPos.x;
-      const dy = alkkagiStartPos.y - alkkagiCurrentPos.y;
-      const dist = Math.sqrt(dx * dx + dy * dy);
-      const maxForce = 0.08;
-      const scale = Math.min(1, dist / 150) * maxForce / (dist || 1);
-      const fx = dx * scale;
-      const fy = dy * scale;
-      if (typeof sendGameAction === 'function') {
-        sendGameAction({
-          cmd: 'flick',
-          id: alkkagiDragStone.alkkagiId,
-          forceX: fx,
-          forceY: fy,
-        });
-      }
-      window.alkkagiJustFlicked = true;
-      alkkagiDragging = false;
-      alkkagiDragStone = null;
-    }
-
-    window.addEventListener('pointerup', handlePointerUp);
-    window.addEventListener('pointercancel', handlePointerUp);
 
     alkkagiEngine = engine;
     alkkagiRender = render;
@@ -360,6 +486,7 @@
 
   function syncAlkkagiStones(stones) {
     if (!alkkagiWorld || !alkkagiBodies) return;
+    alkkagiStonesData = stones.map(s => ({ ...s }));
     const ids = new Set(stones.map(s => s.id));
     Object.keys(alkkagiBodies).forEach(id => {
       if (!ids.has(parseInt(id, 10))) {
@@ -368,21 +495,28 @@
         delete alkkagiBodies[id];
       }
     });
+    const baseDensity = 0.001;
     stones.forEach(s => {
       let body = alkkagiBodies[s.id];
+      const role = (s.role || 'P').toUpperCase();
+      const mass = (ALKKAGI_CHESS[role] || ALKKAGI_CHESS.P).mass;
       if (body) {
         Matter.Body.setPosition(body, { x: s.x, y: s.y });
         Matter.Body.setVelocity(body, { x: s.velX || 0, y: s.velY || 0 });
+        Matter.Body.setDensity(body, baseDensity * mass);
+        body.alkkagiRole = role;
       } else {
         const M = Matter;
         const fill = s.color === 1 ? '#111' : '#f5f5f5';
         const stroke = s.color === 1 ? '#333' : '#ccc';
         body = M.Bodies.circle(s.x || 100, s.y || 100, 18, {
-          friction: 0.01, frictionAir: 0.008, restitution: 0.6, density: 0.001,
+          friction: 0.01, frictionAir: 0.008, restitution: 0.6,
+          density: baseDensity * mass,
           render: { fillStyle: fill, strokeStyle: stroke, lineWidth: 2 },
         });
         body.alkkagiId = s.id;
         body.alkkagiColor = s.color;
+        body.alkkagiRole = role;
         alkkagiBodies[s.id] = body;
         M.World.add(alkkagiWorld, body);
       }
@@ -425,8 +559,9 @@
     alkkagiRender = null;
     alkkagiRunner = null;
     alkkagiWorld = null;
-    alkkagiDragging = false;
-    alkkagiDragStone = null;
+    alkkagiSelectedStone = null;
+    alkkagiValidGuides = [];
+    alkkagiStonesData = [];
     alkkagiPhase = 'ready';
     window.alkkagiJustFlicked = false;
   };

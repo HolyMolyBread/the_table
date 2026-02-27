@@ -18,7 +18,7 @@ const (
 
 // ── 응답 타입 ─────────────────────────────────────────────────────────────────
 
-// AlkkagiStone은 알까기 돌 하나의 좌표/속도 데이터입니다.
+// AlkkagiStone은 알까기 돌 하나의 좌표/속도/역할 데이터입니다.
 type AlkkagiStone struct {
 	ID    int     `json:"id"`
 	X     float64 `json:"x"`
@@ -26,6 +26,7 @@ type AlkkagiStone struct {
 	VelX  float64 `json:"velX"`
 	VelY  float64 `json:"velY"`
 	Color int     `json:"color"` // 1=흑, 2=백
+	Role  string  `json:"role"`  // K, Q, R, B, N, P
 	Angle float64 `json:"angle,omitempty"`
 }
 
@@ -78,20 +79,20 @@ func cellToPx(col, row int) (x, y float64) {
 	return x, y
 }
 
-// defaultStones returns 5 black + 5 white stones at default positions.
+var alkkagiRoles = [5]string{"K", "Q", "R", "B", "N"}
+
+// defaultStones returns 5 black + 5 white stones at default positions (K, Q, R, B, N).
 func defaultStones() []AlkkagiStone {
 	stones := make([]AlkkagiStone, 0, 10)
-	// 흑 기본: rows 10-14
 	blackCells := [][2]int{{2, 11}, {6, 11}, {10, 11}, {3, 13}, {9, 13}}
 	for i, c := range blackCells {
 		x, y := cellToPx(c[0], c[1])
-		stones = append(stones, AlkkagiStone{ID: i, X: x, Y: y, Color: 1})
+		stones = append(stones, AlkkagiStone{ID: i, X: x, Y: y, Color: 1, Role: alkkagiRoles[i]})
 	}
-	// 백 기본: rows 0-4
 	whiteCells := [][2]int{{2, 3}, {6, 3}, {10, 3}, {3, 1}, {9, 1}}
 	for i, c := range whiteCells {
 		x, y := cellToPx(c[0], c[1])
-		stones = append(stones, AlkkagiStone{ID: 5 + i, X: x, Y: y, Color: 2})
+		stones = append(stones, AlkkagiStone{ID: 5 + i, X: x, Y: y, Color: 2, Role: alkkagiRoles[i]})
 	}
 	return stones
 }
@@ -340,7 +341,7 @@ func (g *AlkkagiGame) placementTimeout() {
 		}
 		placed[[2]int{col, row}] = true
 		x, y := cellToPx(col, row)
-		g.stones = append(g.stones, AlkkagiStone{ID: i, X: x, Y: y, Color: 1})
+		g.stones = append(g.stones, AlkkagiStone{ID: i, X: x, Y: y, Color: 1, Role: alkkagiRoles[i]})
 	}
 	for i := g.placementCnt[1]; i < alkkagiStonesPerPlayer; i++ {
 		c := whiteDefaults[i]
@@ -350,7 +351,7 @@ func (g *AlkkagiGame) placementTimeout() {
 		}
 		placed[[2]int{col, row}] = true
 		x, y := cellToPx(col, row)
-		g.stones = append(g.stones, AlkkagiStone{ID: 5 + i, X: x, Y: y, Color: 2})
+		g.stones = append(g.stones, AlkkagiStone{ID: 5 + i, X: x, Y: y, Color: 2, Role: alkkagiRoles[i]})
 	}
 	g.phase = "playing"
 	g.sendStateToAllLocked()
@@ -412,7 +413,8 @@ func (g *AlkkagiGame) handlePlaceLocked(client *Client, payload json.RawMessage)
 
 	x, y := cellToPx(p.Col, p.Row)
 	id := (color-1)*alkkagiStonesPerPlayer + g.placementCnt[color-1]
-	g.stones = append(g.stones, AlkkagiStone{ID: id, X: x, Y: y, Color: color})
+	role := alkkagiRoles[g.placementCnt[color-1]]
+	g.stones = append(g.stones, AlkkagiStone{ID: id, X: x, Y: y, Color: color, Role: role})
 	g.placementCnt[color-1]++
 
 	g.sendStateToAllLocked()
@@ -429,6 +431,21 @@ func (g *AlkkagiGame) handleSyncLocked(client *Client, payload json.RawMessage) 
 	if len(p.Stones) > 20 {
 		client.SendJSON(ServerResponse{Type: "error", Message: "stones 개수 오류"})
 		return
+	}
+	roleByID := make(map[int]string)
+	for _, s := range g.stones {
+		if s.Role != "" {
+			roleByID[s.ID] = s.Role
+		}
+	}
+	for i := range p.Stones {
+		if p.Stones[i].Role == "" {
+			if r, ok := roleByID[p.Stones[i].ID]; ok {
+				p.Stones[i].Role = r
+			} else {
+				p.Stones[i].Role = "P"
+			}
+		}
 	}
 	g.stones = p.Stones
 	g.broadcastStateLocked()
