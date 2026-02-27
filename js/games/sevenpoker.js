@@ -3,6 +3,7 @@
   let spChoiceDiscard = -1;
   let spChoiceOpen = -1;
   let spChoiceMyCards = [];
+  let lastSevenPokerMyTurn = false;
 
   function showSevenPokerUI() {
     switchGameView('sevenpoker');
@@ -13,6 +14,10 @@
 
     const isMyTurn = data.currentTurn === currentUserId;
     const isPlayer = data.players && data.players.some(p => p.userId === currentUserId);
+    if (isMyTurn && !lastSevenPokerMyTurn && window.SoundManager) {
+      window.SoundManager.playPianoNote(783.99, 0.5);
+    }
+    lastSevenPokerMyTurn = isMyTurn;
 
     document.getElementById('sevenpoker-round-bar').textContent = `라운드 ${data.round || 0}`;
     document.getElementById('sevenpoker-pot-bar').textContent = `팟 ⭐×${data.pot || 0}`;
@@ -92,11 +97,13 @@
 
   function sevenpokerCheck() {
     if (!ws || ws.readyState !== WebSocket.OPEN) return;
+    if (window.SoundManager) window.SoundManager.playPianoNote(659.25, 0.4);
     sendGameAction({ cmd: 'check' });
   }
 
   function sevenpokerFold() {
     if (!ws || ws.readyState !== WebSocket.OPEN) return;
+    if (window.SoundManager) window.SoundManager.playPianoNote(659.25, 0.4);
     sendGameAction({ cmd: 'fold' });
   }
 
@@ -130,6 +137,7 @@
   window.sendSevenPokerChoice = function() {
     if (!ws || ws.readyState !== WebSocket.OPEN) return;
     if (spChoiceDiscard === -1 || spChoiceOpen === -1) return;
+    if (window.SoundManager) window.SoundManager.playPianoNote(659.25, 0.4);
     sendGameAction({ cmd: 'choice', discardIdx: spChoiceDiscard, openIdx: spChoiceOpen });
     spChoiceDiscard = -1; spChoiceOpen = -1;
   };

@@ -4,6 +4,44 @@
   const _SB_KEY = 'sb_publishable_hgb5-k3rlP3FYaDgAiF62g_UEG4oODU';
   const supabaseClient = supabase.createClient(_SB_URL, _SB_KEY);
 
+  // ── SoundManager (Web Audio API 피아노 효과음) ─────────────────────────────────
+  const SoundManager = {
+    _ctx: null,
+    _resumed: false,
+    _getContext() {
+      if (!this._ctx) {
+        this._ctx = new (window.AudioContext || window.webkitAudioContext)();
+      }
+      return this._ctx;
+    },
+    async _ensureResumed() {
+      const ctx = this._getContext();
+      if (ctx.state === 'suspended') {
+        await ctx.resume();
+      }
+      this._resumed = true;
+    },
+    playPianoNote(frequency, duration) {
+      try {
+        const ctx = this._getContext();
+        this._ensureResumed().then(() => {
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          osc.type = 'sine';
+          osc.frequency.value = frequency;
+          gain.gain.setValueAtTime(0, ctx.currentTime);
+          gain.gain.linearRampToValueAtTime(0.15, ctx.currentTime + 0.02);
+          gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + duration);
+          osc.start(ctx.currentTime);
+          osc.stop(ctx.currentTime + duration);
+        }).catch(() => {});
+      } catch (_) {}
+    }
+  };
+  window.SoundManager = SoundManager;
+
   // ── State ──────────────────────────────────────────────────────────────────
   let actionCooldown = false;  // 게임 액션 광클 방지 (0.4초 쿨다운)
   let ws            = null;
@@ -833,6 +871,16 @@
   document.addEventListener('click', () => {
     document.getElementById('record-popup')?.classList.remove('open');
   });
+
+  // AudioContext 활성화: 사용자 상호작용(첫 클릭/터치) 후 재개
+  const activateAudio = () => {
+    if (window.SoundManager) {
+      window.SoundManager._getContext();
+      window.SoundManager._ensureResumed();
+    }
+  };
+  document.addEventListener('click', activateAudio, { once: true });
+  document.addEventListener('touchstart', activateAudio, { once: true });
 
   // ── Chat System ────────────────────────────────────────────────────────────
   function addChatMessage(type, parsed) {

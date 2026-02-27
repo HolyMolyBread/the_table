@@ -1,5 +1,7 @@
   // ── Texas Holdem UI ───────────────────────────────────────────────────────
 
+  let lastHoldemMyTurn = false;
+
   function showHoldemUI() {
     switchGameView('holdem');
   }
@@ -21,6 +23,10 @@
 
     const isMyTurn = data.currentTurn === currentUserId;
     const isPlayer = data.players && data.players.some(p => p.userId === currentUserId);
+    if (isMyTurn && !lastHoldemMyTurn && window.SoundManager) {
+      window.SoundManager.playPianoNote(783.99, 0.5);
+    }
+    lastHoldemMyTurn = isMyTurn;
 
     document.getElementById('holdem-round-bar').textContent = `라운드 ${data.round || 0}`;
     document.getElementById('holdem-pot-bar').textContent = `팟 ⭐×${data.pot || 0}`;
@@ -91,10 +97,12 @@
 
   function holdemCheck() {
     if (!ws || ws.readyState !== WebSocket.OPEN) return;
+    if (window.SoundManager) window.SoundManager.playPianoNote(659.25, 0.4);
     sendGameAction({ cmd: 'check' });
   }
 
   function holdemFold() {
     if (!ws || ws.readyState !== WebSocket.OPEN) return;
+    if (window.SoundManager) window.SoundManager.playPianoNote(659.25, 0.4);
     sendGameAction({ cmd: 'fold' });
   }

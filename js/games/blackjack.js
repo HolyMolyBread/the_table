@@ -1,4 +1,6 @@
   // ── Blackjack UI ───────────────────────────────────────────────────────────
+  let lastBlackjackMyTurn = false;
+
   function showBlackjackUI() {
     switchGameView('blackjack');
   }
@@ -52,6 +54,19 @@
 
   function renderBlackjackState(data) {
     if (!data) return;
+    let isMyTurn = false;
+    const players = data.Players || data.players;
+    const turnOrder = data.turnOrder || data.TurnOrder;
+    const currentTurnIdx = data.currentTurnIdx ?? data.CurrentTurnIdx ?? 0;
+    if (players && turnOrder) {
+      isMyTurn = data.phase === 'player_turn' && turnOrder[currentTurnIdx] === currentUserId;
+    } else {
+      isMyTurn = data.phase === 'player_turn';
+    }
+    if (isMyTurn && !lastBlackjackMyTurn && window.SoundManager) {
+      window.SoundManager.playPianoNote(783.99, 0.5);
+    }
+    lastBlackjackMyTurn = isMyTurn;
     const dealerHand = data.DealerHand || data.dealerHand || [];
     const dealerHandInfo = Array.isArray(dealerHand) ? { cards: dealerHand, score: handScoreFromCards(dealerHand) } : dealerHand;
     renderBJHand('bj-dealer-hand', 'bj-dealer-score', dealerHandInfo);
@@ -61,7 +76,6 @@
     const playersRowEl = document.getElementById('bj-players-row');
     if (!playersRowEl) return;
 
-    const players = data.Players || data.players;
     if (players) {
       const turnOrder = data.turnOrder || data.TurnOrder || Object.keys(players);
       const numPlayers = turnOrder.length;
@@ -82,7 +96,6 @@
         return renderBJPlayerBox({ userId, hand, hearts }, isMe, isTheirTurn, showActions, isReady);
       }).join('');
     } else {
-      const isMyTurn = data.phase === 'player_turn';
       const meData = { hand: data.playerHand?.cards || [], hearts: data.playerHearts ?? 0 };
       const readyStatus = data.ReadyStatus || data.readyStatus || {};
       const isReady = !!readyStatus[currentUserId];
@@ -176,10 +189,12 @@
   }
   function bjHit() {
     if (!ws || ws.readyState !== WebSocket.OPEN) return;
+    if (window.SoundManager) window.SoundManager.playPianoNote(523.25, 0.3);
     sendGameAction({ cmd: 'hit' });
   }
   function bjStand() {
     if (!ws || ws.readyState !== WebSocket.OPEN) return;
+    if (window.SoundManager) window.SoundManager.playPianoNote(659.25, 0.4);
     sendGameAction({ cmd: 'stand' });
   }
 

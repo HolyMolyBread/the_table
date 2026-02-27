@@ -5,6 +5,7 @@
   let selectedThiefCardIdx = -1;
   let selectedThiefTargetId = '';
   let lastThiefState = null;
+  let lastThiefMyTurn = false;
 
   function showThiefUI() {
     switchGameView('thief');
@@ -32,6 +33,10 @@
     if (!data) return;
     lastThiefState = data;
     const isMyTurn = data.turn === currentUserId;
+    if (isMyTurn && !lastThiefMyTurn && window.SoundManager) {
+      window.SoundManager.playPianoNote(783.99, 0.5);
+    }
+    lastThiefMyTurn = isMyTurn;
     if (!isMyTurn || data.targetUserId !== selectedThiefTargetId) {
       selectedThiefCardIdx = -1;
       selectedThiefTargetId = '';
@@ -137,6 +142,7 @@
     if (!ws || ws.readyState !== WebSocket.OPEN) return;
     if (selectedThiefCardIdx < 0 || !selectedThiefTargetId) return;
     if (!lastThiefState || lastThiefState.turn !== currentUserId || lastThiefState.targetUserId !== selectedThiefTargetId) return;
+    if (window.SoundManager) window.SoundManager.playPianoNote(523.25, 0.3);
     sendGameAction({ cmd: 'draw', targetId: selectedThiefTargetId, index: selectedThiefCardIdx });
     selectedThiefCardIdx = -1;
     selectedThiefTargetId = '';
@@ -145,5 +151,6 @@
 
   function thiefDraw() {
     if (!ws || ws.readyState !== WebSocket.OPEN) return;
+    if (window.SoundManager) window.SoundManager.playPianoNote(523.25, 0.3);
     sendGameAction({ cmd: 'draw' });
   }

@@ -2,6 +2,7 @@
 
   let lastOneCardTopJson = '';
   let lastOneCardHandJson = '';
+  let lastOneCardMyTurn = false;
 
   function showOneCardUI() {
     switchGameView('onecard');
@@ -60,6 +61,10 @@
     if (!data) return;
     console.log("[OneCard Debug]", data, currentUserId);
     const isMyTurn = data.turn === currentUserId;
+    if (isMyTurn && !lastOneCardMyTurn && window.SoundManager) {
+      window.SoundManager.playPianoNote(783.99, 0.5);
+    }
+    lastOneCardMyTurn = isMyTurn;
     const top = data.topCard || {};
     const attackPenalty = data.attackPenalty || 0;
     const oneCardVuln = data.oneCardVulnerable || '';
@@ -214,11 +219,13 @@
 
   function onecardDraw() {
     if (!ws || ws.readyState !== WebSocket.OPEN) return;
+    if (window.SoundManager) window.SoundManager.playPianoNote(523.25, 0.3);
     sendGameAction({ cmd: 'draw' });
   }
 
   function onecardPlay(index, targetSuit) {
     if (!ws || ws.readyState !== WebSocket.OPEN) return;
+    if (window.SoundManager) window.SoundManager.playPianoNote(659.25, 0.4);
     const payload = { cmd: 'play', index };
     if (targetSuit) payload.targetSuit = targetSuit;
     sendGameAction(payload);
