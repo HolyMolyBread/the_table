@@ -96,7 +96,7 @@
 
   // ── 상수 (호이스팅/초기화 순서 문제 방지: 최상단 선언) ───────────────────────
   const TABLE_SEAT_ORDER = ['seat-top', 'seat-right', 'seat-bottom', 'seat-left'];
-  const games = ['omok', 'blackjack', 'tictactoe', 'connect4', 'indian', 'holdem', 'sevenpoker', 'thief', 'onecard', 'mahjong', 'alkkagi', 'tetris', 'duel'];
+  const games = ['omok', 'blackjack', 'tictactoe', 'connect4', 'indian', 'holdem', 'sevenpoker', 'thief', 'onecard', 'mahjong', 'alkkagi', 'tetris', 'duel', 'suika'];
   const RULES = {
     omok: {
         title: '🀱 오목 룰',
@@ -488,6 +488,20 @@
             <li>Draw: 신호와 함께 화면이 밝아집니다. 이때 시계를 클릭하세요!</li>
             <li>가장 빠른 반응 속도(ms)가 승리합니다.</li>
         </ul>`
+    },
+    suika: {
+        title: '🍉 수박게임 (Suika) 룰',
+        html: `
+        <h3>게임 개요</h3>
+        <ul>
+            <li><strong>실시간 충전제</strong>. 3초마다 과일이 1개씩 충전되며, 최대 2개까지 저장됩니다.</li>
+            <li>충전된 과일로 컨테이너에 투하하여 지분 100%를 획득하세요!</li>
+            <li>2명 이상 Ready 시 게임이 시작됩니다.</li>
+        </ul>
+        <h3>조작</h3>
+        <ul>
+            <li>과일이 충전되면 컨테이너를 클릭/터치하여 투하할 수 있습니다.</li>
+        </ul>`
     }
   };
   const POKER_HAND_RANKINGS_HTML = `
@@ -505,8 +519,8 @@
       <li>하이카드 (High Card)</li>
     </ol>
   `;
-  const GAME_VIEW_IDS = ['board-placeholder', 'gomoku-container', 'blackjack-container', 'tictactoe-container', 'connect4-container', 'indian-container', 'holdem-container', 'sevenpoker-container', 'thief-container', 'onecard-container', 'mahjong-container', 'alkkagi-container', 'tetris-container', 'duel-container'];
-  const PREFIX_TO_CONTAINER = { omok: 'gomoku-container', blackjack: 'blackjack-container', tictactoe: 'tictactoe-container', connect4: 'connect4-container', indian: 'indian-container', holdem: 'holdem-container', sevenpoker: 'sevenpoker-container', thief: 'thief-container', onecard: 'onecard-container', mahjong: 'mahjong-container', mahjong3: 'mahjong-container', alkkagi: 'alkkagi-container', tetris: 'tetris-container', duel: 'duel-container' };
+  const GAME_VIEW_IDS = ['board-placeholder', 'gomoku-container', 'blackjack-container', 'tictactoe-container', 'connect4-container', 'indian-container', 'holdem-container', 'sevenpoker-container', 'thief-container', 'onecard-container', 'mahjong-container', 'alkkagi-container', 'tetris-container', 'duel-container', 'suika-container'];
+  const PREFIX_TO_CONTAINER = { omok: 'gomoku-container', blackjack: 'blackjack-container', tictactoe: 'tictactoe-container', connect4: 'connect4-container', indian: 'indian-container', holdem: 'holdem-container', sevenpoker: 'sevenpoker-container', thief: 'thief-container', onecard: 'onecard-container', mahjong: 'mahjong-container', mahjong3: 'mahjong-container', alkkagi: 'alkkagi-container', tetris: 'tetris-container', duel: 'duel-container', suika: 'suika-container' };
   const GAME_STATE_HANDLERS = {
     tictactoe_state:  { logKey: 'ttt-state',       show: () => { if (typeof window.showTicTacToeUI === 'function') window.showTicTacToeUI(); },  render: (data) => { if (typeof window.renderTicTacToe === 'function') window.renderTicTacToe(data); } },
     connect4_state:   { logKey: 'c4-state',       show: () => { if (typeof window.showConnect4UI === 'function') window.showConnect4UI(); },   render: (data) => { if (typeof window.renderConnect4 === 'function') window.renderConnect4(data); } },
@@ -520,6 +534,7 @@
     alkkagi_state:    { logKey: 'alkkagi-state',  show: () => { if (typeof window.showAlkkagiUI === 'function') window.showAlkkagiUI(); },    render: (data) => { if (typeof window.renderAlkkagi === 'function') window.renderAlkkagi(data); } },
     tetris_state:     { logKey: 'tetris-state',  show: () => { if (typeof window.showTetrisUI === 'function') window.showTetrisUI(); },     render: (data) => { if (typeof window.renderTetris === 'function') window.renderTetris(data); } },
     duel_state:       { logKey: 'duel-state',    show: () => { if (typeof window.showDuelUI === 'function') window.showDuelUI(); },       render: (data) => { if (typeof window.renderDuel === 'function') window.renderDuel(data); } },
+    suika_state:      { logKey: 'suika-state',   show: () => { if (typeof window.showSuikaUI === 'function') window.showSuikaUI(); },    render: (data) => { if (typeof window.renderSuika === 'function') window.renderSuika(data); } },
   };
   const PREFIX_TO_TIMER = { omok: ['status-seconds', 'status-timer-block'], tictactoe: ['ttt-seconds', 'ttt-timer-block'], connect4: ['c4-seconds', 'c4-timer-block'], indian: ['indian-seconds', 'indian-timer-block'], holdem: ['holdem-seconds', 'holdem-timer-block'], sevenpoker: ['sevenpoker-seconds', 'sevenpoker-timer-block'], thief: ['thief-seconds', 'thief-timer-block'], onecard: ['onecard-seconds', 'onecard-timer-block'], mahjong: ['mahjong-seconds', 'mahjong-timer-block'], mahjong3: ['mahjong-seconds', 'mahjong-timer-block'] };
 
@@ -1342,9 +1357,12 @@
             case 'tetris_move_result':
               if (typeof window.tetrisOnMoveResult === 'function') window.tetrisOnMoveResult(parsed.success);
               break;
-            case 'tictactoe_state': case 'connect4_state': case 'indian_state': case 'holdem_state': case 'sevenpoker_state': case 'thief_state': case 'onecard_state': case 'mahjong_state': case 'mahjong3_state': case 'alkkagi_state': case 'tetris_state': case 'duel_state': {
+            case 'suika_drop_result':
+              if (typeof window.suikaOnDropResult === 'function') window.suikaOnDropResult(parsed.success);
+              break;
+            case 'tictactoe_state': case 'connect4_state': case 'indian_state': case 'holdem_state': case 'sevenpoker_state': case 'thief_state': case 'onecard_state': case 'mahjong_state': case 'mahjong3_state': case 'alkkagi_state': case 'tetris_state': case 'duel_state': case 'suika_state': {
               document.getElementById('btn-takeover').style.display = 'none';
-              ['status-turn-user', 'ttt-status', 'c4-status', 'indian-status', 'thief-status', 'onecard-status', 'mahjong-status', 'alkkagi-status', 'tetris-status', 'duel-status'].forEach(id => {
+              ['status-turn-user', 'ttt-status', 'c4-status', 'indian-status', 'thief-status', 'onecard-status', 'mahjong-status', 'alkkagi-status', 'tetris-status', 'duel-status', 'suika-status'].forEach(id => {
                 const el = document.getElementById(id);
                 if (el) { el.style.color = ''; el.style.fontWeight = ''; }
               });
@@ -1493,7 +1511,7 @@
 
   function clearAllGameContainers() {
     // 모든 게임 컨테이너 숨김 + 내부 콘텐츠 비우기 (UI 잔상 방지)
-    const containerIds = ['gomoku-container', 'blackjack-container', 'tictactoe-container', 'connect4-container', 'indian-container', 'holdem-container', 'sevenpoker-container', 'thief-container', 'onecard-container', 'mahjong-container', 'alkkagi-container', 'tetris-container', 'duel-container'];
+    const containerIds = ['gomoku-container', 'blackjack-container', 'tictactoe-container', 'connect4-container', 'indian-container', 'holdem-container', 'sevenpoker-container', 'thief-container', 'onecard-container', 'mahjong-container', 'alkkagi-container', 'tetris-container', 'duel-container', 'suika-container'];
     containerIds.forEach(id => {
       const el = document.getElementById(id);
       if (el) {

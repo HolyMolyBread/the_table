@@ -869,6 +869,31 @@ header {
   100% { transform: translate(-50%, -50%) scale(1); opacity: 0; }
 }
 
+/* ── Suika (수박게임) - 충전 게이지 ── */
+.suika-recharge-bar {
+  flex: 1;
+  height: 12px;
+  background: var(--bg-tertiary);
+  border-radius: 6px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  transition: border-color 0.2s;
+}
+.suika-recharge-bar.suika-ready {
+  border-color: var(--success);
+}
+.suika-recharge-fill {
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(90deg, var(--success), #86efac);
+  border-radius: 5px;
+  transition: width 0.1s linear;
+}
+.suika-fruit {
+  position: absolute;
+  pointer-events: none;
+}
+
 /* 타일/그리드 게임 전용 모션 */
 @keyframes stonePop {
   0% { transform: scale(0.3); opacity: 0; }
