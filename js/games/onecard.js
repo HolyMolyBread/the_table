@@ -12,13 +12,14 @@
   function renderOneCardCard(card, playable) {
     if (!card) return '';
     const isRed = card.suit === '♥' || card.suit === '♦';
+    const isRedJoker = card.value === 'C_JOKER';
     const suit = card.suit || '🃏';
     let val = card.value || '?';
     if (val === 'B_JOKER') val = 'B';
     if (val === 'C_JOKER') val = 'C';
 
     return `
-    <div class="onecard-card ${isRed ? 'red-suit' : 'black-suit'} ${playable ? 'playable' : ''}" data-index="${card._index ?? ''}" style="background: white; color: ${isRed ? '#dc2626' : '#111'};">
+    <div class="onecard-card ${isRed ? 'red-suit' : 'black-suit'} ${isRedJoker ? 'red-joker' : ''} ${playable ? 'playable' : ''}" data-index="${card._index ?? ''}">
       <div style="font-size:12px; font-weight: bold; text-align:left;">${val}</div>
       <div style="font-size:24px; text-align:center; flex: 1; display: flex; align-items: center; justify-content: center;">${suit}</div>
       <div style="font-size:12px; font-weight: bold; text-align:right;">${val}</div>
@@ -80,6 +81,24 @@
       btnCall.disabled = !oneCardVuln || !ws || ws.readyState !== WebSocket.OPEN;
     }
 
+    const meStatusEl = document.getElementById('onecard-me-status');
+    if (meStatusEl && data.players) {
+      const mePlayer = data.players.find(p => p.userId === currentUserId);
+      if (mePlayer) {
+        if (mePlayer.status === 'escaped') {
+          meStatusEl.textContent = '탈출 성공';
+          meStatusEl.style.display = '';
+        } else if (mePlayer.status === 'bankrupt') {
+          meStatusEl.textContent = '파산';
+          meStatusEl.style.display = '';
+        } else {
+          meStatusEl.style.display = 'none';
+        }
+      } else {
+        meStatusEl.style.display = 'none';
+      }
+    }
+
     const playersEl = document.getElementById('onecard-players');
     if (playersEl && data.players) {
       const players = data.players;
@@ -92,9 +111,12 @@
         .sort((a, b) => a.relativeIdx - b.relativeIdx);
       playersEl.innerHTML = opponents.map((p) => {
         const seatClass = opponents.length === 1 ? 'seat-left' : (RELATIVE_INDEX_TO_SEAT[p.relativeIdx] || 'seat-top');
+        let countText = `🃏 ${p.cardCount || 0}장`;
+        if (p.status === 'escaped') countText = '탈출 성공';
+        else if (p.status === 'bankrupt') countText = '파산';
         return `<div class="table-seat onecard-player-box ${seatClass} ${p.isTurn ? 'my-turn' : ''}" data-user-id="${escapeHTML(p.userId)}">
           <span class="table-seat-name">${escapeHTML(p.userId)}</span>
-          <span class="table-seat-count">🃏 ${p.cardCount || 0}장</span>
+          <span class="table-seat-count">${countText}</span>
         </div>`;
       }).join('');
     }

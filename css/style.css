@@ -1012,6 +1012,7 @@ header {
 }
 .onecard-card.red-suit { color: #dc2626; }
 .onecard-card.black-suit { color: #111; }
+.onecard-card.red-joker { background: white !important; color: var(--danger) !important; }
 .onecard-deck {
   width: 56px; height: 80px; border-radius: 8px;
   background: repeating-linear-gradient(-45deg, #1e3a8a 0, #1e3a8a 6px, #2563eb 6px, #2563eb 12px);
