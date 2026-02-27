@@ -8,7 +8,11 @@ import (
 	"time"
 )
 
-const tttTurnTimeLimit = 15 // 턴당 제한 시간(초)
+const (
+	tttTurnTimeLimitBase = 15  // 턴당 기본 제한 시간(초)
+	tttTurnTimeLimitMin  = 2   // 터보 모드 최소 시간(초) — 0.5초씩 차감
+	tttTurnTimeDecay     = 1   // 턴마다 차감량(2턴당 1초 = 0.5초씩)
+)
 
 // ── 응답 타입 ─────────────────────────────────────────────────────────────────
 
@@ -21,9 +25,10 @@ type TicTacToeStateResponse struct {
 
 // TicTacToeData는 tictactoe_state 응답의 data 필드입니다.
 type TicTacToeData struct {
-	Board  [3][3]int      `json:"board"`  // 0=빈칸, 1=O, 2=X
-	Turn   string         `json:"turn"`   // 현재 차례인 유저 ID
-	Colors map[string]int `json:"colors"` // {"userID": 1(O) 또는 2(X)}
+	Board     [3][3]int      `json:"board"`     // 0=빈칸, 1=O, 2=X
+	Turn      string         `json:"turn"`      // 현재 차례인 유저 ID
+	Colors    map[string]int `json:"colors"`    // {"userID": 1(O) 또는 2(X)}
+	Remaining float64        `json:"remaining"` // 터보 모드: 남은 시간(초)
 }
 
 // ── TicTacToeGame 플러그인 ────────────────────────────────────────────────────
@@ -38,6 +43,7 @@ type TicTacToeGame struct {
 	board        [3][3]int  // 0=빈칸, 1=O, 2=X
 	players      [2]*Client // [0]=O(선공), [1]=X(후공)
 	currentTurn  int        // 0 또는 1
+	turnCount    int        // 터보 모드: 턴이 지날수록 제한 시간 감소
 	gameStarted  bool
 	stopTick     chan struct{}
 	startReady   [2]bool
@@ -241,11 +247,20 @@ func (g *TicTacToeGame) handlePlace(client *Client, r, c int) {
 	}
 
 	g.currentTurn = 1 - g.currentTurn
+	g.turnCount++
 	g.broadcastStateLocked()
 	g.startTurnTimerLocked()
 }
 
 // ── 타이머 ────────────────────────────────────────────────────────────────────
+
+func (g *TicTacToeGame) tttTimeLimit() int {
+	limit := tttTurnTimeLimitBase - g.turnCount*tttTurnTimeDecay/2
+	if limit < tttTurnTimeLimitMin {
+		limit = tttTurnTimeLimitMin
+	}
+	return limit
+}
 
 func (g *TicTacToeGame) startTurnTimerLocked() {
 	if g.stopTick != nil {
@@ -256,17 +271,18 @@ func (g *TicTacToeGame) startTurnTimerLocked() {
 	g.stopTick = stopCh
 	currentPlayer := g.players[g.currentTurn]
 	room := g.room
+	limit := g.tttTimeLimit()
 
 	data, _ := json.Marshal(TimerTickMessage{
 		Type:      "timer_tick",
 		RoomID:    g.room.ID,
 		TurnUser:  currentPlayer.UserID,
-		Remaining: tttTurnTimeLimit,
+		Remaining: limit,
 	})
 	g.room.broadcastAll(data)
 
 	go func() {
-		remaining := tttTurnTimeLimit
+		remaining := limit
 		ticker := time.NewTicker(time.Second)
 		defer ticker.Stop()
 		for remaining > 0 {
@@ -368,10 +384,15 @@ func (g *TicTacToeGame) broadcastStateLocked() {
 }
 
 func (g *TicTacToeGame) makeDataLocked() TicTacToeData {
+	limit := tttTurnTimeLimitBase - g.turnCount*tttTurnTimeDecay/2
+	if limit < tttTurnTimeLimitMin {
+		limit = tttTurnTimeLimitMin
+	}
 	return TicTacToeData{
-		Board:  g.board,
-		Turn:   g.players[g.currentTurn].UserID,
-		Colors: map[string]int{g.players[0].UserID: 1, g.players[1].UserID: 2},
+		Board:     g.board,
+		Turn:      g.players[g.currentTurn].UserID,
+		Colors:    map[string]int{g.players[0].UserID: 1, g.players[1].UserID: 2},
+		Remaining: float64(limit),
 	}
 }
 
@@ -426,6 +447,7 @@ func (g *TicTacToeGame) handleReady(client *Client) {
 	g.startReady = [2]bool{}
 	g.gameStarted = true
 	g.currentTurn = 0
+	g.turnCount = 0
 	notice, _ := json.Marshal(ServerResponse{
 		Type: "game_notice",
 		Message: fmt.Sprintf(
@@ -489,6 +511,7 @@ func (g *TicTacToeGame) handleRematch(client *Client) {
 	g.players[0], g.players[1] = g.players[1], g.players[0]
 	g.board = [3][3]int{}
 	g.rematchReady = [2]bool{}
+	g.turnCount = 0
 	g.gameStarted = true
 	g.currentTurn = 0
 
