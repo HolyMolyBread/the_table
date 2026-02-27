@@ -2,12 +2,16 @@
 
   let thiefHoveredIndex = -1;
   let thiefHoveredTargetId = '';
+  let selectedThiefCardIdx = -1;
+  let selectedThiefTargetId = '';
   let lastThiefState = null;
 
   function showThiefUI() {
     switchGameView('thief');
     thiefHoveredIndex = -1;
     thiefHoveredTargetId = '';
+    selectedThiefCardIdx = -1;
+    selectedThiefTargetId = '';
   }
 
   function renderThiefCard(card, hoverFinger, isDiscarding) {
@@ -28,6 +32,10 @@
     if (!data) return;
     lastThiefState = data;
     const isMyTurn = data.turn === currentUserId;
+    if (!isMyTurn || data.targetUserId !== selectedThiefTargetId) {
+      selectedThiefCardIdx = -1;
+      selectedThiefTargetId = '';
+    }
     document.getElementById('thief-status').textContent = isMyTurn
       ? '🎯 내 차례 — 상대방 카드를 클릭하여 뽑으세요!'
       : `⏳ ${escapeHTML(data.turn || '—')}의 차례`;
@@ -52,7 +60,8 @@
         if (isTarget && cardCount > 0) {
           targetCardsHtml = '<div class="table-seat-target-cards">' + Array.from({ length: cardCount }, (_, i) => {
             const hovered = thiefHoveredTargetId === p.userId && thiefHoveredIndex === i;
-            return `<div class="thief-target-card${hovered ? ' hovered' : ''}" data-target-id="${escapeHTML(p.userId)}" data-index="${i}">🃏</div>`;
+            const selected = selectedThiefTargetId === p.userId && selectedThiefCardIdx === i;
+            return `<div class="thief-target-card${hovered ? ' hovered' : ''}${selected ? ' selected' : ''}" data-target-id="${escapeHTML(p.userId)}" data-index="${i}">🃏</div>`;
           }).join('') + '</div>';
         }
         const isTheirTurn = data.turn === p.userId;
@@ -66,9 +75,16 @@
         el.onclick = () => {
           const targetId = el.dataset.targetId;
           const index = parseInt(el.dataset.index, 10);
-          thiefOnTargetCardClick(targetId, index, el);
+          thiefOnTargetCardClick(targetId, index);
         };
       });
+    }
+
+    const btnPick = document.getElementById('btn-thief-pick');
+    if (btnPick) {
+      const canPick = isMyTurn && data.targetUserId && selectedThiefTargetId === data.targetUserId && selectedThiefCardIdx >= 0;
+      btnPick.style.display = canPick ? '' : 'none';
+      btnPick.disabled = !canPick || !ws || ws.readyState !== WebSocket.OPEN;
     }
 
     const handEl = document.getElementById('thief-hand');
@@ -103,22 +119,28 @@
     }, 50);
   }
 
-  function thiefOnTargetCardClick(targetId, index, el) {
-    if (!ws || ws.readyState !== WebSocket.OPEN) return;
-    if (thiefHoveredTargetId === targetId && thiefHoveredIndex === index) {
-      if (window.isDrawing) return;
-      window.isDrawing = true;
-      setTimeout(() => { window.isDrawing = false; }, 500);
-      sendGameAction({ cmd: 'draw', targetId: targetId, index: index });
-      thiefHoveredIndex = -1;
-      thiefHoveredTargetId = '';
+  function thiefOnTargetCardClick(targetId, index) {
+    if (!lastThiefState || lastThiefState.turn !== currentUserId || !lastThiefState.targetUserId || lastThiefState.targetUserId !== targetId) return;
+    const cardCount = (lastThiefState.players || []).find(p => p.userId === targetId)?.cardCount || 0;
+    if (index < 0 || index >= cardCount) return;
+    if (selectedThiefTargetId === targetId && selectedThiefCardIdx === index) {
+      selectedThiefCardIdx = -1;
+      selectedThiefTargetId = '';
     } else {
-      sendGameAction({ cmd: 'hover', targetId: targetId, index: index });
-      thiefHoveredIndex = index;
-      thiefHoveredTargetId = targetId;
-      document.querySelectorAll('#thief-players .thief-target-card').forEach(c => c.classList.remove('hovered'));
-      if (el) el.classList.add('hovered');
+      selectedThiefCardIdx = index;
+      selectedThiefTargetId = targetId;
     }
+    renderThief(lastThiefState);
+  }
+
+  function thiefPerformPick() {
+    if (!ws || ws.readyState !== WebSocket.OPEN) return;
+    if (selectedThiefCardIdx < 0 || !selectedThiefTargetId) return;
+    if (!lastThiefState || lastThiefState.turn !== currentUserId || lastThiefState.targetUserId !== selectedThiefTargetId) return;
+    sendGameAction({ cmd: 'draw', targetId: selectedThiefTargetId, index: selectedThiefCardIdx });
+    selectedThiefCardIdx = -1;
+    selectedThiefTargetId = '';
+    renderThief(lastThiefState);
   }
 
   function thiefDraw() {

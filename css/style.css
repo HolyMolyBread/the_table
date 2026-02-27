@@ -953,6 +953,12 @@ header {
   margin-left: 0;
 }
 .thief-target-card:first-child { margin-left: 0; }
+.thief-target-card.selected {
+  border: 3px solid #facc15;
+  box-shadow: 0 0 12px rgba(250, 204, 21, 0.6);
+  transform: translateY(-12px);
+  z-index: 50;
+}
 .thief-target-card:hover, .thief-target-card.hovered {
   border-color: var(--accent); transform: translateY(-20px); z-index: 100; margin-right: 12px;
 }
