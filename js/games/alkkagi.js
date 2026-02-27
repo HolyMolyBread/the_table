@@ -37,6 +37,11 @@
   let alkkagiValidGuides = [];
   let alkkagiStonesData = [];
   let alkkagiMode = 'janggi';
+  let alkkagiPlacementMousePos = null;
+  let alkkagiPlacementNextRole = '';
+  let alkkagiPlacementData = null;
+  let alkkagiSlingshotBody = null;
+  let alkkagiSlingshotEnd = null;
 
   function getAlkkagiCfg(role, mode) {
     if (mode === 'chess') return ALKKAGI_CHESS[role] || ALKKAGI_CHESS.N;
@@ -146,6 +151,9 @@
     if (!data) return;
     alkkagiMode = data.mode || 'janggi';
     alkkagiPhase = data.phase || 'ready';
+    if (alkkagiPhase === 'ready') {
+      if (typeof window.clearAlkkagi === 'function') window.clearAlkkagi();
+    }
     const players = data.players || [];
     if (players[0] === currentUserId) alkkagiMyColor = 1;
     else if (players[1] === currentUserId) alkkagiMyColor = 2;
@@ -155,9 +163,22 @@
     const statusEl = document.getElementById('alkkagi-status');
     const phaseEl = document.getElementById('alkkagi-phase');
     const stonesEl = document.getElementById('alkkagi-stones-count');
+    const nextRoleEl = document.getElementById('alkkagi-next-role');
+    if (nextRoleEl) {
+      const nextRole = alkkagiMyColor === 1 ? (data.nextRoleBlack || '') : (alkkagiMyColor === 2 ? (data.nextRoleWhite || '') : '');
+      if (alkkagiPhase === 'placement' && nextRole) {
+        const char = getAlkkagiChar(nextRole, alkkagiMode);
+        nextRoleEl.innerHTML = `다음 배치: <span class="alkkagi-next-role-icon">${char || '●'}</span>`;
+        nextRoleEl.style.display = 'inline';
+      } else {
+        nextRoleEl.style.display = 'none';
+      }
+    }
     if (statusEl) {
       if (alkkagiPhase === 'placement') {
-        statusEl.textContent = '배치 중 — 자기 영역의 격자를 클릭하여 돌을 놓으세요';
+        const nextRole = alkkagiMyColor === 1 ? (data.nextRoleBlack || '') : (alkkagiMyColor === 2 ? (data.nextRoleWhite || '') : '');
+        const nextChar = nextRole ? getAlkkagiChar(nextRole, alkkagiMode) || '●' : '';
+        statusEl.textContent = nextChar ? `배치 중 — 다음: ${nextChar} — 자기 영역의 격자를 클릭하여 돌을 놓으세요` : '배치 중 — 자기 영역의 격자를 클릭하여 돌을 놓으세요';
       } else if (alkkagiPhase === 'playing') {
         const turn = data.currentTurn || '';
         statusEl.textContent = turn === currentUserId
@@ -191,6 +212,7 @@
     if (!wrap || typeof Matter === 'undefined') return;
 
     if (alkkagiPhase === 'placement') {
+      alkkagiPlacementData = data;
       if (!alkkagiPlacementCanvas) {
         initAlkkagiPlacement(wrap, data);
       } else {
@@ -219,10 +241,30 @@
     const canvas = document.createElement('canvas');
     canvas.width = ALKKAGI_W;
     canvas.height = ALKKAGI_H;
-    canvas.style.cssText = 'display:block; cursor:pointer; border-radius:8px;';
+    canvas.style.cssText = 'display:block; cursor:pointer; border-radius:8px; touch-action: none;';
     container.appendChild(canvas);
     alkkagiPlacementCanvas = canvas;
+    alkkagiPlacementData = data;
+    alkkagiPlacementNextRole = alkkagiMyColor === 1 ? (data.nextRoleBlack || '') : (alkkagiMyColor === 2 ? (data.nextRoleWhite || '') : '');
     updateAlkkagiPlacement(data);
+
+    function onPlacementPointerMove(e) {
+      const rect = canvas.getBoundingClientRect();
+      const scaleX = canvas.width / rect.width;
+      const scaleY = canvas.height / rect.height;
+      const clientX = e.clientX ?? (e.touches && e.touches[0] ? e.touches[0].clientX : 0);
+      const clientY = e.clientY ?? (e.touches && e.touches[0] ? e.touches[0].clientY : 0);
+      alkkagiPlacementMousePos = { x: (clientX - rect.left) * scaleX, y: (clientY - rect.top) * scaleY };
+      updateAlkkagiPlacement(alkkagiPlacementData);
+    }
+    function onPlacementPointerLeave() {
+      alkkagiPlacementMousePos = null;
+      updateAlkkagiPlacement(alkkagiPlacementData);
+    }
+    canvas.addEventListener('mousemove', onPlacementPointerMove);
+    canvas.addEventListener('mouseleave', onPlacementPointerLeave);
+    canvas.addEventListener('pointermove', onPlacementPointerMove);
+    canvas.addEventListener('pointerleave', onPlacementPointerLeave);
 
     canvas.addEventListener('click', function(e) {
       if (alkkagiMyColor === 0 || alkkagiPhase !== 'placement') return;
@@ -244,6 +286,7 @@
 
   function updateAlkkagiPlacement(data) {
     if (!alkkagiPlacementCanvas) return;
+    alkkagiPlacementNextRole = alkkagiMyColor === 1 ? (data && data.nextRoleBlack) || '' : (alkkagiMyColor === 2 ? (data && data.nextRoleWhite) || '' : '');
     const ctx = alkkagiPlacementCanvas.getContext('2d');
     ctx.fillStyle = '#c8a45a';
     ctx.fillRect(0, 0, ALKKAGI_W, ALKKAGI_H);
@@ -277,6 +320,36 @@
       ctx.fillStyle = s.color === 1 ? '#dc2626' : '#3b82f6';
       if (char) ctx.fillText(char, s.x, s.y);
     });
+    if (alkkagiPlacementMousePos && alkkagiMyColor > 0 && alkkagiPlacementNextRole !== undefined) {
+      const col = Math.floor(alkkagiPlacementMousePos.x / ALKKAGI_CELL);
+      const row = Math.floor(alkkagiPlacementMousePos.y / ALKKAGI_CELL);
+      const inBounds = col >= 0 && col < 15 && row >= 0 && row < 15;
+      const inMyZone = (alkkagiMyColor === 1 && row >= 10 && row <= 14) || (alkkagiMyColor === 2 && row >= 0 && row <= 4);
+      const occupied = stones.some(s => {
+        const sc = Math.floor(s.x / ALKKAGI_CELL);
+        const sr = Math.floor(s.y / ALKKAGI_CELL);
+        return sc === col && sr === row;
+      });
+      if (inBounds && inMyZone && !occupied) {
+        const gx = (col + 0.5) * ALKKAGI_CELL;
+        const gy = (row + 0.5) * ALKKAGI_CELL;
+        const char = getAlkkagiChar(alkkagiPlacementNextRole, mode);
+        ctx.globalAlpha = 0.5;
+        ctx.fillStyle = alkkagiMyColor === 1 ? '#fff5f5' : '#1a1a2e';
+        ctx.strokeStyle = alkkagiMyColor === 1 ? '#dc2626' : '#22c55e';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(gx, gy, 18, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+        ctx.font = 'bold 20px "Noto Sans KR", "Malgun Gothic", sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillStyle = alkkagiMyColor === 1 ? '#dc2626' : '#3b82f6';
+        if (char) ctx.fillText(char, gx, gy);
+        ctx.globalAlpha = 1;
+      }
+    }
   }
 
   function initAlkkagiPhysics(container, data) {
@@ -358,7 +431,7 @@
         if (char) ctx.fillText(char, 0, 0);
         ctx.restore();
       });
-      if (alkkagiSelectedStone && alkkagiValidGuides.length > 0) {
+      if (alkkagiMode === 'chess' && alkkagiSelectedStone && alkkagiValidGuides.length > 0) {
         ctx.fillStyle = 'rgba(255,255,255,0.5)';
         ctx.strokeStyle = 'rgba(255,255,255,0.8)';
         ctx.lineWidth = 2;
@@ -369,6 +442,15 @@
           ctx.fill();
           ctx.stroke();
         });
+      }
+      if (alkkagiSlingshotBody && alkkagiSlingshotEnd) {
+        const b = alkkagiSlingshotBody;
+        ctx.strokeStyle = 'rgba(255,255,255,0.9)';
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.moveTo(b.position.x, b.position.y);
+        ctx.lineTo(alkkagiSlingshotEnd.x, alkkagiSlingshotEnd.y);
+        ctx.stroke();
       }
     });
 
@@ -478,62 +560,109 @@
       return -1;
     }
 
+    function applySlingshotFlick(body, startPos, endPos, towardTarget) {
+      const dx = towardTarget ? (endPos.x - startPos.x) : (startPos.x - endPos.x);
+      const dy = towardTarget ? (endPos.y - startPos.y) : (startPos.y - endPos.y);
+      const dist = Math.sqrt(dx * dx + dy * dy) || 1;
+      const cellDist = dist / ALKKAGI_CELL;
+      const role = (body.alkkagiRole || '').toUpperCase();
+      const cfg = getAlkkagiCfg(role, alkkagiMode);
+      const massFactor = cfg.mass;
+      let forceMag = Math.min(cellDist * 0.012, cfg.maxPower) * massFactor;
+      forceMag = Math.min(forceMag, cfg.maxPower * massFactor);
+      const ux = dx / dist;
+      const uy = dy / dist;
+      let fx = ux * forceMag;
+      let fy = uy * forceMag;
+      if (cellDist >= 3) {
+        const varianceDeg = (Math.random() - 0.5) * 6;
+        const angle = Math.atan2(fy, fx);
+        const newAngle = angle + (varianceDeg * Math.PI / 180);
+        const mag = Math.sqrt(fx * fx + fy * fy);
+        fx = mag * Math.cos(newAngle);
+        fy = mag * Math.sin(newAngle);
+      }
+      if (window.SoundManager) window.SoundManager.playPianoNote(98, 0.2);
+      if (typeof sendGameAction === 'function') {
+        sendGameAction({ cmd: 'flick', id: body.alkkagiId, forceX: fx, forceY: fy });
+      }
+      window.alkkagiJustFlicked = true;
+    }
+
     render.canvas.addEventListener('pointerdown', function(e) {
+      e.preventDefault();
       const pos = canvasToWorld(e);
       if (!alkkagiMyTurn || alkkagiMyColor === 0 || !allStonesStopped()) return;
 
-      const guideIdx = hitTestGuide(pos);
-      if (guideIdx >= 0 && alkkagiSelectedStone) {
-        const body = alkkagiSelectedStone;
-        const g = alkkagiValidGuides[guideIdx];
-        const targetPx = cellToPx(g.col, g.row);
-        const dx = targetPx.x - body.position.x;
-        const dy = targetPx.y - body.position.y;
-        const dist = Math.sqrt(dx * dx + dy * dy) || 1;
-        const cellDist = dist / ALKKAGI_CELL;
-        const role = (body.alkkagiRole || '').toUpperCase();
-        const cfg = getAlkkagiCfg(role, alkkagiMode);
-        const massFactor = cfg.mass;
-        let forceMag = Math.min(cellDist * 0.015, cfg.maxPower) * massFactor;
-        forceMag = Math.min(forceMag, cfg.maxPower * massFactor);
-        const ux = dx / dist;
-        const uy = dy / dist;
-        let fx = ux * forceMag;
-        let fy = uy * forceMag;
-        if (cellDist >= 3) {
-          const varianceDeg = (Math.random() - 0.5) * 6;
-          const angle = Math.atan2(fy, fx);
-          const newAngle = angle + (varianceDeg * Math.PI / 180);
-          const mag = Math.sqrt(fx * fx + fy * fy);
-          fx = mag * Math.cos(newAngle);
-          fy = mag * Math.sin(newAngle);
+      if (alkkagiMode === 'chess') {
+        const guideIdx = hitTestGuide(pos);
+        if (guideIdx >= 0 && alkkagiSelectedStone) {
+          const body = alkkagiSelectedStone;
+          const g = alkkagiValidGuides[guideIdx];
+          const targetPx = cellToPx(g.col, g.row);
+          applySlingshotFlick(body, body.position, targetPx, true);
+          alkkagiSelectedStone = null;
+          alkkagiValidGuides = [];
+          return;
         }
-        if (window.SoundManager) window.SoundManager.playPianoNote(98, 0.2);
-        if (typeof sendGameAction === 'function') {
-          sendGameAction({ cmd: 'flick', id: body.alkkagiId, forceX: fx, forceY: fy });
+      } else {
+        if (alkkagiSlingshotBody) {
+          alkkagiSlingshotBody = null;
+          alkkagiSlingshotEnd = null;
         }
-        window.alkkagiJustFlicked = true;
-        alkkagiSelectedStone = null;
-        alkkagiValidGuides = [];
-        return;
       }
 
       const bodies = Object.values(alkkagiBodies).filter(b => b && b.alkkagiColor === alkkagiMyColor);
       const hit = M.Query.point(bodies, pos);
       if (hit.length > 0) {
         const body = hit[0];
-        const stoneData = { x: body.position.x, y: body.position.y, color: body.alkkagiColor, role: body.alkkagiRole };
-        alkkagiValidGuides = getValidChessMoves(stoneData, getStonesForMoves());
-        alkkagiSelectedStone = body;
-        if (window.SoundManager) {
-          window.SoundManager.playPianoNote(523.25, 0.15);
-          setTimeout(() => { if (window.SoundManager) window.SoundManager.playPianoNote(659.25, 0.15); }, 80);
+        if (alkkagiMode === 'chess') {
+          const stoneData = { x: body.position.x, y: body.position.y, color: body.alkkagiColor, role: body.alkkagiRole };
+          alkkagiValidGuides = getValidChessMoves(stoneData, getStonesForMoves());
+          alkkagiSelectedStone = body;
+          if (window.SoundManager) {
+            window.SoundManager.playPianoNote(523.25, 0.15);
+            setTimeout(() => { if (window.SoundManager) window.SoundManager.playPianoNote(659.25, 0.15); }, 80);
+          }
+        } else {
+          alkkagiSlingshotBody = body;
+          alkkagiSlingshotEnd = { x: pos.x, y: pos.y };
         }
       } else {
         alkkagiSelectedStone = null;
         alkkagiValidGuides = [];
       }
     });
+
+    render.canvas.addEventListener('pointermove', function(e) {
+      if (alkkagiSlingshotBody) {
+        e.preventDefault();
+        const pos = canvasToWorld(e);
+        alkkagiSlingshotEnd = { x: pos.x, y: pos.y };
+      }
+    });
+
+    render.canvas.addEventListener('pointerup', function(e) {
+      if (alkkagiSlingshotBody) {
+        e.preventDefault();
+        const pos = canvasToWorld(e);
+        const body = alkkagiSlingshotBody;
+        const startPos = { x: body.position.x, y: body.position.y };
+        const dist = Math.sqrt((pos.x - startPos.x) ** 2 + (pos.y - startPos.y) ** 2);
+        if (dist >= 10) {
+          applySlingshotFlick(body, startPos, pos, false);
+        }
+        alkkagiSlingshotBody = null;
+        alkkagiSlingshotEnd = null;
+      }
+    });
+
+    render.canvas.addEventListener('pointercancel', function() {
+      alkkagiSlingshotBody = null;
+      alkkagiSlingshotEnd = null;
+    });
+
+    render.canvas.style.touchAction = 'none';
 
     alkkagiEngine = engine;
     alkkagiRender = render;
@@ -601,6 +730,8 @@
   };
 
   window.clearAlkkagi = function() {
+    alkkagiSlingshotBody = null;
+    alkkagiSlingshotEnd = null;
     if (alkkagiPlacementCanvas) {
       alkkagiPlacementCanvas.remove();
       alkkagiPlacementCanvas = null;

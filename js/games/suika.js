@@ -36,6 +36,7 @@
   let suikaHandPos = { x: 0, y: 0 };
   let suikaScores = [0, 0, 0, 0];
   let suikaFruitAboveLineSince = null;  // Host: 과일이 금지선 위에 머문 시각
+  let suikaLastDropAt = 0;  // 즉시 드롭용 최소 50ms 간격
 
   function showSuikaUI() {
     switchGameView('suika');
@@ -348,8 +349,13 @@
       const relY = (e.clientY - rect.top) * scaleY;
       if (relY < SUIKA_FORBIDDEN_ZONE) return;
       const x = (e.clientX - rect.left) * scaleX;
+      const now = Date.now();
+      if (now - suikaLastDropAt < 50) return;  // 50ms 최소 간격 (즉시 드롭)
+      suikaLastDropAt = now;
+      const type = (suikaHandFruitType >= 0 && suikaHandFruitType <= 3) ? suikaHandFruitType : -1;
+      const payload = type >= 0 ? { cmd: 'drop', x, type } : { cmd: 'drop', x };
       if (typeof sendGameAction === 'function') {
-        sendGameAction({ cmd: 'drop', x });
+        sendGameAction(payload, { cooldownMs: 50 });
       }
     });
   }

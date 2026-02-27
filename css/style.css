@@ -530,7 +530,17 @@ header {
 }
 .alkkagi-phase { color: var(--text-primary, #e6edf3); }
 .alkkagi-stones-count { color: var(--text-secondary, #8b949e); }
+.alkkagi-next-role { color: var(--text-secondary); margin-left: 8px; }
+.alkkagi-next-role-icon { font-weight: 700; font-size: 1.1em; }
 .alkkagi-placement-timer { color: #f0c674; }
+#alkkagi-board-wrap,
+#alkkagi-board-wrap canvas,
+#tetris-board-wrap,
+#tetris-board,
+#suika-game-wrap,
+#suika-physics-wrap {
+  touch-action: none;
+}
 
 /* ══ GOMOKU BOARD ════════════════════════════════════════════════════════ */
 #gomoku-container {
@@ -741,8 +751,19 @@ header {
   grid-template-rows: repeat(3, 96px);
   gap: 0;
   background: var(--border);
-  border: 2px solid var(--border); border-radius: 8px; overflow: hidden;
+  border: 2px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
   box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+  transition: box-shadow 0.2s ease;
+}
+#ttt-board.ttt-round-reset {
+  box-shadow: 0 0 20px rgba(88, 166, 255, 0.6);
+  animation: tttRoundReset 0.4s ease-out;
+}
+@keyframes tttRoundReset {
+  0% { filter: brightness(1.3); }
+  100% { filter: brightness(1); }
 }
 .ttt-cell {
   width: 96px; height: 96px;
@@ -900,10 +921,9 @@ header {
   left: 0; right: 0;
   top: 50px;
   height: 3px;
-  background: linear-gradient(90deg, transparent, #ef4444 20%, #ef4444 80%, transparent);
+  background: #ef4444;
   z-index: 5;
   pointer-events: none;
-  box-shadow: 0 0 8px rgba(239,68,68,0.6);
 }
 .suika-recharge-bar {
   flex: 1;
@@ -1009,14 +1029,6 @@ header {
 .indian-card-forehead {
   position: absolute; top: -8px; left: 50%; transform: translateX(-50%);
   z-index: 2; perspective: 400px;
-}
-.indian-avatar-circle {
-  width: 72px; height: 72px; border-radius: 50%;
-  background: linear-gradient(145deg, #374151, #1f2937);
-  border: 3px solid var(--border);
-  display: flex; align-items: center; justify-content: center;
-  font-size: 32px; margin-top: 28px;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.4);
 }
 .indian-player-info { flex: 1; display: flex; flex-direction: column; gap: 4px; }
 .indian-player-name {
@@ -1347,16 +1359,151 @@ header {
   background: rgba(0,0,0,0.35); border-radius: 8px;
   overflow-y: auto; overflow-x: hidden;
 }
-.center-pond .mahjong-tile { width: 28px; height: 38px; font-size: 22px; margin: 0; cursor: default; }
-.center-pond .mahjong-tile:hover { transform: none; }
+.center-pond .mahjong-tile,
+.center-pond .mj-tile { width: 28px; height: 38px; margin: 0; cursor: default; background-size: 280px 151px; }
+.center-pond .mahjong-tile:hover,
+.center-pond .mj-tile:hover { transform: none; }
+.center-pond .mj-tile.m-1m { background-position: 0 0; }
+.center-pond .mj-tile.m-2m { background-position: -28px 0; }
+.center-pond .mj-tile.m-3m { background-position: -56px 0; }
+.center-pond .mj-tile.m-4m { background-position: -84px 0; }
+.center-pond .mj-tile.m-5m { background-position: -112px 0; }
+.center-pond .mj-tile.m-6m { background-position: -140px 0; }
+.center-pond .mj-tile.m-7m { background-position: -168px 0; }
+.center-pond .mj-tile.m-8m { background-position: -196px 0; }
+.center-pond .mj-tile.m-9m { background-position: -224px 0; }
+.center-pond .mj-tile.m-1p { background-position: 0 -38px; }
+.center-pond .mj-tile.m-2p { background-position: -28px -38px; }
+.center-pond .mj-tile.m-3p { background-position: -56px -38px; }
+.center-pond .mj-tile.m-4p { background-position: -84px -38px; }
+.center-pond .mj-tile.m-5p { background-position: -112px -38px; }
+.center-pond .mj-tile.m-6p { background-position: -140px -38px; }
+.center-pond .mj-tile.m-7p { background-position: -168px -38px; }
+.center-pond .mj-tile.m-8p { background-position: -196px -38px; }
+.center-pond .mj-tile.m-9p { background-position: -224px -38px; }
+.center-pond .mj-tile.m-1s { background-position: 0 -76px; }
+.center-pond .mj-tile.m-2s { background-position: -28px -76px; }
+.center-pond .mj-tile.m-3s { background-position: -56px -76px; }
+.center-pond .mj-tile.m-4s { background-position: -84px -76px; }
+.center-pond .mj-tile.m-5s { background-position: -112px -76px; }
+.center-pond .mj-tile.m-6s { background-position: -140px -76px; }
+.center-pond .mj-tile.m-7s { background-position: -168px -76px; }
+.center-pond .mj-tile.m-8s { background-position: -196px -76px; }
+.center-pond .mj-tile.m-9s { background-position: -224px -76px; }
+.center-pond .mj-tile.m-east { background-position: 0 -114px; }
+.center-pond .mj-tile.m-south { background-position: -28px -114px; }
+.center-pond .mj-tile.m-west { background-position: -56px -114px; }
+.center-pond .mj-tile.m-north { background-position: -84px -114px; }
+.center-pond .mj-tile.m-white { background-position: -112px -114px; }
+.center-pond .mj-tile.m-green { background-position: -140px -114px; }
+.center-pond .mj-tile.m-red { background-position: -168px -114px; }
 
 .mahjong-discards {
   display: grid; grid-template-columns: repeat(6, 28px); gap: 2px;
   justify-content: center; padding: 4px; min-height: 32px;
 }
-.mahjong-discards .mahjong-tile { width: 26px; height: 34px; font-size: 20px; margin: 0; cursor: default; }
-.mahjong-discards .mahjong-tile:hover { transform: none; }
+.mahjong-discards .mahjong-tile,
+.mahjong-discards .mj-tile { width: 26px; height: 34px; margin: 0; cursor: default; background-size: 260px 140px; }
+.mahjong-discards .mahjong-tile:hover,
+.mahjong-discards .mj-tile:hover { transform: none; }
+.mahjong-discards .mj-tile.m-1m { background-position: 0 0; }
+.mahjong-discards .mj-tile.m-2m { background-position: -26px 0; }
+.mahjong-discards .mj-tile.m-3m { background-position: -52px 0; }
+.mahjong-discards .mj-tile.m-4m { background-position: -78px 0; }
+.mahjong-discards .mj-tile.m-5m { background-position: -104px 0; }
+.mahjong-discards .mj-tile.m-6m { background-position: -130px 0; }
+.mahjong-discards .mj-tile.m-7m { background-position: -156px 0; }
+.mahjong-discards .mj-tile.m-8m { background-position: -182px 0; }
+.mahjong-discards .mj-tile.m-9m { background-position: -208px 0; }
+.mahjong-discards .mj-tile.m-1p { background-position: 0 -35px; }
+.mahjong-discards .mj-tile.m-2p { background-position: -26px -35px; }
+.mahjong-discards .mj-tile.m-3p { background-position: -52px -35px; }
+.mahjong-discards .mj-tile.m-4p { background-position: -78px -35px; }
+.mahjong-discards .mj-tile.m-5p { background-position: -104px -35px; }
+.mahjong-discards .mj-tile.m-6p { background-position: -130px -35px; }
+.mahjong-discards .mj-tile.m-7p { background-position: -156px -35px; }
+.mahjong-discards .mj-tile.m-8p { background-position: -182px -35px; }
+.mahjong-discards .mj-tile.m-9p { background-position: -208px -35px; }
+.mahjong-discards .mj-tile.m-1s { background-position: 0 -70px; }
+.mahjong-discards .mj-tile.m-2s { background-position: -26px -70px; }
+.mahjong-discards .mj-tile.m-3s { background-position: -52px -70px; }
+.mahjong-discards .mj-tile.m-4s { background-position: -78px -70px; }
+.mahjong-discards .mj-tile.m-5s { background-position: -104px -70px; }
+.mahjong-discards .mj-tile.m-6s { background-position: -130px -70px; }
+.mahjong-discards .mj-tile.m-7s { background-position: -156px -70px; }
+.mahjong-discards .mj-tile.m-8s { background-position: -182px -70px; }
+.mahjong-discards .mj-tile.m-9s { background-position: -208px -70px; }
+.mahjong-discards .mj-tile.m-east { background-position: 0 -105px; }
+.mahjong-discards .mj-tile.m-south { background-position: -26px -105px; }
+.mahjong-discards .mj-tile.m-west { background-position: -52px -105px; }
+.mahjong-discards .mj-tile.m-north { background-position: -78px -105px; }
+.mahjong-discards .mj-tile.m-white { background-position: -104px -105px; }
+.mahjong-discards .mj-tile.m-green { background-position: -130px -105px; }
+.mahjong-discards .mj-tile.m-red { background-position: -156px -105px; }
 
+/* 마작 패 전용 스프라이트 기반 스타일 */
+.mj-tile {
+  display: inline-block;
+  width: 40px;
+  height: 54px;
+  background-image: url('/assets/images/mahjong_tiles_sprite.svg');
+  background-repeat: no-repeat;
+  background-size: 400px 216px;
+  border-radius: 4px;
+  box-shadow: 1px 1px 3px rgba(0,0,0,0.3);
+  vertical-align: middle;
+  margin: 2px;
+  cursor: default;
+  user-select: none;
+  transition: transform 0.1s ease-in-out;
+  flex-shrink: 0;
+}
+.mj-tile:hover { transform: translateY(-5px); }
+.mj-tile.hidden {
+  background-image: none;
+  background-color: #c4956a;
+  border: 1px solid #8b6914;
+}
+.mj-tile.discardable { cursor: pointer; box-shadow: 0 0 0 2px var(--accent); }
+.mj-tile.discardable:hover { transform: translateY(-5px); }
+
+/* 스프라이트 background-position: 10열 x 4행, 타일 40x54 */
+.mj-tile.m-1m { background-position: 0 0; }
+.mj-tile.m-2m { background-position: -40px 0; }
+.mj-tile.m-3m { background-position: -80px 0; }
+.mj-tile.m-4m { background-position: -120px 0; }
+.mj-tile.m-5m { background-position: -160px 0; }
+.mj-tile.m-6m { background-position: -200px 0; }
+.mj-tile.m-7m { background-position: -240px 0; }
+.mj-tile.m-8m { background-position: -280px 0; }
+.mj-tile.m-9m { background-position: -320px 0; }
+.mj-tile.m-1p { background-position: 0 -54px; }
+.mj-tile.m-2p { background-position: -40px -54px; }
+.mj-tile.m-3p { background-position: -80px -54px; }
+.mj-tile.m-4p { background-position: -120px -54px; }
+.mj-tile.m-5p { background-position: -160px -54px; }
+.mj-tile.m-6p { background-position: -200px -54px; }
+.mj-tile.m-7p { background-position: -240px -54px; }
+.mj-tile.m-8p { background-position: -280px -54px; }
+.mj-tile.m-9p { background-position: -320px -54px; }
+.mj-tile.m-1s { background-position: 0 -108px; }
+.mj-tile.m-2s { background-position: -40px -108px; }
+.mj-tile.m-3s { background-position: -80px -108px; }
+.mj-tile.m-4s { background-position: -120px -108px; }
+.mj-tile.m-5s { background-position: -160px -108px; }
+.mj-tile.m-6s { background-position: -200px -108px; }
+.mj-tile.m-7s { background-position: -240px -108px; }
+.mj-tile.m-8s { background-position: -280px -108px; }
+.mj-tile.m-9s { background-position: -320px -108px; }
+.mj-tile.m-east { background-position: 0 -162px; }
+.mj-tile.m-south { background-position: -40px -162px; }
+.mj-tile.m-west { background-position: -80px -162px; }
+.mj-tile.m-north { background-position: -120px -162px; }
+.mj-tile.m-white { background-position: -160px -162px; }
+.mj-tile.m-green { background-position: -200px -162px; }
+.mj-tile.m-red { background-position: -240px -162px; }
+
+/* 기존 mahjong-tile 호환 (폴백) */
 .mahjong-tile {
   display: inline-flex; align-items: center; justify-content: center;
   width: 30px; height: 40px; font-size: 24px;
@@ -1379,12 +1526,48 @@ header {
   background: rgba(0,0,0,0.2); border-radius: 6px;
 }
 .mahjong-seat.seat-bottom .mahjong-hand { flex-direction: row; }
-.mahjong-seat.seat-bottom .mahjong-tile { width: 30px; height: 40px; font-size: 24px; }
+.mahjong-seat.seat-bottom .mahjong-tile,
+.mahjong-seat.seat-bottom .mj-tile { width: 40px; height: 54px; }
 
 .mahjong-seat-name { font-size: 11px; font-weight: 700; color: var(--text-primary); margin-bottom: 2px; }
 .mahjong-meld-area { display: flex; flex-wrap: wrap; gap: 2px; justify-content: center; margin: 2px 0; }
 .mahjong-meld-group { display: flex; gap: 1px; }
-.mahjong-meld-group .mahjong-tile { width: 28px; height: 36px; font-size: 20px; }
+.mahjong-meld-group .mahjong-tile,
+.mahjong-meld-group .mj-tile { width: 28px; height: 36px; font-size: 20px; background-size: 280px 151px; }
+.mahjong-meld-group .mj-tile.m-1m { background-position: 0 0; }
+.mahjong-meld-group .mj-tile.m-2m { background-position: -28px 0; }
+.mahjong-meld-group .mj-tile.m-3m { background-position: -56px 0; }
+.mahjong-meld-group .mj-tile.m-4m { background-position: -84px 0; }
+.mahjong-meld-group .mj-tile.m-5m { background-position: -112px 0; }
+.mahjong-meld-group .mj-tile.m-6m { background-position: -140px 0; }
+.mahjong-meld-group .mj-tile.m-7m { background-position: -168px 0; }
+.mahjong-meld-group .mj-tile.m-8m { background-position: -196px 0; }
+.mahjong-meld-group .mj-tile.m-9m { background-position: -224px 0; }
+.mahjong-meld-group .mj-tile.m-1p { background-position: 0 -36px; }
+.mahjong-meld-group .mj-tile.m-2p { background-position: -28px -36px; }
+.mahjong-meld-group .mj-tile.m-3p { background-position: -56px -36px; }
+.mahjong-meld-group .mj-tile.m-4p { background-position: -84px -36px; }
+.mahjong-meld-group .mj-tile.m-5p { background-position: -112px -36px; }
+.mahjong-meld-group .mj-tile.m-6p { background-position: -140px -36px; }
+.mahjong-meld-group .mj-tile.m-7p { background-position: -168px -36px; }
+.mahjong-meld-group .mj-tile.m-8p { background-position: -196px -36px; }
+.mahjong-meld-group .mj-tile.m-9p { background-position: -224px -36px; }
+.mahjong-meld-group .mj-tile.m-1s { background-position: 0 -72px; }
+.mahjong-meld-group .mj-tile.m-2s { background-position: -28px -72px; }
+.mahjong-meld-group .mj-tile.m-3s { background-position: -56px -72px; }
+.mahjong-meld-group .mj-tile.m-4s { background-position: -84px -72px; }
+.mahjong-meld-group .mj-tile.m-5s { background-position: -112px -72px; }
+.mahjong-meld-group .mj-tile.m-6s { background-position: -140px -72px; }
+.mahjong-meld-group .mj-tile.m-7s { background-position: -168px -72px; }
+.mahjong-meld-group .mj-tile.m-8s { background-position: -196px -72px; }
+.mahjong-meld-group .mj-tile.m-9s { background-position: -224px -72px; }
+.mahjong-meld-group .mj-tile.m-east { background-position: 0 -108px; }
+.mahjong-meld-group .mj-tile.m-south { background-position: -28px -108px; }
+.mahjong-meld-group .mj-tile.m-west { background-position: -56px -108px; }
+.mahjong-meld-group .mj-tile.m-north { background-position: -84px -108px; }
+.mahjong-meld-group .mj-tile.m-white { background-position: -112px -108px; }
+.mahjong-meld-group .mj-tile.m-green { background-position: -140px -108px; }
+.mahjong-meld-group .mj-tile.m-red { background-position: -168px -108px; }
 
 .mahjong-call-actions {
   display: flex; gap: 8px; justify-content: center; margin: 6px 0;
@@ -1415,15 +1598,47 @@ header {
   display: flex; flex-wrap: nowrap; gap: 1px; padding: 4px;
   overflow: visible;
 }
-.opponent-hand .mahjong-tile { width: 24px; height: 32px; font-size: 18px; }
+.opponent-hand .mahjong-tile,
+.opponent-hand .mj-tile { width: 24px; height: 32px; font-size: 18px; background-size: 240px 130px; }
+.opponent-hand .mj-tile.m-1m { background-position: 0 0; }
+.opponent-hand .mj-tile.m-2m { background-position: -24px 0; }
+.opponent-hand .mj-tile.m-3m { background-position: -48px 0; }
+.opponent-hand .mj-tile.m-4m { background-position: -72px 0; }
+.opponent-hand .mj-tile.m-5m { background-position: -96px 0; }
+.opponent-hand .mj-tile.m-6m { background-position: -120px 0; }
+.opponent-hand .mj-tile.m-7m { background-position: -144px 0; }
+.opponent-hand .mj-tile.m-8m { background-position: -168px 0; }
+.opponent-hand .mj-tile.m-9m { background-position: -192px 0; }
+.opponent-hand .mj-tile.m-1p { background-position: 0 -32px; }
+.opponent-hand .mj-tile.m-2p { background-position: -24px -32px; }
+.opponent-hand .mj-tile.m-3p { background-position: -48px -32px; }
+.opponent-hand .mj-tile.m-4p { background-position: -72px -32px; }
+.opponent-hand .mj-tile.m-5p { background-position: -96px -32px; }
+.opponent-hand .mj-tile.m-6p { background-position: -120px -32px; }
+.opponent-hand .mj-tile.m-7p { background-position: -144px -32px; }
+.opponent-hand .mj-tile.m-8p { background-position: -168px -32px; }
+.opponent-hand .mj-tile.m-9p { background-position: -192px -32px; }
+.opponent-hand .mj-tile.m-1s { background-position: 0 -64px; }
+.opponent-hand .mj-tile.m-2s { background-position: -24px -64px; }
+.opponent-hand .mj-tile.m-3s { background-position: -48px -64px; }
+.opponent-hand .mj-tile.m-4s { background-position: -72px -64px; }
+.opponent-hand .mj-tile.m-5s { background-position: -96px -64px; }
+.opponent-hand .mj-tile.m-6s { background-position: -120px -64px; }
+.opponent-hand .mj-tile.m-7s { background-position: -144px -64px; }
+.opponent-hand .mj-tile.m-8s { background-position: -168px -64px; }
+.opponent-hand .mj-tile.m-9s { background-position: -192px -64px; }
+.opponent-hand .mj-tile.m-east { background-position: 0 -96px; }
+.opponent-hand .mj-tile.m-south { background-position: -24px -96px; }
+.opponent-hand .mj-tile.m-west { background-position: -48px -96px; }
+.opponent-hand .mj-tile.m-north { background-position: -72px -96px; }
+.opponent-hand .mj-tile.m-white { background-position: -96px -96px; }
+.opponent-hand .mj-tile.m-green { background-position: -120px -96px; }
+.opponent-hand .mj-tile.m-red { background-position: -144px -96px; }
 
 /* VS 구분선 + 칩 스택 */
 .indian-vs-bar {
   width: 100%; display: flex; align-items: center; gap: 10px;
   color: var(--text-secondary); font-size: 12px; font-weight: 700;
-}
-.indian-vs-bar::before, .indian-vs-bar::after {
-  content: ''; flex: 1; height: 1px; background: var(--border);
 }
 .indian-vs-text { flex-shrink: 0; }
 .indian-chip-stack {
@@ -1434,11 +1649,6 @@ header {
   width: 28px; height: 12px; border-radius: 4px;
   background: linear-gradient(180deg, #dc2626, #991b1b);
   border: 1px solid #7f1d1d; box-shadow: 0 1px 3px rgba(0,0,0,0.4);
-  animation: indianChipStack 0.3s ease-out;
-}
-@keyframes indianChipStack {
-  from { opacity: 0; transform: translateY(-12px) scale(0.8); }
-  to { opacity: 1; transform: none; }
 }
 #indian-container.indian-pulse-border {
   animation: indianPulseBorder 1.2s ease-in-out infinite;

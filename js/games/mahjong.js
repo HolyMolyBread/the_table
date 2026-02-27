@@ -4,30 +4,45 @@
     switchGameView('mahjong');
   }
 
-  function getMahjongTileHTML(type, value, isHidden = false) {
-    if (isHidden) return '<div class="mahjong-tile hidden">🀫</div>';
-    const dict = {
-      'man': ['','🀇','🀈','🀉','🀊','🀋','🀌','🀍','🀎','🀏'],
-      'pin': ['','🀙','🀚','🀛','🀜','🀝','🀞','🀟','🀠','🀡'],
-      'sou': ['','🀐','🀑','🀒','🀓','🀔','🀕','🀖','🀗','🀘'],
-      'honor': ['','🀀','🀁','🀂','🀃','🀆','🀅','🀄']
-    };
-    const char = dict[type] ? dict[type][value] : '🀫';
-    return `<div class="mahjong-tile">${char}</div>`;
+  /** 서버 패 데이터(type, value)를 CSS 클래스명으로 매핑 */
+  function mapValueToClassName(tile) {
+    if (!tile || !tile.type) return '';
+    const type = tile.type;
+    const value = tile.value ?? tile.Value ?? 0;
+    if (type === 'man' && value >= 1 && value <= 9) return 'm-' + value + 'm';
+    if (type === 'pin' && value >= 1 && value <= 9) return 'm-' + value + 'p';
+    if (type === 'sou' && value >= 1 && value <= 9) return 'm-' + value + 's';
+    if (type === 'honor' && value >= 1 && value <= 7) {
+      const honorNames = ['', 'east', 'south', 'west', 'north', 'white', 'green', 'red'];
+      return 'm-' + honorNames[value];
+    }
+    return '';
   }
 
-  function mahjongTileChar(tile) {
-    if (!tile || !tile.type) return '🀫';
-    const man = ['', '🀇','🀈','🀉','🀊','🀋','🀌','🀍','🀎','🀏'];
-    const pin = ['', '🀙','🀚','🀛','🀜','🀝','🀞','🀟','🀠','🀡'];
-    const sou = ['', '🀐','🀑','🀒','🀓','🀔','🀕','🀖','🀗','🀘'];
-    const honor = ['', '🀀','🀁','🀂','🀃','🀄','🀅','🀆'];
-    const v = tile.value || 0;
-    if (tile.type === 'man' && v >= 1 && v <= 9) return man[v];
-    if (tile.type === 'pin' && v >= 1 && v <= 9) return pin[v];
-    if (tile.type === 'sou' && v >= 1 && v <= 9) return sou[v];
-    if (tile.type === 'honor' && v >= 1 && v <= 7) return honor[v];
-    return '🀫';
+  /** DOM 기반 마작 패 엘리먼트 생성 (innerHTML 대신 appendChild용) */
+  function createTileDOM(tile, isHidden, isDiscardable, index) {
+    const el = document.createElement('div');
+    el.className = 'mj-tile';
+    if (isHidden) {
+      el.classList.add('hidden');
+    } else {
+      const cls = mapValueToClassName(tile);
+      if (cls) el.classList.add(cls);
+    }
+    if (isDiscardable) {
+      el.classList.add('discardable');
+      el.style.cursor = 'pointer';
+      el.dataset.value = JSON.stringify(tile);
+      if (typeof index === 'number') el.dataset.index = String(index);
+    }
+    return el;
+  }
+
+  function clearAndAppend(parent, children) {
+    while (parent.firstChild) parent.removeChild(parent.firstChild);
+    if (Array.isArray(children)) {
+      children.forEach(c => parent.appendChild(c));
+    }
   }
 
   function renderMahjong(data) {
@@ -52,9 +67,8 @@
     if (wallInfo) wallInfo.textContent = `🀄 남은 패: ${data.wallCount ?? 0}장`;
 
     const centerPond = document.getElementById('mahjong-center-pond');
-    if (centerPond) centerPond.innerHTML = '';
+    if (centerPond) clearAndAppend(centerPond, []);
 
-    // 좌석 배치: 4인 시 top=정면, left=왼쪽, right=오른쪽 / 3인 시 right, top만 사용
     const is3p = Array.isArray(data.players) && data.players.length === 3;
     const players = Array.isArray(data.players) ? [...data.players] : [];
     const myIdx = players.findIndex(p => p && p.userId === currentUserId);
@@ -62,34 +76,55 @@
       ? { top: (myIdx + 2) % 3, left: -1, right: (myIdx + 1) % 3 }
       : { top: (myIdx + 2) % 4, left: (myIdx + 3) % 4, right: (myIdx + 1) % 4 };
 
-    function renderSeat(playerIdx) {
+    function appendSeatContent(container, playerIdx) {
       const p = playerIdx >= 0 ? players[playerIdx] : null;
-      if (!p) return '';
-      const discardsHtml = (p.discards || []).map(t =>
-        getMahjongTileHTML(t.type || t.Type, t.value ?? t.Value ?? 0, false)
-      ).join('');
-      const meldsHtml = renderMahjongMelds(p.melds);
-      const handHtml = Array(p.handCount || 0).fill(0).map(() => getMahjongTileHTML('', 0, true)).join('');
-      const name = p.userId ? escapeHTML(p.userId) : '—';
-      return `<span class="mahjong-seat-name">${name}</span>
-        <div class="mahjong-discards">${discardsHtml}</div>
-        <div class="mahjong-meld-area">${meldsHtml}</div>
-        <div class="mahjong-hand opponent-hand">${handHtml}</div>`;
+      if (!p) return;
+      const nameSpan = document.createElement('span');
+      nameSpan.className = 'mahjong-seat-name';
+      nameSpan.textContent = p.userId ? p.userId : '—';
+
+      const discardsDiv = document.createElement('div');
+      discardsDiv.className = 'mahjong-discards';
+      (p.discards || []).forEach(t => {
+        discardsDiv.appendChild(createTileDOM(t, false, false));
+      });
+
+      const meldArea = document.createElement('div');
+      meldArea.className = 'mahjong-meld-area';
+      (p.melds || []).forEach(m => {
+        const group = document.createElement('div');
+        group.className = 'mahjong-meld-group';
+        (m.tiles || []).forEach(t => {
+          group.appendChild(createTileDOM(t, false, false));
+        });
+        meldArea.appendChild(group);
+      });
+
+      const handDiv = document.createElement('div');
+      handDiv.className = 'mahjong-hand opponent-hand';
+      for (let i = 0; i < (p.handCount || 0); i++) {
+        handDiv.appendChild(createTileDOM({ type: '', value: 0 }, true, false));
+      }
+
+      clearAndAppend(container, [nameSpan, discardsDiv, meldArea, handDiv]);
     }
 
     const seatTop = document.getElementById('mahjong-seat-top');
     const seatLeft = document.getElementById('mahjong-seat-left');
     const seatRight = document.getElementById('mahjong-seat-right');
     if (seatTop) {
-      seatTop.innerHTML = renderSeat(seatMap.top);
+      clearAndAppend(seatTop, []);
+      if (seatMap.top >= 0) appendSeatContent(seatTop, seatMap.top);
       seatTop.classList.toggle('my-turn', players[seatMap.top]?.userId === data.currentTurn);
     }
     if (seatLeft) {
-      seatLeft.innerHTML = seatMap.left >= 0 ? renderSeat(seatMap.left) : '';
+      clearAndAppend(seatLeft, []);
+      if (seatMap.left >= 0) appendSeatContent(seatLeft, seatMap.left);
       seatLeft.classList.toggle('my-turn', seatMap.left >= 0 && players[seatMap.left]?.userId === data.currentTurn);
     }
     if (seatRight) {
-      seatRight.innerHTML = renderSeat(seatMap.right);
+      clearAndAppend(seatRight, []);
+      if (seatMap.right >= 0) appendSeatContent(seatRight, seatMap.right);
       seatRight.classList.toggle('my-turn', players[seatMap.right]?.userId === data.currentTurn);
     }
 
@@ -101,54 +136,54 @@
     const meldsMeEl = document.getElementById('mahjong-melds-me');
     const callActionsEl = document.getElementById('mahjong-call-actions');
     if (discardsMeEl && mePlayer) {
-      discardsMeEl.innerHTML = (mePlayer.discards || []).map(t =>
-        getMahjongTileHTML(t.type || t.Type, t.value ?? t.Value ?? 0, false)
-      ).join('');
+      clearAndAppend(discardsMeEl, (mePlayer.discards || []).map(t =>
+        createTileDOM(t, false, false)
+      ));
     }
     if (meldsMeEl && mePlayer) {
-      meldsMeEl.innerHTML = renderMahjongMelds(mePlayer.melds);
+      const meldChildren = [];
+      (mePlayer.melds || []).forEach(m => {
+        const group = document.createElement('div');
+        group.className = 'mahjong-meld-group';
+        (m.tiles || []).forEach(t => {
+          group.appendChild(createTileDOM(t, false, false));
+        });
+        meldChildren.push(group);
+      });
+      clearAndAppend(meldsMeEl, meldChildren);
     }
 
     const isCallWindow = !!data.callWindow;
     const amIDiscarder = data.lastDiscarderId === currentUserId;
     if (callActionsEl) {
+      clearAndAppend(callActionsEl, []);
       if (isCallWindow && !amIDiscarder) {
-        callActionsEl.innerHTML = `
-          <button class="mahjong-call-btn chi" onclick="mahjongCall('chi')">치</button>
-          <button class="mahjong-call-btn pon" onclick="mahjongCall('pon')">퐁</button>
-          <button class="mahjong-call-btn pass" onclick="mahjongCall('pass')">패스</button>`;
+        ['chi', 'pon', 'pass'].forEach(ct => {
+          const btn = document.createElement('button');
+          btn.className = 'mahjong-call-btn ' + ct;
+          btn.textContent = ct === 'chi' ? '치' : ct === 'pon' ? '퐁' : '패스';
+          btn.onclick = () => mahjongCall(ct);
+          callActionsEl.appendChild(btn);
+        });
         callActionsEl.style.display = 'flex';
       } else {
-        callActionsEl.innerHTML = '';
         callActionsEl.style.display = 'none';
       }
     }
 
     const handEl = document.getElementById('mahjong-hand');
     if (handEl && Array.isArray(myHand)) {
-      handEl.innerHTML = myHand.map((t, i) => {
-        const discardable = canDiscard ? ' discardable' : '';
-        const char = mahjongTileChar(t);
-        return `<div class="mahjong-tile${discardable}" data-index="${i}">${char}</div>`;
-      }).join('');
-      if (canDiscard) {
-        handEl.querySelectorAll('.mahjong-tile.discardable').forEach(el => {
-          el.style.cursor = 'pointer';
-          el.onclick = () => {
-            const idx = parseInt(el.dataset.index, 10);
+      clearAndAppend(handEl, myHand.map((t, i) => {
+        const tileEl = createTileDOM(t, false, canDiscard, i);
+        if (canDiscard) {
+          tileEl.onclick = () => {
+            const idx = parseInt(tileEl.dataset.index, 10);
             if (!isNaN(idx)) mahjongDiscard(idx);
           };
-        });
-      }
+        }
+        return tileEl;
+      }));
     }
-  }
-
-  function renderMahjongMelds(melds) {
-    if (!Array.isArray(melds) || melds.length === 0) return '';
-    return melds.map(m => {
-      const tilesHtml = (m.tiles || []).map(t => getMahjongTileHTML(t.type || t.Type, t.value ?? t.Value ?? 0, false)).join('');
-      return `<div class="mahjong-meld-group">${tilesHtml}</div>`;
-    }).join('');
   }
 
   function mahjongDiscard(index) {

@@ -271,7 +271,7 @@ func (g *TetrisGame) isValidMove(slot int, piece *TetrisPiece) bool {
 func (g *TetrisGame) spawnPieceForSlotLocked(slot int) bool {
 	t := rand.Intn(7)
 	rot := 0
-	x := tetrisCols/2 - 1
+	x := 2 + (slot * 3)
 	y := 0
 	g.pieces[slot] = &TetrisPiece{Type: t, Rotation: rot, X: x, Y: y}
 	if !g.isValidMove(slot, g.pieces[slot]) {

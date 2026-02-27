@@ -100,6 +100,7 @@ func main() {
 	// 정적 파일 서빙 (JS, CSS 폴더)
 	http.Handle("/js/", http.StripPrefix("/js/", http.FileServer(http.Dir("js"))))
 	http.Handle("/css/", http.StripPrefix("/css/", http.FileServer(http.Dir("css"))))
+	http.Handle("/assets/", http.StripPrefix("/assets/", http.FileServer(http.Dir("assets"))))
 	http.HandleFunc("/", indexHandler) // index.html 단일 서빙 (디렉터리 노출 없음)
 
 	addr := ":8080"

@@ -200,6 +200,8 @@ func (g *MahjongGame) OnLeave(client *Client, remainingCount int) {
 	}
 }
 
+// HandleAction은 게임 액션을 처리합니다. handleReady/handleDiscard/handleCall 각각이 g.mu.Lock()으로
+// 보호되어 spam-click 및 동시 요청을 직렬화합니다.
 func (g *MahjongGame) HandleAction(client *Client, action string, payload json.RawMessage) {
 	var p struct {
 		Cmd        string          `json:"cmd"`

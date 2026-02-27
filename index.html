@@ -191,12 +191,13 @@
           </div>
         </div>
       </div>
-      <div class="game-card">
+      <div class="game-card alkkagi-card-janggi">
         <div class="card-icon">⚫</div>
-        <div class="card-title">알까기 (장기)</div>
+        <div class="card-title">장기 알까기</div>
         <div class="card-desc">장기 기물(궁·차·포·마·상)을 튕겨 상대를 밀어내세요! Matter.js 물리 엔진 기반 2인 대전.</div>
         <div class="card-badges-inline">
           <div class="card-badge pvp">PVP</div>
+          <div class="card-badge construction">🚧 공사 중</div>
         </div>
         <div class="card-actions-bottom">
           <div class="card-top-actions">
@@ -212,12 +213,13 @@
           </div>
         </div>
       </div>
-      <div class="game-card">
+      <div class="game-card alkkagi-card-chess">
         <div class="card-icon">⚪</div>
-        <div class="card-title">알까기 (체스)</div>
+        <div class="card-title">체스 알까기</div>
         <div class="card-desc">체스 기물(킹·퀸·룩·비숍·나이트)을 튕겨 상대를 밀어내세요! Matter.js 물리 엔진 기반 2인 대전.</div>
         <div class="card-badges-inline">
           <div class="card-badge pvp">PVP</div>
+          <div class="card-badge construction">🚧 공사 중</div>
         </div>
         <div class="card-actions-bottom">
           <div class="card-top-actions">
@@ -233,12 +235,13 @@
           </div>
         </div>
       </div>
-      <div class="game-card">
+      <div class="game-card alkkagi-card-original">
         <div class="card-icon">⚫</div>
-        <div class="card-title">알까기 (오리지널)</div>
+        <div class="card-title">일반 알까기</div>
         <div class="card-desc">역할 없는 일반 돌 5개씩을 튕겨 상대 알을 밀어내세요! Matter.js 물리 엔진 기반 2인 대전.</div>
         <div class="card-badges-inline">
           <div class="card-badge pvp">PVP</div>
+          <div class="card-badge construction">🚧 공사 중</div>
         </div>
         <div class="card-actions-bottom">
           <div class="card-top-actions">
@@ -298,7 +301,7 @@
           </div>
         </div>
       </div>
-      <div class="game-card">
+      <div class="game-card" style="display:none">
         <div class="card-icon">⚔️</div>
         <div class="card-title">서부의 결투 (Western Duel)</div>
         <div class="card-desc">2인이 동시에 쏘세요! 반응 속도 테스트. Draw 신호 후 가장 빨리 클릭한 쪽이 승리!</div>
@@ -802,11 +805,10 @@
             </div>
           </div>
 
-          <!-- 상대방 영역 (아바타 + 이마에 카드) -->
+          <!-- 상대방 영역 (카드 + 이름 + 하트) -->
           <div class="indian-player-area opponent-area">
             <div class="indian-avatar-unit">
               <div class="indian-card-forehead" id="indian-opp-card-wrap"></div>
-              <div class="indian-avatar-circle" id="indian-opp-avatar">👤</div>
             </div>
             <div class="indian-player-info">
               <div class="indian-player-name" id="indian-opp-name">—</div>
@@ -815,15 +817,13 @@
           </div>
 
           <div class="indian-vs-bar">
-            <span class="indian-vs-text">VS</span>
             <div class="indian-chip-stack" id="indian-chip-stack"></div>
           </div>
 
-          <!-- 내 영역 (아바타 + 이마에 카드) -->
+          <!-- 내 영역 (카드 + 이름 + 하트) -->
           <div class="indian-player-area my-area">
             <div class="indian-avatar-unit">
               <div class="indian-card-forehead" id="indian-my-card-wrap"></div>
-              <div class="indian-avatar-circle" id="indian-my-avatar">👤</div>
             </div>
             <div class="indian-player-info">
               <div class="indian-player-name" id="indian-my-name">—</div>
@@ -976,10 +976,11 @@
           <div id="alkkagi-status-bar" class="alkkagi-status-bar">
             <span id="alkkagi-phase" class="alkkagi-phase">준비</span>
             <span id="alkkagi-stones-count" class="alkkagi-stones-count">흑 5 : 백 5</span>
+            <span id="alkkagi-next-role" class="alkkagi-next-role" style="display:none;"></span>
             <span id="alkkagi-placement-timer" class="alkkagi-placement-timer" style="display:none;"></span>
           </div>
           <div id="alkkagi-status" style="font-size:15px; font-weight:600;">알까기 — 상대방을 기다리는 중...</div>
-          <div id="alkkagi-board-wrap" style="position:relative; background:#c8a45a; border:3px solid #7a5010; border-radius:8px; overflow:hidden; box-shadow:0 6px 24px rgba(0,0,0,0.5);"></div>
+          <div id="alkkagi-board-wrap" style="position:relative; background:#c8a45a; border:3px solid #7a5010; border-radius:8px; overflow:hidden; box-shadow:0 6px 24px rgba(0,0,0,0.5); touch-action:none;"></div>
         </div>
 
       </div><!-- /game-area-content -->

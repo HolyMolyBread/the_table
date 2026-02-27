@@ -61,13 +61,18 @@
     }
 
     const cells = boardEl.querySelectorAll('.ttt-cell');
+    const isBoardEmpty = board.every(row => row.every(v => v === 0));
+    if (isBoardEmpty && prev && !prev.every(row => row.every(v => v === 0))) {
+      boardEl.classList.add('ttt-round-reset');
+      setTimeout(() => boardEl.classList.remove('ttt-round-reset'), 400);
+    }
     cells.forEach(cell => {
       const r = +cell.dataset.r, c = +cell.dataset.c;
       const val = board[r][c];
       const wasEmpty = prev && prev[r][c] === 0;
       const isNew = wasEmpty && (val === 1 || val === 2);
       cell.classList.remove('ttt-o', 'ttt-x', 'ttt-can-place');
-      cell.innerHTML = '';
+      while (cell.firstChild) cell.removeChild(cell.firstChild);
       cell.onclick = null;
       if (val === 1) {
         cell.classList.add('ttt-o');

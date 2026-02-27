@@ -227,21 +227,18 @@ func (g *TicTacToeGame) handlePlace(client *Client, r, c int) {
 	}
 
 	if g.checkDraw() {
-		for _, p := range g.players {
-			if p != nil {
-				p.RecordResult("tictactoe", "draw")
-			}
-		}
-		data, _ := json.Marshal(GameResultResponse{
-			Type:           "game_result",
-			Message:        "🤝 무승부입니다!",
-			RoomID:         g.room.ID,
-			RematchEnabled: true,
+		// 무승부 데스매치: 보드만 초기화, 타이머 유지(멈추지 않음)
+		notice, _ := json.Marshal(ServerResponse{
+			Type:    "game_notice",
+			Message: "🤝 무승부! 판 비우고 계속 달립니다!",
+			RoomID:  g.room.ID,
 		})
-		g.room.broadcastAll(data)
-		log.Printf("[TICTACTOE] room:[%s] 무승부", g.room.ID)
-		g.stopTurnTimerLocked()
-		g.endGameLocked()
+		g.room.broadcastAll(notice)
+		log.Printf("[TICTACTOE] room:[%s] 무승부 — 데스매치 재시작", g.room.ID)
+		g.currentTurn = 1 - g.currentTurn
+		g.turnCount++
+		g.board = [3][3]int{}
+		g.broadcastStateLocked()
 		return
 	}
 

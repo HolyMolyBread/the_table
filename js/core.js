@@ -185,7 +185,6 @@
         <h3>전적 기록</h3>
         <ul>
             <li>승리 시: <strong>1승</strong> 기록</li>
-            <li>무승부: <strong>1무</strong> 기록</li>
             <li>패배 시: <strong>1패</strong> 기록</li>
         </ul>`
     },
@@ -546,8 +545,8 @@
       <li>하이카드 (High Card)</li>
     </ol>
   `;
-  const GAME_VIEW_IDS = ['board-placeholder', 'gomoku-container', 'blackjack-container', 'tictactoe-container', 'connect4-container', 'indian-container', 'holdem-container', 'sevenpoker-container', 'thief-container', 'onecard-container', 'mahjong-container', 'alkkagi-container', 'tetris-container', 'duel-container', 'suika-container'];
-  const PREFIX_TO_CONTAINER = { omok: 'gomoku-container', blackjack: 'blackjack-container', tictactoe: 'tictactoe-container', connect4: 'connect4-container', indian: 'indian-container', holdem: 'holdem-container', sevenpoker: 'sevenpoker-container', thief: 'thief-container', onecard: 'onecard-container', mahjong: 'mahjong-container', mahjong3: 'mahjong-container', alkkagi: 'alkkagi-container', alkkagi_janggi: 'alkkagi-container', alkkagi_chess: 'alkkagi-container', alkkagi_original: 'alkkagi-container', tetris: 'tetris-container', duel: 'duel-container', suika: 'suika-container' };
+  const GAME_VIEW_IDS = ['board-placeholder', 'gomoku-container', 'blackjack-container', 'tictactoe-container', 'connect4-container', 'indian-container', 'holdem-container', 'sevenpoker-container', 'thief-container', 'onecard-container', 'mahjong-container', 'alkkagi-container', 'tetris-container', /* duel-container 제외 */ 'suika-container'];
+  const PREFIX_TO_CONTAINER = { omok: 'gomoku-container', blackjack: 'blackjack-container', tictactoe: 'tictactoe-container', connect4: 'connect4-container', indian: 'indian-container', holdem: 'holdem-container', sevenpoker: 'sevenpoker-container', thief: 'thief-container', onecard: 'onecard-container', mahjong: 'mahjong-container', mahjong3: 'mahjong-container', alkkagi: 'alkkagi-container', alkkagi_janggi: 'alkkagi-container', alkkagi_chess: 'alkkagi-container', alkkagi_original: 'alkkagi-container', tetris: 'tetris-container', suika: 'suika-container' };
   const GAME_STATE_HANDLERS = {
     tictactoe_state:  { logKey: 'ttt-state',       show: () => { if (typeof window.showTicTacToeUI === 'function') window.showTicTacToeUI(); },  render: (data) => { if (typeof window.renderTicTacToe === 'function') window.renderTicTacToe(data); } },
     connect4_state:   { logKey: 'c4-state',       show: () => { if (typeof window.showConnect4UI === 'function') window.showConnect4UI(); },   render: (data) => { if (typeof window.renderConnect4 === 'function') window.renderConnect4(data); } },
@@ -889,8 +888,13 @@
 
       const codeParts = roomId.split('_');
       const roomCode  = codeParts[codeParts.length - 1].toUpperCase();
-      document.getElementById('room-code-text').textContent = roomCode;
-      document.getElementById('room-code-badge').classList.add('visible');
+      const codeTextEl = document.getElementById('room-code-text');
+      if (codeTextEl) codeTextEl.textContent = roomCode;
+      const badgeEl = document.getElementById('room-code-badge');
+      if (badgeEl) {
+        badgeEl.style.display = 'flex';
+        badgeEl.classList.add('visible');
+      }
 
       const rulesBtn = document.getElementById('btn-ingame-rules');
       rulesBtn.style.display = (roomId.startsWith('omok') || roomId.startsWith('blackjack') || roomId.startsWith('tictactoe') || roomId.startsWith('connect4') || roomId.startsWith('indian') || roomId.startsWith('holdem') || roomId.startsWith('sevenpoker') || roomId.startsWith('thief') || roomId.startsWith('onecard') || roomId.startsWith('mahjong') || roomId.startsWith('mahjong3') || roomId.startsWith('alkkagi')) ? '' : 'none';
@@ -907,7 +911,7 @@
       if (!roomId.startsWith('blackjack_pve_')) {
         readyArea.style.display = 'flex';
         if (btnReady) btnReady.disabled = false;
-        if (readyCountEl) readyCountEl.textContent = roomId.startsWith('mahjong3') ? '0/3' : (roomId.startsWith('mahjong') ? '0/4' : '0/0');
+        if (readyCountEl) readyCountEl.textContent = roomId.startsWith('mahjong3') ? '0/3' : (roomId.startsWith('mahjong') ? '0/4' : '0/1');
         if (readyHintEl) readyHintEl.textContent = roomId.startsWith('mahjong3') ? '3인이 모두 준비해야 게임이 시작됩니다' : (roomId.startsWith('mahjong') ? '4인이 모두 준비해야 게임이 시작됩니다' : '전원이 준비해야 게임이 시작됩니다');
       } else {
         readyArea.style.display = 'none';
@@ -1529,18 +1533,30 @@
   function copyRoomCode() {
     const code = document.getElementById('room-code-text').textContent.trim();
     if (!code || code === '------') return;
-    navigator.clipboard.writeText(code).then(() => {
-      showToast('방 코드가 복사되었습니다!', 'success');
-    }).catch(() => {
+
+    const doSuccess = () => showToast('방 코드가 복사되었습니다!', 'success');
+
+    function fallbackCopy(text) {
       const ta = document.createElement('textarea');
-      ta.value = code;
-      ta.style.cssText = 'position:fixed;opacity:0';
+      ta.value = text;
+      ta.style.position = 'fixed';
+      ta.style.opacity = '0';
       document.body.appendChild(ta);
       ta.select();
-      document.execCommand('copy');
-      ta.remove();
-      showToast('방 코드가 복사되었습니다!', 'success');
-    });
+      try {
+        document.execCommand('copy');
+        doSuccess();
+      } catch (err) {
+        showToast('복사에 실패했습니다.', 'error');
+      }
+      document.body.removeChild(ta);
+    }
+
+    if (typeof navigator !== 'undefined' && navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
+      navigator.clipboard.writeText(code).then(doSuccess).catch(() => fallbackCopy(code));
+    } else {
+      fallbackCopy(code);
+    }
   }
 
   function leaveRoom(skipConfirm) {
@@ -1587,12 +1603,15 @@
     addLog('sent', text);
   }
 
-  /** 게임 액션 전송 (광클 방지: 0.4초 쿨다운 적용) */
-  function sendGameAction(payload) {
+  /** 게임 액션 전송 (광클 방지). opts.skipCooldown=true면 즉시 전송. opts.cooldownMs로 게임별 쿨다운 설정 (기본 400ms, suika 50ms) */
+  function sendGameAction(payload, opts) {
     if (!ws || ws.readyState !== WebSocket.OPEN) return;
-    if (actionCooldown) return;
-    actionCooldown = true;
-    setTimeout(() => { actionCooldown = false; }, 400);
+    if (!opts || !opts.skipCooldown) {
+      if (actionCooldown) return;
+      actionCooldown = true;
+      const ms = (opts && opts.cooldownMs != null) ? opts.cooldownMs : 400;
+      setTimeout(() => { actionCooldown = false; }, ms);
+    }
     sendRaw(JSON.stringify({ action: 'game_action', payload }));
   }
 

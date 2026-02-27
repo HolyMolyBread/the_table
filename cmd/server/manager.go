@@ -190,6 +190,7 @@ func (m *RoomManager) JoinRoom(roomID, userID string, client *Client) {
 	if room.Plugin != nil {
 		room.Plugin.OnJoin(client)
 	}
+	m.broadcastRoomUpdate(room)
 	// PVE 방: human 입장 직후 빈 자리에 봇 자동 소환
 	if isPVE && !client.IsBot {
 		parts := strings.Split(roomID, "_pve_")
@@ -198,6 +199,7 @@ func (m *RoomManager) JoinRoom(roomID, userID string, client *Client) {
 			gamePrefix = parts[0]
 		}
 		SpawnBotsForPVE(m, room, gamePrefix)
+		m.broadcastRoomUpdate(room)
 	}
 }
 
@@ -243,6 +245,7 @@ func (m *RoomManager) leaveRoom(client *Client) {
 	}
 	data, _ := json.Marshal(resp)
 	room.broadcastAll(data)
+	m.broadcastRoomUpdate(room)
 
 	// 빈 방이 되면 메모리에서 제거합니다.
 	if remaining == 0 {

@@ -40,6 +40,8 @@ type AlkkagiData struct {
 	Teams              [2]string      `json:"teams"`              // [0]="한", [1]="초"
 	Stones             []AlkkagiStone `json:"stones"`             // 각 알의 좌표/속도
 	PlacementRemaining int            `json:"placementRemaining"` // 배치 페이즈 남은 초 (0이면 무관)
+	NextRoleBlack      string         `json:"nextRoleBlack"`       // 한(1)의 다음 배치 역할
+	NextRoleWhite      string         `json:"nextRoleWhite"`       // 초(2)의 다음 배치 역할
 }
 
 // AlkkagiStateResponse는 알까기 게임 상태 응답입니다.
@@ -65,11 +67,23 @@ type AlkkagiGame struct {
 }
 
 func NewAlkkagiGame(room *Room) *AlkkagiGame {
-	return &AlkkagiGame{
+	g := &AlkkagiGame{
 		room:       room,
 		phase:      "ready",
 		startReady: make(map[*Client]bool),
 	}
+	// room.ID 접두사로 모드 설정: alkkagi_chess_... -> "chess", alkkagi_janggi_... -> "janggi", alkkagi_original_... -> "original"
+	id := room.ID
+	if strings.Contains(id, "chess") {
+		g.mode = "chess"
+	} else if strings.Contains(id, "janggi") {
+		g.mode = "janggi"
+	} else if strings.Contains(id, "original") {
+		g.mode = "original"
+	} else {
+		g.mode = "janggi" // alkkagi_XXX 하위 호환
+	}
+	return g
 }
 
 func init() {
@@ -292,18 +306,7 @@ func (g *AlkkagiGame) startPlacementPhaseLocked() {
 	g.phase = "placement"
 	g.placementCnt = [2]int{0, 0}
 	g.stones = make([]AlkkagiStone, 0, 10)
-
-	// room.ID로 모드 판별: alkkagi_janggi, alkkagi_chess, alkkagi_original
-	id := g.room.ID
-	if strings.Contains(id, "janggi") {
-		g.mode = "janggi"
-	} else if strings.Contains(id, "chess") {
-		g.mode = "chess"
-	} else if strings.Contains(id, "original") {
-		g.mode = "original"
-	} else {
-		g.mode = "janggi" // alkkagi_XXX 하위 호환
-	}
+	// 모드는 NewAlkkagiGame에서 room.ID 접두사로 이미 설정됨
 
 	// 랜덤 배정: 0/1 순서를 섞음
 	order := []int{0, 1}
@@ -363,7 +366,19 @@ func (g *AlkkagiGame) getRoleForPlacementLocked(slotIdx int) string {
 	}
 }
 
+// getNextRolesLocked returns (nextRoleBlack, nextRoleWhite) for placement phase.
+func (g *AlkkagiGame) getNextRolesLocked() (black, white string) {
+	if g.placementCnt[0] < alkkagiStonesPerPlayer {
+		black = g.getRoleForPlacementLocked(g.placementCnt[0])
+	}
+	if g.placementCnt[1] < alkkagiStonesPerPlayer {
+		white = g.getRoleForPlacementLocked(g.placementCnt[1])
+	}
+	return black, white
+}
+
 func (g *AlkkagiGame) sendStateWithRemainingLocked(remaining int) {
+	nb, nw := g.getNextRolesLocked()
 	msg, _ := json.Marshal(AlkkagiStateResponse{
 		Type:   "alkkagi_state",
 		RoomID: g.room.ID,
@@ -375,6 +390,8 @@ func (g *AlkkagiGame) sendStateWithRemainingLocked(remaining int) {
 			Teams:              [2]string{"한", "초"},
 			Stones:             g.stones,
 			PlacementRemaining: remaining,
+			NextRoleBlack:      nb,
+			NextRoleWhite:      nw,
 		},
 	})
 	g.room.broadcastAll(msg)
@@ -571,6 +588,7 @@ func (g *AlkkagiGame) endMatchLocked(winnerSlot int, msg string) {
 	g.room.broadcastAll(data)
 	g.stones = nil
 	g.placementCnt = [2]int{0, 0}
+	g.sendStateToAllLocked()
 }
 
 func (g *AlkkagiGame) handleFlickLocked(client *Client, payload json.RawMessage) {
@@ -614,6 +632,7 @@ func (g *AlkkagiGame) handleFlickLocked(client *Client, payload json.RawMessage)
 }
 
 func (g *AlkkagiGame) sendStateToAllLocked() {
+	nb, nw := g.getNextRolesLocked()
 	msg, _ := json.Marshal(AlkkagiStateResponse{
 		Type:   "alkkagi_state",
 		RoomID: g.room.ID,
@@ -625,6 +644,8 @@ func (g *AlkkagiGame) sendStateToAllLocked() {
 			Teams:              [2]string{"한", "초"},
 			Stones:             g.stones,
 			PlacementRemaining: 0,
+			NextRoleBlack:      nb,
+			NextRoleWhite:      nw,
 		},
 	})
 	g.room.broadcastAll(msg)
@@ -635,6 +656,7 @@ func (g *AlkkagiGame) broadcastStateLocked() {
 }
 
 func (g *AlkkagiGame) sendStateToClientLocked(client *Client) {
+	nb, nw := g.getNextRolesLocked()
 	msg, _ := json.Marshal(AlkkagiStateResponse{
 		Type:   "alkkagi_state",
 		RoomID: g.room.ID,
@@ -646,6 +668,8 @@ func (g *AlkkagiGame) sendStateToClientLocked(client *Client) {
 			Teams:              [2]string{"한", "초"},
 			Stones:             g.stones,
 			PlacementRemaining: 0,
+			NextRoleBlack:      nb,
+			NextRoleWhite:      nw,
 		},
 	})
 	client.SafeSend(msg)

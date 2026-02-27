@@ -318,7 +318,8 @@ func (g *SuikaGame) handleDropLocked(client *Client, payload json.RawMessage) {
 	}
 
 	var p struct {
-		X float64 `json:"x"`
+		X    float64 `json:"x"`
+		Type *int    `json:"type"` // 클라이언트 Ghost와 동기화 (0~3)
 	}
 	if err := json.Unmarshal(payload, &p); err != nil {
 		g.sendDropResult(client, false)
@@ -339,8 +340,11 @@ func (g *SuikaGame) handleDropLocked(client *Client, payload json.RawMessage) {
 	g.charges[slot].LastChargeAt = time.Now().UnixMilli()
 	g.lastDropUserID = userId
 
-	// Size 1~4 (타입 0~3) 랜덤
+	// 클라이언트 Ghost와 동기화: type이 유효(0~3)하면 사용, 아니면 랜덤
 	fruitType := rand.Intn(4)
+	if p.Type != nil && *p.Type >= 0 && *p.Type <= 3 {
+		fruitType = *p.Type
+	}
 	def = suikaFruitDefs[fruitType]
 	ownerEquity := map[string]float64{userId: 1.0}
 
