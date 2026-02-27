@@ -764,24 +764,23 @@
 
         <!-- Mahjong container -->
         <div id="mahjong-container">
-          <div style="display:flex;align-items:center;justify-content:center;gap:12px;flex-wrap:wrap;">
+          <div id="mahjong-header" style="display:flex;align-items:center;justify-content:center;gap:12px;flex-wrap:wrap;margin-bottom:8px;">
             <div id="mahjong-status">상대방을 기다리는 중...</div>
             <div id="mahjong-timer-block" class="game-timer-block">
               <span class="status-label">남은 시간</span>
               <span id="mahjong-seconds" class="timer-num">--</span>초
             </div>
+            <span id="mahjong-wall-info" style="font-size:14px;color:var(--text-secondary);">🀄 남은 패: --장</span>
           </div>
-          <div id="mahjong-wall-info" style="font-size:14px;color:var(--text-secondary);margin-bottom:8px;">🀄 남은 패: --장</div>
-          <div id="mahjong-table-wrap" class="table-layout-wrap">
-            <div id="mahjong-players"></div>
-            <div id="mahjong-center" class="table-center-area" style="position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);">
-              <div id="mahjong-wall-display">🀄</div>
-            </div>
-            <div id="mahjong-me-slot" class="table-seat seat-bottom">
-              <span class="table-seat-name">나</span>
-              <div id="mahjong-discards-me" class="mahjong-discards mahjong-discards-row"></div>
+          <div id="mahjong-table" class="mahjong-table">
+            <div id="mahjong-seat-top" class="mahjong-seat seat-top"></div>
+            <div id="mahjong-seat-left" class="mahjong-seat seat-left"></div>
+            <div id="mahjong-center-pond" class="center-pond"></div>
+            <div id="mahjong-seat-right" class="mahjong-seat seat-right"></div>
+            <div id="mahjong-seat-bottom" class="mahjong-seat seat-bottom">
+              <span class="mahjong-seat-name">나</span>
               <div id="mahjong-melds-me" class="mahjong-meld-area"></div>
-              <div id="mahjong-call-actions"></div>
+              <div id="mahjong-call-actions" class="mahjong-call-actions"></div>
               <div id="mahjong-hand" class="mahjong-hand"></div>
             </div>
           </div>

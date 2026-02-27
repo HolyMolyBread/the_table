@@ -37,51 +37,73 @@
     const canDiscard = isMyTurn && myHand.length === 14;
 
     const statusEl = document.getElementById('mahjong-status');
-    if (data.callWindow) {
-      statusEl.textContent = data.lastDiscarderId === currentUserId
-        ? '⏸ 콜 대기 중 — 다른 플레이어가 치/퐁/패스를 선택합니다'
-        : '🔔 콜 대기 — 치, 퐁, 또는 패스를 선택하세요!';
-    } else {
-      statusEl.textContent = isMyTurn
-        ? '🎯 내 차례 — 패를 클릭해 버리세요!'
-        : `⏳ ${escapeHTML(data.currentTurn || '—')}의 차례`;
+    if (statusEl) {
+      if (data.callWindow) {
+        statusEl.textContent = data.lastDiscarderId === currentUserId
+          ? '⏸ 콜 대기 중 — 다른 플레이어가 치/퐁/패스를 선택합니다'
+          : '🔔 콜 대기 — 치, 퐁, 또는 패스를 선택하세요!';
+      } else {
+        statusEl.textContent = isMyTurn
+          ? '🎯 내 차례 — 패를 클릭해 버리세요!'
+          : `⏳ ${escapeHTML(data.currentTurn || '—')}의 차례`;
+      }
     }
-    document.getElementById('mahjong-wall-info').textContent = `🀄 남은 패: ${data.wallCount ?? 0}장`;
+    const wallInfo = document.getElementById('mahjong-wall-info');
+    if (wallInfo) wallInfo.textContent = `🀄 남은 패: ${data.wallCount ?? 0}장`;
 
-    const playersEl = document.getElementById('mahjong-players');
-    if (playersEl) {
-      const is3p = Array.isArray(data.players) && data.players.length === 3;
-      const maxLen = is3p ? 3 : 4;
-      const players = Array.isArray(data.players) ? Array.from({ length: maxLen }, (_, i) => data.players[i] ?? null) : [null, null, null, null];
-      const myIdx = players.findIndex(p => p && p.userId === currentUserId);
-      const opponentIndices = is3p
-        ? (myIdx >= 0 ? [(myIdx + 1) % 3, (myIdx + 2) % 3] : [0, 1])
-        : (myIdx >= 0 ? [(myIdx + 2) % 4, (myIdx + 3) % 4, (myIdx + 1) % 4] : [0, 1, 2]);
-      const seatOrder = is3p ? ['seat-right', 'seat-left'] : ['seat-top', 'seat-left', 'seat-right'];
-      playersEl.classList.toggle('mahjong-3p', is3p);
-      playersEl.innerHTML = opponentIndices.map((idx, pos) => {
-        const p = players[idx];
-        const seatClass = seatOrder[pos] || 'seat-top';
-        const discardsHtml = (p?.discards || []).map(t => getMahjongTileHTML(t.type || t.Type, t.value ?? t.Value ?? 0, false)).join('');
-        const meldsHtml = renderMahjongMelds(p?.melds);
-        const handHtml = Array(p?.handCount || 0).fill(0).map(() => getMahjongTileHTML('', 0, true)).join('');
-        const name = p?.userId ? escapeHTML(p.userId) : '—';
-        return `<div class="table-seat mahjong-player-box ${seatClass} ${p?.isTurn ? 'my-turn' : ''}" data-user-id="${name}">
-          <span class="table-seat-name">${name}</span>
-          <div class="mahjong-discards mahjong-discards-row">${discardsHtml}</div>
-          <div class="mahjong-meld-area">${meldsHtml}</div>
-          <div class="mahjong-hand opponent-hand">${handHtml}</div>
-        </div>`;
-      }).join('');
+    // center-pond: 모든 플레이어 버림패 6개씩 줄바꿈
+    const centerPond = document.getElementById('mahjong-center-pond');
+    if (centerPond) {
+      const allDiscards = [];
+      (data.players || []).forEach(p => {
+        (p.discards || []).forEach(t => allDiscards.push(t));
+      });
+      centerPond.innerHTML = allDiscards.map(t =>
+        getMahjongTileHTML(t.type || t.Type, t.value ?? t.Value ?? 0, false)
+      ).join('');
     }
 
-    const discardsMeEl = document.getElementById('mahjong-discards-me');
+    // 좌석 배치: 4인 시 top=정면, left=왼쪽, right=오른쪽 / 3인 시 right, top만 사용
+    const is3p = Array.isArray(data.players) && data.players.length === 3;
+    const players = Array.isArray(data.players) ? [...data.players] : [];
+    const myIdx = players.findIndex(p => p && p.userId === currentUserId);
+    const seatMap = is3p
+      ? { top: (myIdx + 2) % 3, left: -1, right: (myIdx + 1) % 3 }
+      : { top: (myIdx + 2) % 4, left: (myIdx + 3) % 4, right: (myIdx + 1) % 4 };
+
+    function renderSeat(playerIdx) {
+      const p = playerIdx >= 0 ? players[playerIdx] : null;
+      if (!p) return '';
+      const meldsHtml = renderMahjongMelds(p.melds);
+      const handHtml = Array(p.handCount || 0).fill(0).map(() => getMahjongTileHTML('', 0, true)).join('');
+      const name = p.userId ? escapeHTML(p.userId) : '—';
+      return `<span class="mahjong-seat-name">${name}</span>
+        <div class="mahjong-meld-area">${meldsHtml}</div>
+        <div class="mahjong-hand opponent-hand">${handHtml}</div>`;
+    }
+
+    const seatTop = document.getElementById('mahjong-seat-top');
+    const seatLeft = document.getElementById('mahjong-seat-left');
+    const seatRight = document.getElementById('mahjong-seat-right');
+    if (seatTop) {
+      seatTop.innerHTML = renderSeat(seatMap.top);
+      seatTop.classList.toggle('my-turn', players[seatMap.top]?.userId === data.currentTurn);
+    }
+    if (seatLeft) {
+      seatLeft.innerHTML = seatMap.left >= 0 ? renderSeat(seatMap.left) : '';
+      seatLeft.classList.toggle('my-turn', seatMap.left >= 0 && players[seatMap.left]?.userId === data.currentTurn);
+    }
+    if (seatRight) {
+      seatRight.innerHTML = renderSeat(seatMap.right);
+      seatRight.classList.toggle('my-turn', players[seatMap.right]?.userId === data.currentTurn);
+    }
+
+    const seatBottom = document.getElementById('mahjong-seat-bottom');
+    if (seatBottom) seatBottom.classList.toggle('my-turn', isMyTurn);
+
     const meldsMeEl = document.getElementById('mahjong-melds-me');
     const callActionsEl = document.getElementById('mahjong-call-actions');
     const mePlayer = data.players?.find(p => p.userId === currentUserId);
-    if (discardsMeEl && mePlayer) {
-      discardsMeEl.innerHTML = (mePlayer.discards || []).map(t => getMahjongTileHTML(t.type || t.Type, t.value ?? t.Value ?? 0, false)).join('');
-    }
     if (meldsMeEl && mePlayer) {
       meldsMeEl.innerHTML = renderMahjongMelds(mePlayer.melds);
     }
