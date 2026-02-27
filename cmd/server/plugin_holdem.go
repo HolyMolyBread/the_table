@@ -670,10 +670,12 @@ func (g *HoldemGame) endMatchLocked() {
 }
 
 func (g *HoldemGame) startRoundLocked() {
-	// 별 0개인 플레이어는 이번 라운드 제외 (이미 파산)
+	// 참가비 지급 전에 isParticipating 판단: 별 1개 이상인 플레이어만 참가
+	participating := [holdemMaxPlayers]bool{}
 	activeCount := 0
 	for i := 0; i < holdemMaxPlayers; i++ {
-		if g.players[i] != nil && g.stars[i] > 0 {
+		participating[i] = g.players[i] != nil && g.stars[i] >= 1
+		if participating[i] {
 			activeCount++
 		}
 	}
@@ -687,9 +689,9 @@ func (g *HoldemGame) startRoundLocked() {
 	g.pot += g.potCarryOver
 	g.potCarryOver = 0
 
-	// 참가비(Ante): 별 1개 이상인 모든 플레이어에서 1개 차감 → pot
+	// 참가비(Ante): 참가자에게서 1개 차감 → pot
 	for i := 0; i < holdemMaxPlayers; i++ {
-		if g.players[i] != nil && g.stars[i] >= 1 {
+		if participating[i] {
 			g.stars[i]--
 			g.pot++
 		}
@@ -698,8 +700,9 @@ func (g *HoldemGame) startRoundLocked() {
 		g.roundStartStars[i] = g.stars[i]
 	}
 
+	// 참가비 지급 후 별이 0이 되어도 이번 라운드는 foldedThisRound = false 유지
 	for i := 0; i < holdemMaxPlayers; i++ {
-		g.foldedThisRound[i] = g.players[i] == nil || g.stars[i] <= 0 // 파산자는 라운드 제외
+		g.foldedThisRound[i] = !participating[i]
 		g.actedThisPhase[i] = false
 	}
 	survivors := 0
@@ -715,20 +718,20 @@ func (g *HoldemGame) startRoundLocked() {
 		return
 	}
 
-	// 딜러 버튼 이동 (다음 생존 플레이어)
+	// 딜러 버튼 이동 (다음 참가 플레이어)
 	for i := 1; i <= holdemMaxPlayers; i++ {
 		idx := (g.dealerIdx + i) % holdemMaxPlayers
-		if g.players[idx] != nil && g.stars[idx] > 0 {
+		if g.players[idx] != nil && !g.foldedThisRound[idx] {
 			g.dealerIdx = idx
 			break
 		}
 	}
 
-	// 덱 셔플 및 카드 배분
+	// 덱 셔플 및 카드 배분 (foldedThisRound만 사용, stars 체크 제거)
 	g.deck = NewShuffledDeck()
 	cardIdx := 0
 	for i := 0; i < holdemMaxPlayers; i++ {
-		if g.players[i] != nil && g.stars[i] > 0 {
+		if g.players[i] != nil && !g.foldedThisRound[i] {
 			g.holeCards[i][0] = g.deck[cardIdx]
 			g.holeCards[i][1] = g.deck[cardIdx+1]
 			cardIdx += 2

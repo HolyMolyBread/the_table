@@ -517,7 +517,7 @@ func (g *SevenPokerGame) nextPhaseLocked() {
 
 func (g *SevenPokerGame) dealOneLocked(cardIdx int, hidden bool) {
 	for i := 0; i < sevenPokerMaxPlayers; i++ {
-		if g.players[i] != nil && !g.foldedThisRound[i] && g.stars[i] > 0 {
+		if g.players[i] != nil && !g.foldedThisRound[i] {
 			g.cards[i][cardIdx] = g.deck[0]
 			g.cards[i][cardIdx].Hidden = hidden
 			g.deck = g.deck[1:]
@@ -771,9 +771,12 @@ func (g *SevenPokerGame) endMatchLocked() {
 }
 
 func (g *SevenPokerGame) startRoundLocked() {
+	// 참가비 지급 전에 isParticipating 판단: 별 1개 이상인 플레이어만 참가
+	participating := [sevenPokerMaxPlayers]bool{}
 	activeCount := 0
 	for i := 0; i < sevenPokerMaxPlayers; i++ {
-		if g.players[i] != nil && g.stars[i] > 0 {
+		participating[i] = g.players[i] != nil && g.stars[i] >= 1
+		if participating[i] {
 			activeCount++
 		}
 	}
@@ -787,9 +790,9 @@ func (g *SevenPokerGame) startRoundLocked() {
 	g.pot += g.potCarryOver
 	g.potCarryOver = 0
 
-	// 참가비(Ante): 별 1개 이상인 모든 플레이어에서 1개 차감 → pot
+	// 참가비(Ante): 참가자에게서 1개 차감 → pot
 	for i := 0; i < sevenPokerMaxPlayers; i++ {
-		if g.players[i] != nil && g.stars[i] >= 1 {
+		if participating[i] {
 			g.stars[i]--
 			g.pot++
 		}
@@ -798,9 +801,10 @@ func (g *SevenPokerGame) startRoundLocked() {
 		g.roundStartStars[i] = g.stars[i]
 	}
 
+	// 참가비 지급 후 별이 0이 되어도 이번 라운드는 foldedThisRound = false 유지
 	for i := 0; i < sevenPokerMaxPlayers; i++ {
 		g.cards[i] = [sevenPokerCards]Card{} // 핵심: 지난 라운드의 남은 카드 완벽히 초기화
-		g.foldedThisRound[i] = g.players[i] == nil || g.stars[i] <= 0
+		g.foldedThisRound[i] = !participating[i]
 		g.actedThisPhase[i] = false
 		g.choiceDone[i] = false
 	}
@@ -820,9 +824,9 @@ func (g *SevenPokerGame) startRoundLocked() {
 	g.deck = NewShuffledDeck()
 	cardIdx := 0
 
-	// choice: 4장 분배 (모두 Hidden)
+	// choice: 4장 분배 (모두 Hidden, foldedThisRound만 사용)
 	for i := 0; i < sevenPokerMaxPlayers; i++ {
-		if g.players[i] != nil && g.stars[i] > 0 {
+		if g.players[i] != nil && !g.foldedThisRound[i] {
 			for j := 0; j < 4; j++ {
 				g.cards[i][j] = g.deck[cardIdx]
 				g.cards[i][j].Hidden = true
