@@ -9,9 +9,8 @@ import (
 )
 
 const (
-	tttTurnTimeLimitBase = 15  // 턴당 기본 제한 시간(초)
-	tttTurnTimeLimitMin  = 2   // 터보 모드 최소 시간(초) — 0.5초씩 차감
-	tttTurnTimeDecay     = 1   // 턴마다 차감량(2턴당 1초 = 0.5초씩)
+	tttTurnTimeLimitBase = 15 // 턴당 기본 제한 시간(초)
+	tttTurnTimeLimitMin  = 2  // 터보 모드 최소 시간(초) — 턴마다 0.5초씩 차감
 )
 
 // ── 응답 타입 ─────────────────────────────────────────────────────────────────

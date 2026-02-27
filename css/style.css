@@ -573,6 +573,23 @@ header {
 .edge-right::before { right: 50%; }
 .gomoku-cell.can-place { cursor: pointer; }
 .gomoku-cell.can-place:hover { background: rgba(0,0,0,0.12); border-radius: 50%; }
+.gomoku-cell.gomoku-forbidden-flash {
+  animation: gomokuForbiddenFlash 1s ease;
+}
+@keyframes gomokuForbiddenFlash {
+  0%, 100% { background: transparent; }
+  15%, 85% { background: rgba(220, 38, 38, 0.4); }
+}
+#gomoku-board-scaler.gomoku-shake {
+  animation: gomokuShake 0.4s ease;
+}
+@keyframes gomokuShake {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-6px); }
+  40% { transform: translateX(6px); }
+  60% { transform: translateX(-4px); }
+  80% { transform: translateX(4px); }
+}
 .gomoku-stone {
   position: absolute; width: 80%; height: 80%;
   top: 50%; left: 50%; transform: translate(-50%,-50%);
@@ -703,6 +720,14 @@ header {
 /* ══ TICTACTOE ═══════════════════════════════════════════════════════════ */
 #tictactoe-container {
   display: none; flex-direction: column; align-items: center; gap: 16px;
+  transition: background 0.1s;
+}
+#tictactoe-container.ttt-urgent-flash {
+  animation: tttUrgentFlash 0.15s ease;
+}
+@keyframes tttUrgentFlash {
+  0%, 100% { background: transparent; }
+  50% { background: rgba(220, 38, 38, 0.25); }
 }
 #ttt-status {
   font-size: 15px; font-weight: 600; color: var(--text-primary);
@@ -958,6 +983,7 @@ header {
 #indian-container {
   display: none; flex-direction: column; align-items: center; gap: 10px;
   width: 100%; max-width: 360px;
+  border-radius: 12px; padding: 4px;
 }
 #indian-round-bar {
   font-size: 13px; font-weight: 600; color: var(--text-secondary);
@@ -968,7 +994,7 @@ header {
   font-size: 15px; font-weight: 700; color: var(--text-primary);
   text-align: center; min-height: 22px;
 }
-/* 플레이어 영역 (상대 / 나) */
+/* 플레이어 영역 (상대 / 나) — 아바타 + 이마에 카드 */
 .indian-player-area {
   width: 100%; background: var(--bg-tertiary);
   border: 1px solid var(--border); border-radius: 12px;
@@ -976,6 +1002,22 @@ header {
 }
 .indian-player-area.opponent-area { flex-direction: row-reverse; }
 .indian-player-area.active-turn { box-shadow: 0 0 20px red; border-radius: 8px; }
+.indian-avatar-unit {
+  position: relative; flex-shrink: 0;
+  width: 90px; height: 100px; display: flex; flex-direction: column; align-items: center;
+}
+.indian-card-forehead {
+  position: absolute; top: -8px; left: 50%; transform: translateX(-50%);
+  z-index: 2; perspective: 400px;
+}
+.indian-avatar-circle {
+  width: 72px; height: 72px; border-radius: 50%;
+  background: linear-gradient(145deg, #374151, #1f2937);
+  border: 3px solid var(--border);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 32px; margin-top: 28px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+}
 .indian-player-info { flex: 1; display: flex; flex-direction: column; gap: 4px; }
 .indian-player-name {
   font-size: 13px; font-weight: 600; color: var(--text-secondary);
@@ -990,7 +1032,10 @@ header {
   font-size: 20px; font-weight: 800; color: #f87171; margin-left: 4px;
 }
 /* 카드 표시 */
-.indian-card-wrap { flex-shrink: 0; perspective: 400px; }
+.indian-card-wrap,
+.indian-card-forehead { flex-shrink: 0; perspective: 400px; }
+.indian-card-forehead .indian-card-face,
+.indian-card-forehead .indian-card-back { margin: 0 auto; }
 .indian-card-face {
   width: 58px; height: 84px;
   background: #fff; border: 1px solid rgba(255,255,255,0.1); border-radius: 8px;
@@ -1372,13 +1417,35 @@ header {
 }
 .opponent-hand .mahjong-tile { width: 24px; height: 32px; font-size: 18px; }
 
-/* VS 구분선 */
+/* VS 구분선 + 칩 스택 */
 .indian-vs-bar {
   width: 100%; display: flex; align-items: center; gap: 10px;
   color: var(--text-secondary); font-size: 12px; font-weight: 700;
 }
 .indian-vs-bar::before, .indian-vs-bar::after {
   content: ''; flex: 1; height: 1px; background: var(--border);
+}
+.indian-vs-text { flex-shrink: 0; }
+.indian-chip-stack {
+  display: flex; flex-direction: column-reverse; align-items: center; gap: 2px;
+  min-height: 40px;
+}
+.indian-chip {
+  width: 28px; height: 12px; border-radius: 4px;
+  background: linear-gradient(180deg, #dc2626, #991b1b);
+  border: 1px solid #7f1d1d; box-shadow: 0 1px 3px rgba(0,0,0,0.4);
+  animation: indianChipStack 0.3s ease-out;
+}
+@keyframes indianChipStack {
+  from { opacity: 0; transform: translateY(-12px) scale(0.8); }
+  to { opacity: 1; transform: none; }
+}
+#indian-container.indian-pulse-border {
+  animation: indianPulseBorder 1.2s ease-in-out infinite;
+}
+@keyframes indianPulseBorder {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0); }
+  50% { box-shadow: 0 0 0 4px rgba(220, 38, 38, 0.5); }
 }
 /* 액션 버튼 */
 #indian-actions {

@@ -155,7 +155,26 @@
     function onGomokuCellClick(r, c) {
       if (!currentRoomId || !ws || ws.readyState !== WebSocket.OPEN) return;
       if (window.gomokuTurnUserId !== currentUserId) return;
+      window.lastGomokuPlace = { x: r, y: c };
       sendGameAction({ cmd: 'place', x: r, y: c });
     }
+
+    /** 금수 위치 클릭 시 피드백: 바둑판 흔들림, 불협화음, 붉은 경고 1초 */
+    window.onGomokuForbiddenClick = function(x, y) {
+      const scaler = document.getElementById('gomoku-board-scaler');
+      if (scaler) {
+        scaler.classList.add('gomoku-shake');
+        setTimeout(function() { scaler.classList.remove('gomoku-shake'); }, 400);
+      }
+      if (window.SoundManager) {
+        window.SoundManager.playPianoNote(110, 0.08);
+        setTimeout(function() { if (window.SoundManager) window.SoundManager.playPianoNote(123.47, 0.1); }, 80);
+      }
+      const cell = document.querySelector('.gomoku-cell[data-r="' + x + '"][data-c="' + y + '"]');
+      if (cell) {
+        cell.classList.add('gomoku-forbidden-flash');
+        setTimeout(function() { cell.classList.remove('gomoku-forbidden-flash'); }, 1000);
+      }
+    };
   
   })();

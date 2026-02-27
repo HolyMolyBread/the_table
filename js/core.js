@@ -1199,6 +1199,12 @@
             case 'error': {
               addLog('error', raw);
               let errMsg = parsed.message || '서버 오류가 발생했습니다.';
+              if (currentRoomId && currentRoomId.startsWith('omok') && /금수/.test(errMsg) && window.lastGomokuPlace) {
+                if (typeof window.onGomokuForbiddenClick === 'function') {
+                  window.onGomokuForbiddenClick(window.lastGomokuPlace.x, window.lastGomokuPlace.y);
+                }
+                window.lastGomokuPlace = null;
+              }
               if (currentRoomId && currentRoomId.startsWith('mahjong3') && /3인|인원/.test(errMsg)) {
                 errMsg = '3인 마작입니다. 인원을 기다려주세요.';
                 const btnReady = document.getElementById('btn-ready');

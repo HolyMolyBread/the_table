@@ -108,6 +108,31 @@
     if (oppArea) oppArea.classList.toggle('active-turn', data.turn === data.opponentName);
     if (myArea) myArea.classList.toggle('active-turn', data.turn === data.myName);
 
+    // 칩 스택: second_action(승부 대기) 시 중앙에 칩 쌓임
+    const chipStack = document.getElementById('indian-chip-stack');
+    if (chipStack) {
+      const potSize = (data.phase === 'second_action' || data.phase === 'showdown' || data.phase === 'settlement') ? 2 : 0;
+      const prevCount = chipStack.querySelectorAll('.indian-chip').length;
+      chipStack.innerHTML = '';
+      for (let i = 0; i < potSize; i++) {
+        const chip = document.createElement('div');
+        chip.className = 'indian-chip';
+        chip.style.animationDelay = (i * 0.08) + 's';
+        chipStack.appendChild(chip);
+      }
+      if (potSize > prevCount && window.SoundManager) {
+        window.SoundManager.playPianoNote(261.63, 0.06);
+      }
+    }
+
+    // 판돈이 커지면(라운드 5 이상 또는 총 하트 12 이하) 화면 테두리 붉은 펄스
+    const container = document.getElementById('indian-container');
+    if (container) {
+      const totalHearts = (data.myHearts || 0) + (data.opponentHearts || 0);
+      const highStakes = (data.round || 0) >= 5 || totalHearts <= 12;
+      container.classList.toggle('indian-pulse-border', highStakes && data.phase !== 'waiting');
+    }
+
     // 액션 버튼 활성화 (내 턴이고 관전자가 아닐 때)
     const canAct = isMyTurn && !isSpectator && data.phase !== 'waiting';
     document.getElementById('btn-indian-showdown').disabled = !canAct;
