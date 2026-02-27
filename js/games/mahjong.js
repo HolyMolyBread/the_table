@@ -51,17 +51,8 @@
     const wallInfo = document.getElementById('mahjong-wall-info');
     if (wallInfo) wallInfo.textContent = `🀄 남은 패: ${data.wallCount ?? 0}장`;
 
-    // center-pond: 모든 플레이어 버림패 6개씩 줄바꿈
     const centerPond = document.getElementById('mahjong-center-pond');
-    if (centerPond) {
-      const allDiscards = [];
-      (data.players || []).forEach(p => {
-        (p.discards || []).forEach(t => allDiscards.push(t));
-      });
-      centerPond.innerHTML = allDiscards.map(t =>
-        getMahjongTileHTML(t.type || t.Type, t.value ?? t.Value ?? 0, false)
-      ).join('');
-    }
+    if (centerPond) centerPond.innerHTML = '';
 
     // 좌석 배치: 4인 시 top=정면, left=왼쪽, right=오른쪽 / 3인 시 right, top만 사용
     const is3p = Array.isArray(data.players) && data.players.length === 3;
@@ -74,10 +65,14 @@
     function renderSeat(playerIdx) {
       const p = playerIdx >= 0 ? players[playerIdx] : null;
       if (!p) return '';
+      const discardsHtml = (p.discards || []).map(t =>
+        getMahjongTileHTML(t.type || t.Type, t.value ?? t.Value ?? 0, false)
+      ).join('');
       const meldsHtml = renderMahjongMelds(p.melds);
       const handHtml = Array(p.handCount || 0).fill(0).map(() => getMahjongTileHTML('', 0, true)).join('');
       const name = p.userId ? escapeHTML(p.userId) : '—';
       return `<span class="mahjong-seat-name">${name}</span>
+        <div class="mahjong-discards">${discardsHtml}</div>
         <div class="mahjong-meld-area">${meldsHtml}</div>
         <div class="mahjong-hand opponent-hand">${handHtml}</div>`;
     }
@@ -101,9 +96,15 @@
     const seatBottom = document.getElementById('mahjong-seat-bottom');
     if (seatBottom) seatBottom.classList.toggle('my-turn', isMyTurn);
 
+    const mePlayer = data.players?.find(p => p.userId === currentUserId);
+    const discardsMeEl = document.getElementById('mahjong-discards-me');
     const meldsMeEl = document.getElementById('mahjong-melds-me');
     const callActionsEl = document.getElementById('mahjong-call-actions');
-    const mePlayer = data.players?.find(p => p.userId === currentUserId);
+    if (discardsMeEl && mePlayer) {
+      discardsMeEl.innerHTML = (mePlayer.discards || []).map(t =>
+        getMahjongTileHTML(t.type || t.Type, t.value ?? t.Value ?? 0, false)
+      ).join('');
+    }
     if (meldsMeEl && mePlayer) {
       meldsMeEl.innerHTML = renderMahjongMelds(mePlayer.melds);
     }

@@ -189,7 +189,28 @@ func (g *OneCardGame) OnLeave(client *Client, remainingCount int) {
 		return
 	}
 
+	g.losers = append(g.losers, client.UserID)
 	client.RecordResult("onecard", "lose")
+	if g.checkGameEndLocked() {
+		g.room.mu.RLock()
+		totalCount := len(g.room.clients)
+		g.room.mu.RUnlock()
+		msg := fmt.Sprintf("[%s]님이 퇴장했습니다. 매치 종료.", client.UserID)
+		data, _ := json.Marshal(GameResultResponse{
+			Type:           "game_result",
+			Message:        msg,
+			RoomID:         g.room.ID,
+			Data:           map[string]any{"totalCount": totalCount},
+			RematchEnabled: true,
+		})
+		g.room.broadcastAll(data)
+		g.gameStarted = false
+		g.startReady = make(map[*Client]bool)
+		g.rematchReady = make(map[*Client]bool)
+		g.stopTurnTimerLocked()
+		log.Printf("[ONECARD] room:[%s] [%s] 퇴장 — 매치 종료 (losers 추가)", g.room.ID, client.UserID)
+		return
+	}
 
 	if idx == g.currentTurn {
 		g.stopTurnTimerLocked()
@@ -236,7 +257,7 @@ func (g *OneCardGame) OnLeave(client *Client, remainingCount int) {
 	g.gameStarted = false
 	g.startReady = make(map[*Client]bool)
 	g.rematchReady = make(map[*Client]bool)
-	log.Printf("[ONECARD] room:[%s] [%s] 퇴장 — 매치 종료", g.room.ID, client.UserID)
+	log.Printf("[ONECARD] room:[%s] [%s] 퇴장 — 매치 종료 (생존자 부족)", g.room.ID, client.UserID)
 }
 
 // HandleAction

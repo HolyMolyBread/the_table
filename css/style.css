@@ -1173,6 +1173,13 @@ header {
 .center-pond .mahjong-tile { width: 28px; height: 38px; font-size: 22px; margin: 0; cursor: default; }
 .center-pond .mahjong-tile:hover { transform: none; }
 
+.mahjong-discards {
+  display: grid; grid-template-columns: repeat(6, 28px); gap: 2px;
+  justify-content: center; padding: 4px; min-height: 32px;
+}
+.mahjong-discards .mahjong-tile { width: 26px; height: 34px; font-size: 20px; margin: 0; cursor: default; }
+.mahjong-discards .mahjong-tile:hover { transform: none; }
+
 .mahjong-tile {
   display: inline-flex; align-items: center; justify-content: center;
   width: 30px; height: 40px; font-size: 24px;

@@ -33,7 +33,7 @@
       try {
         const ctx = this._getContext();
         const master = this._getMasterGain();
-        this._ensureResumed().then(() => {
+        const play = () => {
           const osc = ctx.createOscillator();
           const gain = ctx.createGain();
           osc.connect(gain);
@@ -45,7 +45,12 @@
           gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + duration);
           osc.start(ctx.currentTime);
           osc.stop(ctx.currentTime + duration);
-        }).catch(() => {});
+        };
+        if (this._resumed && ctx.state === 'running') {
+          play();
+        } else {
+          this._ensureResumed().then(play).catch(() => {});
+        }
       } catch (_) {}
     }
   };
@@ -807,13 +812,13 @@
       const btnReady = document.getElementById('btn-ready');
       const readyCountEl = document.getElementById('ready-count');
       const readyHintEl = document.getElementById('ready-hint');
-      if (roomId.startsWith('blackjack_pve_')) {
-        readyArea.style.display = 'none';
-      } else {
+      if (!roomId.startsWith('blackjack_pve_')) {
         readyArea.style.display = 'flex';
         if (btnReady) btnReady.disabled = false;
         if (readyCountEl) readyCountEl.textContent = roomId.startsWith('mahjong3') ? '0/3' : (roomId.startsWith('mahjong') ? '0/4' : '0/0');
         if (readyHintEl) readyHintEl.textContent = roomId.startsWith('mahjong3') ? '3인이 모두 준비해야 게임이 시작됩니다' : (roomId.startsWith('mahjong') ? '4인이 모두 준비해야 게임이 시작됩니다' : '전원이 준비해야 게임이 시작됩니다');
+      } else {
+        readyArea.style.display = 'none';
       }
 
     } else {
@@ -1441,7 +1446,7 @@
         el.style.display = 'none';
       }
     });
-    const clearIds = ['gomoku-board', 'gomoku-color-info', 'bj-dealer-hand', 'bj-dealer-hearts', 'bj-players-row', 'bj-message', 'ttt-board', 'ttt-color-info', 'c4-board', 'c4-color-info', 'holdem-players', 'holdem-me-slot', 'holdem-community-cards', 'sevenpoker-players', 'sevenpoker-me-slot', 'sp-choice-cards', 'indian-opp-card-wrap', 'indian-my-card-wrap', 'indian-opp-hearts', 'indian-my-hearts', 'thief-players', 'thief-hand', 'onecard-players', 'onecard-hand', 'onecard-top-card', 'onecard-deck', 'mahjong-seat-top', 'mahjong-seat-left', 'mahjong-seat-right', 'mahjong-center-pond', 'mahjong-melds-me', 'mahjong-call-actions', 'mahjong-hand'];
+    const clearIds = ['gomoku-board', 'gomoku-color-info', 'bj-dealer-hand', 'bj-dealer-hearts', 'bj-players-row', 'bj-message', 'ttt-board', 'ttt-color-info', 'c4-board', 'c4-color-info', 'holdem-players', 'holdem-me-slot', 'holdem-community-cards', 'sevenpoker-players', 'sevenpoker-me-slot', 'sp-choice-cards', 'indian-opp-card-wrap', 'indian-my-card-wrap', 'indian-opp-hearts', 'indian-my-hearts', 'thief-players', 'thief-hand', 'onecard-players', 'onecard-hand', 'onecard-top-card', 'onecard-deck', 'mahjong-seat-top', 'mahjong-seat-left', 'mahjong-seat-right', 'mahjong-center-pond', 'mahjong-discards-me', 'mahjong-melds-me', 'mahjong-call-actions', 'mahjong-hand'];
     clearIds.forEach(id => {
       const el = document.getElementById(id);
       if (el) el.innerHTML = '';

@@ -19,7 +19,15 @@
     }
     lastSevenPokerMyTurn = isMyTurn;
 
-    document.getElementById('sevenpoker-round-bar').textContent = `라운드 ${data.round || 0}`;
+    const roundBar = document.getElementById('sevenpoker-round-bar');
+    const timerBlock = document.getElementById('sevenpoker-timer-block');
+    if (roundBar) {
+      roundBar.textContent = data.phase === 'choice' ? '모든 플레이어 선택 중' : `라운드 ${data.round || 0}`;
+    }
+    if (timerBlock) {
+      const label = timerBlock.querySelector('.status-label');
+      if (label) label.textContent = data.phase === 'choice' ? '모든 플레이어 선택 중' : '남은 시간';
+    }
     document.getElementById('sevenpoker-pot-bar').textContent = `팟 ⭐×${data.pot || 0}`;
 
     const playersEl = document.getElementById('sevenpoker-players');
