@@ -507,6 +507,12 @@ func (g *OneCardGame) handleDraw(client *Client) {
 				g.hands[idx] = append(g.hands[idx], c)
 			}
 		}
+		// 조커 위에 있을 때: 다음 플레이어가 낼 수 있는 문양을 targetSuit로 고정
+		if g.topCard.Value == "B_JOKER" {
+			g.targetSuit = "♠"
+		} else if g.topCard.Value == "C_JOKER" {
+			g.targetSuit = "♥"
+		}
 		notice, _ := json.Marshal(ServerResponse{
 			Type:    "game_notice",
 			Message: fmt.Sprintf("[%s]가 공격을 맞아 %d장 드로우!", client.UserID, count),

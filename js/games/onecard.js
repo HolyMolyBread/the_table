@@ -36,12 +36,21 @@
   }
   function onecardIsPlayable(data, card) {
     const top = data.topCard || {};
-    const suit = data.targetSuit || top.suit || '';
     const attackPenalty = data.attackPenalty || 0;
     if (attackPenalty > 0) return onecardCanDefend(top, card);
     const cv = card.value || '';
     if (cv === 'B_JOKER' || cv === 'C_JOKER') return true;
-    return (card.suit === suit || card.value === top.value);
+    // targetSuit가 있으면 해당 문양으로 낼 수 있음 (조커 정산 후 등)
+    const targetSuit = data.targetSuit || '';
+    if (targetSuit && card.suit === targetSuit) return true;
+    // targetSuit 없으면 topCard 기준
+    const suit = targetSuit || top.suit || '';
+    if (suit && card.suit === suit) return true;
+    if (top.value && card.value === top.value) return true;
+    // 조커 위: B_JOKER(흑백) → ♠♣, C_JOKER(컬러) → ♥♦
+    if (top.value === 'B_JOKER') return card.suit === '♠' || card.suit === '♣';
+    if (top.value === 'C_JOKER') return card.suit === '♥' || card.suit === '♦';
+    return false;
   }
 
   let onecardPendingPlayIndex = -1;
