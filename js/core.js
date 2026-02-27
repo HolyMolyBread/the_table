@@ -547,7 +547,7 @@
     </ol>
   `;
   const GAME_VIEW_IDS = ['board-placeholder', 'gomoku-container', 'blackjack-container', 'tictactoe-container', 'connect4-container', 'indian-container', 'holdem-container', 'sevenpoker-container', 'thief-container', 'onecard-container', 'mahjong-container', 'alkkagi-container', 'tetris-container', 'duel-container', 'suika-container'];
-  const PREFIX_TO_CONTAINER = { omok: 'gomoku-container', blackjack: 'blackjack-container', tictactoe: 'tictactoe-container', connect4: 'connect4-container', indian: 'indian-container', holdem: 'holdem-container', sevenpoker: 'sevenpoker-container', thief: 'thief-container', onecard: 'onecard-container', mahjong: 'mahjong-container', mahjong3: 'mahjong-container', alkkagi: 'alkkagi-container', tetris: 'tetris-container', duel: 'duel-container', suika: 'suika-container' };
+  const PREFIX_TO_CONTAINER = { omok: 'gomoku-container', blackjack: 'blackjack-container', tictactoe: 'tictactoe-container', connect4: 'connect4-container', indian: 'indian-container', holdem: 'holdem-container', sevenpoker: 'sevenpoker-container', thief: 'thief-container', onecard: 'onecard-container', mahjong: 'mahjong-container', mahjong3: 'mahjong-container', alkkagi: 'alkkagi-container', alkkagi_janggi: 'alkkagi-container', alkkagi_chess: 'alkkagi-container', alkkagi_original: 'alkkagi-container', tetris: 'tetris-container', duel: 'duel-container', suika: 'suika-container' };
   const GAME_STATE_HANDLERS = {
     tictactoe_state:  { logKey: 'ttt-state',       show: () => { if (typeof window.showTicTacToeUI === 'function') window.showTicTacToeUI(); },  render: (data) => { if (typeof window.renderTicTacToe === 'function') window.renderTicTacToe(data); } },
     connect4_state:   { logKey: 'c4-state',       show: () => { if (typeof window.showConnect4UI === 'function') window.showConnect4UI(); },   render: (data) => { if (typeof window.renderConnect4 === 'function') window.renderConnect4(data); } },
@@ -563,7 +563,7 @@
     duel_state:       { logKey: 'duel-state',    show: () => { if (typeof window.showDuelUI === 'function') window.showDuelUI(); },       render: (data) => { if (typeof window.renderDuel === 'function') window.renderDuel(data); } },
     suika_state:      { logKey: 'suika-state',   show: () => { if (typeof window.showSuikaUI === 'function') window.showSuikaUI(); },    render: (data) => { if (typeof window.renderSuika === 'function') window.renderSuika(data); } },
   };
-  const PREFIX_TO_TIMER = { omok: ['status-seconds', 'status-timer-block'], tictactoe: ['ttt-seconds', 'ttt-timer-block'], connect4: ['c4-seconds', 'c4-timer-block'], indian: ['indian-seconds', 'indian-timer-block'], holdem: ['holdem-seconds', 'holdem-timer-block'], sevenpoker: ['sevenpoker-seconds', 'sevenpoker-timer-block'], thief: ['thief-seconds', 'thief-timer-block'], onecard: ['onecard-seconds', 'onecard-timer-block'], mahjong: ['mahjong-seconds', 'mahjong-timer-block'], mahjong3: ['mahjong-seconds', 'mahjong-timer-block'] };
+  const PREFIX_TO_TIMER = { omok: ['status-seconds', 'status-timer-block'], tictactoe: ['ttt-seconds', 'ttt-timer-block'], connect4: ['c4-seconds', 'c4-timer-block'], indian: ['indian-seconds', 'indian-timer-block'], holdem: ['holdem-seconds', 'holdem-timer-block'], sevenpoker: ['sevenpoker-seconds', 'sevenpoker-timer-block'], thief: ['thief-seconds', 'thief-timer-block'], onecard: ['onecard-seconds', 'onecard-timer-block'], mahjong: ['mahjong-seconds', 'mahjong-timer-block'], mahjong3: ['mahjong-seconds', 'mahjong-timer-block'], alkkagi_janggi: ['alkkagi-placement-timer', 'alkkagi-status-bar'], alkkagi_chess: ['alkkagi-placement-timer', 'alkkagi-status-bar'], alkkagi_original: ['alkkagi-placement-timer', 'alkkagi-status-bar'] };
 
   // Debug panel element references
   const logOutput  = document.getElementById('log-output');
@@ -881,6 +881,9 @@
       else if (roomId.startsWith('onecard'))   titleEl.textContent = '🃏 원카드';
       else if (roomId.startsWith('mahjong3'))  titleEl.textContent = '🀄 마작 (3인)';
       else if (roomId.startsWith('mahjong'))   titleEl.textContent = '🀄 마작 (4인)';
+      else if (roomId.startsWith('alkkagi_janggi'))  titleEl.textContent = '⚫ 알까기 (장기)';
+      else if (roomId.startsWith('alkkagi_chess'))   titleEl.textContent = '⚪ 알까기 (체스)';
+      else if (roomId.startsWith('alkkagi_original')) titleEl.textContent = '⚫ 알까기 (오리지널)';
       else if (roomId.startsWith('alkkagi'))   titleEl.textContent = '⚫ 알까기';
       else                                     titleEl.textContent = roomId;
 

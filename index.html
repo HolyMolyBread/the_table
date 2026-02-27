@@ -193,23 +193,64 @@
       </div>
       <div class="game-card">
         <div class="card-icon">⚫</div>
-        <div class="card-title">알까기 (Alkkagi)</div>
-        <div class="card-desc">흑돌과 백돌을 튕겨 상대 알을 밀어내세요! Matter.js 물리 엔진 기반 2인 대전.</div>
+        <div class="card-title">알까기 (장기)</div>
+        <div class="card-desc">장기 기물(궁·차·포·마·상)을 튕겨 상대를 밀어내세요! Matter.js 물리 엔진 기반 2인 대전.</div>
         <div class="card-badges-inline">
           <div class="card-badge pvp">PVP</div>
-          <div class="card-badge construction">🚧 공사 중</div>
         </div>
         <div class="card-actions-bottom">
           <div class="card-top-actions">
             <button class="card-btn-rule"   onclick="showRules('alkkagi')">📖 룰</button>
-            <button class="card-btn-create" onclick="createRoom('alkkagi')">➕ 방 만들기</button>
+            <button class="card-btn-create" onclick="createRoom('alkkagi_janggi')">➕ 방 만들기</button>
           </div>
           <div class="card-join-row">
-            <input type="text" class="card-code-input" id="code-input-alkkagi"
+            <input type="text" class="card-code-input" id="code-input-alkkagi-janggi"
                    maxlength="6" placeholder="코드 6자리"
                    autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false"
-                   onkeydown="if(event.key==='Enter') joinWithCode('alkkagi','code-input-alkkagi')" />
-            <button class="card-btn-join-code" onclick="joinWithCode('alkkagi','code-input-alkkagi')">입장</button>
+                   onkeydown="if(event.key==='Enter') joinWithCode('alkkagi_janggi','code-input-alkkagi-janggi')" />
+            <button class="card-btn-join-code" onclick="joinWithCode('alkkagi_janggi','code-input-alkkagi-janggi')">입장</button>
+          </div>
+        </div>
+      </div>
+      <div class="game-card">
+        <div class="card-icon">⚪</div>
+        <div class="card-title">알까기 (체스)</div>
+        <div class="card-desc">체스 기물(킹·퀸·룩·비숍·나이트)을 튕겨 상대를 밀어내세요! Matter.js 물리 엔진 기반 2인 대전.</div>
+        <div class="card-badges-inline">
+          <div class="card-badge pvp">PVP</div>
+        </div>
+        <div class="card-actions-bottom">
+          <div class="card-top-actions">
+            <button class="card-btn-rule"   onclick="showRules('alkkagi')">📖 룰</button>
+            <button class="card-btn-create" onclick="createRoom('alkkagi_chess')">➕ 방 만들기</button>
+          </div>
+          <div class="card-join-row">
+            <input type="text" class="card-code-input" id="code-input-alkkagi-chess"
+                   maxlength="6" placeholder="코드 6자리"
+                   autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false"
+                   onkeydown="if(event.key==='Enter') joinWithCode('alkkagi_chess','code-input-alkkagi-chess')" />
+            <button class="card-btn-join-code" onclick="joinWithCode('alkkagi_chess','code-input-alkkagi-chess')">입장</button>
+          </div>
+        </div>
+      </div>
+      <div class="game-card">
+        <div class="card-icon">⚫</div>
+        <div class="card-title">알까기 (오리지널)</div>
+        <div class="card-desc">역할 없는 일반 돌 5개씩을 튕겨 상대 알을 밀어내세요! Matter.js 물리 엔진 기반 2인 대전.</div>
+        <div class="card-badges-inline">
+          <div class="card-badge pvp">PVP</div>
+        </div>
+        <div class="card-actions-bottom">
+          <div class="card-top-actions">
+            <button class="card-btn-rule"   onclick="showRules('alkkagi')">📖 룰</button>
+            <button class="card-btn-create" onclick="createRoom('alkkagi_original')">➕ 방 만들기</button>
+          </div>
+          <div class="card-join-row">
+            <input type="text" class="card-code-input" id="code-input-alkkagi-original"
+                   maxlength="6" placeholder="코드 6자리"
+                   autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false"
+                   onkeydown="if(event.key==='Enter') joinWithCode('alkkagi_original','code-input-alkkagi-original')" />
+            <button class="card-btn-join-code" onclick="joinWithCode('alkkagi_original','code-input-alkkagi-original')">입장</button>
           </div>
         </div>
       </div>

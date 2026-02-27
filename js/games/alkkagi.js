@@ -24,10 +24,30 @@
     H: { maxPower: 0.055, mass: 1.4, char: '馬' },
     E: { maxPower: 0.05, mass: 1.1, char: '象' }
   };
+  const ALKKAGI_CHESS = {
+    K: { maxPower: 0.07, mass: 3.5, char: '♔' },
+    Q: { maxPower: 0.065, mass: 2.2, char: '♕' },
+    R: { maxPower: 0.065, mass: 2.2, char: '♖' },
+    B: { maxPower: 0.055, mass: 1.4, char: '♗' },
+    N: { maxPower: 0.055, mass: 1.4, char: '♘' }
+  };
+  const ALKKAGI_ORIGINAL = { _: { maxPower: 0.05, mass: 1.1, char: '' } };
 
   let alkkagiSelectedStone = null;
   let alkkagiValidGuides = [];
   let alkkagiStonesData = [];
+  let alkkagiMode = 'janggi';
+
+  function getAlkkagiCfg(role, mode) {
+    if (mode === 'chess') return ALKKAGI_CHESS[role] || ALKKAGI_CHESS.N;
+    if (mode === 'janggi') return ALKKAGI_JANGGI[role] || ALKKAGI_JANGGI.E;
+    return ALKKAGI_ORIGINAL._;
+  }
+
+  function getAlkkagiChar(role, mode) {
+    const cfg = getAlkkagiCfg(role, mode);
+    return cfg.char || '';
+  }
 
   function pxToCell(x, y) {
     return {
@@ -44,6 +64,7 @@
   }
 
   function getValidChessMoves(stone, allStones) {
+    const role = (stone.role || '').toUpperCase();
     const occupied = {};
     allStones.forEach(s => {
       const c = pxToCell(s.x, s.y);
@@ -52,7 +73,6 @@
     const sc = pxToCell(stone.x, stone.y);
     const col = sc.col;
     const row = sc.row;
-    const role = (stone.role || 'E').toUpperCase();
     const color = stone.color;
     const moves = [];
 
@@ -70,11 +90,27 @@
       return false;
     };
 
+    if (!role || alkkagiMode === 'original') {
+      for (let dc = -1; dc <= 1; dc++) {
+        for (let dr = -1; dr <= 1; dr++) {
+          if (dc === 0 && dr === 0) continue;
+          addIfValid(col + dc, row + dr, true);
+        }
+      }
+      return moves;
+    }
+
     if (role === 'K') {
       for (let dc = -1; dc <= 1; dc++) {
         for (let dr = -1; dr <= 1; dr++) {
           if (dc === 0 && dr === 0) continue;
           addIfValid(col + dc, row + dr, true);
+        }
+      }
+    } else if (role === 'Q') {
+      for (const [dc, dr] of [[1,0],[-1,0],[0,1],[0,-1],[1,1],[1,-1],[-1,1],[-1,-1]]) {
+        for (let d = 1; d < ALKKAGI_GRID; d++) {
+          if (addIfValid(col + dc * d, row + dr * d, true)) break;
         }
       }
     } else if (role === 'R' || role === 'P') {
@@ -83,13 +119,13 @@
           if (addIfValid(col + dc * d, row + dr * d, true)) break;
         }
       }
-    } else if (role === 'E') {
+    } else if (role === 'B' || role === 'E') {
       for (const [dc, dr] of [[1,1],[1,-1],[-1,1],[-1,-1]]) {
         for (let d = 1; d < ALKKAGI_GRID; d++) {
           if (addIfValid(col + dc * d, row + dr * d, true)) break;
         }
       }
-    } else if (role === 'H') {
+    } else if (role === 'N' || role === 'H') {
       const jumps = [[2,1],[2,-1],[-2,1],[-2,-1],[1,2],[1,-2],[-1,2],[-1,-2]];
       jumps.forEach(([dc, dr]) => addIfValid(col + dc, row + dr, true));
     } else {
@@ -108,6 +144,7 @@
 
   function renderAlkkagi(data) {
     if (!data) return;
+    alkkagiMode = data.mode || 'janggi';
     alkkagiPhase = data.phase || 'ready';
     const players = data.players || [];
     if (players[0] === currentUserId) alkkagiMyColor = 1;
@@ -223,10 +260,10 @@
       ctx.stroke();
     }
     const stones = (data && data.stones) || [];
-    const JANGGI_CHARS = { K: '將', R: '車', P: '包', H: '馬', E: '象' };
+    const mode = (data && data.mode) || 'janggi';
     stones.forEach(s => {
-      const role = (s.role || 'E').toUpperCase();
-      const char = JANGGI_CHARS[role] || '象';
+      const role = (s.role || '').toUpperCase();
+      const char = getAlkkagiChar(role, mode);
       ctx.fillStyle = s.color === 1 ? '#fff5f5' : '#1a1a2e';
       ctx.strokeStyle = s.color === 1 ? '#dc2626' : '#22c55e';
       ctx.lineWidth = 2;
@@ -238,7 +275,7 @@
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
       ctx.fillStyle = s.color === 1 ? '#dc2626' : '#3b82f6';
-      ctx.fillText(char, s.x, s.y);
+      if (char) ctx.fillText(char, s.x, s.y);
     });
   }
 
@@ -255,10 +292,11 @@
     const stoneRadius = 18;
 
     const stones = data.stones || [];
+    alkkagiMode = data.mode || 'janggi';
     alkkagiStonesData = stones.map(s => ({ ...s }));
     stones.forEach(s => {
-      const role = (s.role || 'E').toUpperCase();
-      const cfg = ALKKAGI_JANGGI[role] || ALKKAGI_JANGGI.E;
+      const role = (s.role || '').toUpperCase();
+      const cfg = getAlkkagiCfg(role, alkkagiMode);
       const mass = cfg.mass;
       const fill = s.color === 1 ? '#fff5f5' : '#1a1a2e';
       const stroke = s.color === 1 ? '#dc2626' : '#22c55e';
@@ -308,9 +346,8 @@
       Object.keys(alkkagiBodies).forEach(id => {
         const b = alkkagiBodies[id];
         if (!b || !world.bodies.includes(b)) return;
-        const role = (b.alkkagiRole || 'E').toUpperCase();
-        const cfg = ALKKAGI_JANGGI[role] || ALKKAGI_JANGGI.E;
-        const char = cfg.char || '象';
+        const role = (b.alkkagiRole || '').toUpperCase();
+        const char = getAlkkagiChar(role, alkkagiMode);
         ctx.save();
         ctx.translate(b.position.x, b.position.y);
         ctx.rotate(b.angle);
@@ -318,7 +355,7 @@
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
         ctx.fillStyle = b.alkkagiColor === 1 ? '#dc2626' : '#3b82f6';
-        ctx.fillText(char, 0, 0);
+        if (char) ctx.fillText(char, 0, 0);
         ctx.restore();
       });
       if (alkkagiSelectedStone && alkkagiValidGuides.length > 0) {
@@ -454,8 +491,8 @@
         const dy = targetPx.y - body.position.y;
         const dist = Math.sqrt(dx * dx + dy * dy) || 1;
         const cellDist = dist / ALKKAGI_CELL;
-        const role = (body.alkkagiRole || 'E').toUpperCase();
-        const cfg = ALKKAGI_JANGGI[role] || ALKKAGI_JANGGI.E;
+        const role = (body.alkkagiRole || '').toUpperCase();
+        const cfg = getAlkkagiCfg(role, alkkagiMode);
         const massFactor = cfg.mass;
         let forceMag = Math.min(cellDist * 0.015, cfg.maxPower) * massFactor;
         forceMag = Math.min(forceMag, cfg.maxPower * massFactor);
@@ -517,8 +554,8 @@
     });
     stones.forEach(s => {
       let body = alkkagiBodies[s.id];
-      const role = (s.role || 'E').toUpperCase();
-      const cfg = ALKKAGI_JANGGI[role] || ALKKAGI_JANGGI.E;
+      const role = (s.role || '').toUpperCase();
+      const cfg = getAlkkagiCfg(role, alkkagiMode);
       const mass = cfg.mass;
       const fill = s.color === 1 ? '#fff5f5' : '#1a1a2e';
       const stroke = s.color === 1 ? '#dc2626' : '#22c55e';

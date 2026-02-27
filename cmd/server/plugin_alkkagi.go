@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"math/rand"
+	"strings"
 	"sync"
 	"time"
 )
@@ -32,6 +33,7 @@ type AlkkagiStone struct {
 
 // AlkkagiData는 alkkagi_state 응답의 data 필드입니다.
 type AlkkagiData struct {
+	Mode               string         `json:"mode"`               // "original" | "janggi" | "chess"
 	Phase              string         `json:"phase"`              // "ready" | "placement" | "playing"
 	CurrentTurn        string         `json:"currentTurn"`        // 현재 차례 유저 ID (playing 시)
 	Players            [2]string      `json:"players"`            // [0]=한(漢), [1]=초(楚)
@@ -51,6 +53,7 @@ type AlkkagiStateResponse struct {
 
 type AlkkagiGame struct {
 	room         *Room
+	mode         string // "original" | "janggi" | "chess"
 	players      [2]*Client // [0]=흑, [1]=백 (랜덤 배정 후)
 	currentTurn  int
 	stones       []AlkkagiStone
@@ -69,7 +72,13 @@ func NewAlkkagiGame(room *Room) *AlkkagiGame {
 	}
 }
 
-func init() { RegisterPlugin("alkkagi", func(room *Room) GamePlugin { return NewAlkkagiGame(room) }) }
+func init() {
+	factory := func(room *Room) GamePlugin { return NewAlkkagiGame(room) }
+	RegisterPlugin("alkkagi_janggi", factory)
+	RegisterPlugin("alkkagi_chess", factory)
+	RegisterPlugin("alkkagi_original", factory)
+	RegisterPlugin("alkkagi", factory) // 하위 호환: alkkagi_XXX → janggi 모드
+}
 
 func (g *AlkkagiGame) Name() string { return "알까기 (Alkkagi)" }
 
@@ -83,7 +92,26 @@ func cellToPx(col, row int) (x, y float64) {
 // alkkagiJanggiRoles: 궁(K), 차(R), 포(P), 마(H), 상(E)
 var alkkagiJanggiRoles = [5]string{"K", "R", "P", "H", "E"}
 
-// makeJanggiStones returns 5 한(漢) + 5 초(楚) stones at default positions.
+// alkkagiChessRoles: King(K), Queen(Q), Rook(R), Bishop(B), Knight(N)
+var alkkagiChessRoles = [5]string{"K", "Q", "R", "B", "N"}
+
+// makeOriginalStones returns 5 plain stones per side with no role.
+func makeOriginalStones() []AlkkagiStone {
+	stones := make([]AlkkagiStone, 0, 10)
+	hanCells := [][2]int{{2, 11}, {6, 11}, {10, 11}, {3, 13}, {9, 13}}
+	for i, c := range hanCells {
+		x, y := cellToPx(c[0], c[1])
+		stones = append(stones, AlkkagiStone{ID: i, X: x, Y: y, Color: 1, Role: ""})
+	}
+	choCells := [][2]int{{2, 3}, {6, 3}, {10, 3}, {3, 1}, {9, 1}}
+	for i, c := range choCells {
+		x, y := cellToPx(c[0], c[1])
+		stones = append(stones, AlkkagiStone{ID: 5 + i, X: x, Y: y, Color: 2, Role: ""})
+	}
+	return stones
+}
+
+// makeJanggiStones returns 5 한(漢) + 5 초(楚) stones with 장기 roles.
 // Color 1=한(빨강), Color 2=초(초록/파랑)
 func makeJanggiStones() []AlkkagiStone {
 	stones := make([]AlkkagiStone, 0, 10)
@@ -96,6 +124,22 @@ func makeJanggiStones() []AlkkagiStone {
 	for i, c := range choCells {
 		x, y := cellToPx(c[0], c[1])
 		stones = append(stones, AlkkagiStone{ID: 5 + i, X: x, Y: y, Color: 2, Role: alkkagiJanggiRoles[i]})
+	}
+	return stones
+}
+
+// makeChessStones returns 5 King/Queen/Rook/Bishop/Knight per side.
+func makeChessStones() []AlkkagiStone {
+	stones := make([]AlkkagiStone, 0, 10)
+	hanCells := [][2]int{{2, 11}, {6, 11}, {10, 11}, {3, 13}, {9, 13}}
+	for i, c := range hanCells {
+		x, y := cellToPx(c[0], c[1])
+		stones = append(stones, AlkkagiStone{ID: i, X: x, Y: y, Color: 1, Role: alkkagiChessRoles[i]})
+	}
+	choCells := [][2]int{{2, 3}, {6, 3}, {10, 3}, {3, 1}, {9, 1}}
+	for i, c := range choCells {
+		x, y := cellToPx(c[0], c[1])
+		stones = append(stones, AlkkagiStone{ID: 5 + i, X: x, Y: y, Color: 2, Role: alkkagiChessRoles[i]})
 	}
 	return stones
 }
@@ -249,6 +293,18 @@ func (g *AlkkagiGame) startPlacementPhaseLocked() {
 	g.placementCnt = [2]int{0, 0}
 	g.stones = make([]AlkkagiStone, 0, 10)
 
+	// room.ID로 모드 판별: alkkagi_janggi, alkkagi_chess, alkkagi_original
+	id := g.room.ID
+	if strings.Contains(id, "janggi") {
+		g.mode = "janggi"
+	} else if strings.Contains(id, "chess") {
+		g.mode = "chess"
+	} else if strings.Contains(id, "original") {
+		g.mode = "original"
+	} else {
+		g.mode = "janggi" // alkkagi_XXX 하위 호환
+	}
+
 	// 랜덤 배정: 0/1 순서를 섞음
 	order := []int{0, 1}
 	if rand.Intn(2) == 1 {
@@ -296,11 +352,23 @@ func (g *AlkkagiGame) stopPlacementTimerLocked() {
 	}
 }
 
+func (g *AlkkagiGame) getRoleForPlacementLocked(slotIdx int) string {
+	switch g.mode {
+	case "janggi":
+		return alkkagiJanggiRoles[slotIdx]
+	case "chess":
+		return alkkagiChessRoles[slotIdx]
+	default:
+		return ""
+	}
+}
+
 func (g *AlkkagiGame) sendStateWithRemainingLocked(remaining int) {
 	msg, _ := json.Marshal(AlkkagiStateResponse{
 		Type:   "alkkagi_state",
 		RoomID: g.room.ID,
 		Data: AlkkagiData{
+			Mode:               g.mode,
 			Phase:              g.phase,
 			CurrentTurn:        g.turnUserIDLocked(),
 			Players:            g.playersUserIDsLocked(),
@@ -345,7 +413,7 @@ func (g *AlkkagiGame) placementTimeout() {
 		}
 		placed[[2]int{col, row}] = true
 		x, y := cellToPx(col, row)
-		g.stones = append(g.stones, AlkkagiStone{ID: i, X: x, Y: y, Color: 1, Role: alkkagiJanggiRoles[i]})
+		g.stones = append(g.stones, AlkkagiStone{ID: i, X: x, Y: y, Color: 1, Role: g.getRoleForPlacementLocked(i)})
 	}
 	for i := g.placementCnt[1]; i < alkkagiStonesPerPlayer; i++ {
 		c := whiteDefaults[i]
@@ -355,7 +423,7 @@ func (g *AlkkagiGame) placementTimeout() {
 		}
 		placed[[2]int{col, row}] = true
 		x, y := cellToPx(col, row)
-		g.stones = append(g.stones, AlkkagiStone{ID: 5 + i, X: x, Y: y, Color: 2, Role: alkkagiJanggiRoles[i]})
+		g.stones = append(g.stones, AlkkagiStone{ID: 5 + i, X: x, Y: y, Color: 2, Role: g.getRoleForPlacementLocked(i)})
 	}
 	g.phase = "playing"
 	g.sendStateToAllLocked()
@@ -417,7 +485,7 @@ func (g *AlkkagiGame) handlePlaceLocked(client *Client, payload json.RawMessage)
 
 	x, y := cellToPx(p.Col, p.Row)
 	id := (color-1)*alkkagiStonesPerPlayer + g.placementCnt[color-1]
-	role := alkkagiJanggiRoles[g.placementCnt[color-1]]
+	role := g.getRoleForPlacementLocked(g.placementCnt[color-1])
 	g.stones = append(g.stones, AlkkagiStone{ID: id, X: x, Y: y, Color: color, Role: role})
 	g.placementCnt[color-1]++
 
@@ -442,12 +510,19 @@ func (g *AlkkagiGame) handleSyncLocked(client *Client, payload json.RawMessage) 
 			roleByID[s.ID] = s.Role
 		}
 	}
+	// original 모드: Role 비움. janggi/chess: 기존 Role 유지, 없으면 기본값
 	for i := range p.Stones {
-		if p.Stones[i].Role == "" {
+		if g.mode == "original" {
+			p.Stones[i].Role = ""
+		} else if p.Stones[i].Role == "" {
 			if r, ok := roleByID[p.Stones[i].ID]; ok {
 				p.Stones[i].Role = r
 			} else {
-				p.Stones[i].Role = "E"
+				if g.mode == "chess" {
+					p.Stones[i].Role = "N"
+				} else {
+					p.Stones[i].Role = "E"
+				}
 			}
 		}
 	}
@@ -543,6 +618,7 @@ func (g *AlkkagiGame) sendStateToAllLocked() {
 		Type:   "alkkagi_state",
 		RoomID: g.room.ID,
 		Data: AlkkagiData{
+			Mode:               g.mode,
 			Phase:              g.phase,
 			CurrentTurn:        g.turnUserIDLocked(),
 			Players:            g.playersUserIDsLocked(),
@@ -563,6 +639,7 @@ func (g *AlkkagiGame) sendStateToClientLocked(client *Client) {
 		Type:   "alkkagi_state",
 		RoomID: g.room.ID,
 		Data: AlkkagiData{
+			Mode:               g.mode,
 			Phase:              g.phase,
 			CurrentTurn:        g.turnUserIDLocked(),
 			Players:            g.playersUserIDsLocked(),
