@@ -255,7 +255,8 @@ func (g *TicTacToeGame) handlePlace(client *Client, r, c int) {
 // ── 타이머 ────────────────────────────────────────────────────────────────────
 
 func (g *TicTacToeGame) tttTimeLimit() int {
-	limit := tttTurnTimeLimitBase - g.turnCount*tttTurnTimeDecay/2
+	// 턴마다 0.5초씩 차감 (2턴당 1초)
+	limit := tttTurnTimeLimitBase - (g.turnCount+1)/2
 	if limit < tttTurnTimeLimitMin {
 		limit = tttTurnTimeLimitMin
 	}
@@ -384,10 +385,7 @@ func (g *TicTacToeGame) broadcastStateLocked() {
 }
 
 func (g *TicTacToeGame) makeDataLocked() TicTacToeData {
-	limit := tttTurnTimeLimitBase - g.turnCount*tttTurnTimeDecay/2
-	if limit < tttTurnTimeLimitMin {
-		limit = tttTurnTimeLimitMin
-	}
+	limit := g.tttTimeLimit()
 	return TicTacToeData{
 		Board:     g.board,
 		Turn:      g.players[g.currentTurn].UserID,
