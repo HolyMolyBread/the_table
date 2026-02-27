@@ -517,6 +517,21 @@ header {
   margin: auto 0;
 }
 
+/* ── Alkkagi 상태 바 ── */
+.alkkagi-status-bar {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 8px 16px;
+  background: rgba(122, 80, 16, 0.15);
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+}
+.alkkagi-phase { color: var(--text-primary, #e6edf3); }
+.alkkagi-stones-count { color: var(--text-secondary, #8b949e); }
+.alkkagi-placement-timer { color: #f0c674; }
+
 /* ══ GOMOKU BOARD ════════════════════════════════════════════════════════ */
 #gomoku-container {
   display: none; flex-direction: column; align-items: center; gap: 14px;
