@@ -455,7 +455,8 @@
         html: `
         <h3>게임 개요</h3>
         <ul>
-            <li><strong>4인 협동/경쟁</strong>. 15×20 공유 보드에서 번갈아 블럭을 놓습니다.</li>
+            <li><strong>4인 동시 플레이</strong>. 15×20 공유 보드에서 각자 블럭을 동시에 조작합니다.</li>
+            <li>다른 플레이어의 블럭·굳은 블록과 <strong>겹치지 않게</strong> 이동해야 합니다.</li>
             <li>2명 이상 Ready 시 게임이 시작됩니다.</li>
         </ul>
         <h3>조작</h3>
@@ -1318,9 +1319,12 @@
               addLog('alkkagi-flick', raw);
               if (typeof window.handleAlkkagiFlick === 'function') window.handleAlkkagiFlick(parsed.data);
               break;
-            case 'tictactoe_state': case 'connect4_state': case 'indian_state': case 'holdem_state': case 'sevenpoker_state': case 'thief_state': case 'onecard_state': case 'mahjong_state': case 'mahjong3_state': case 'alkkagi_state': {
+            case 'tetris_move_result':
+              if (typeof window.tetrisOnMoveResult === 'function') window.tetrisOnMoveResult(parsed.success);
+              break;
+            case 'tictactoe_state': case 'connect4_state': case 'indian_state': case 'holdem_state': case 'sevenpoker_state': case 'thief_state': case 'onecard_state': case 'mahjong_state': case 'mahjong3_state': case 'alkkagi_state': case 'tetris_state': {
               document.getElementById('btn-takeover').style.display = 'none';
-              ['status-turn-user', 'ttt-status', 'c4-status', 'indian-status', 'thief-status', 'onecard-status', 'mahjong-status', 'alkkagi-status'].forEach(id => {
+              ['status-turn-user', 'ttt-status', 'c4-status', 'indian-status', 'thief-status', 'onecard-status', 'mahjong-status', 'alkkagi-status', 'tetris-status'].forEach(id => {
                 const el = document.getElementById(id);
                 if (el) { el.style.color = ''; el.style.fontWeight = ''; }
               });

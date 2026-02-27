@@ -24,23 +24,29 @@ type TetrisPiece struct {
 
 // TetrisData는 tetris_state 응답의 data 필드입니다.
 type TetrisData struct {
-	Board        [][]int      `json:"board"`        // [row][col], 0=빈칸, 1~4=플레이어
-	Players      [4]string    `json:"players"`      // [0]~[3]
-	Scores       [4]int       `json:"scores"`      // 각 플레이어 점수
-	CurrentTurn  string       `json:"currentTurn"`  // 현재 차례 유저 ID
-	CurrentPiece *TetrisPiece `json:"currentPiece"` // 현재 플레이어의 활성 블럭
-	LastClear    []int        `json:"lastClear"`    // 마지막으로 지워진 행들
-	LastScorer   string       `json:"lastScorer"`   // 마지막 점수 획득자
+	Board         [][]int        `json:"board"`         // [row][col], 0=빈칸, 1~4=플레이어
+	Players       [4]string      `json:"players"`       // [0]~[3]
+	Scores        [4]int         `json:"scores"`        // 각 플레이어 점수
+	CurrentPieces [4]*TetrisPiece `json:"currentPieces"` // 각 플레이어의 활성 블럭 (nil=없음)
+	LastClear     []int          `json:"lastClear"`     // 마지막으로 지워진 행들
+	LastScorer    string         `json:"lastScorer"`    // 마지막 점수 획득자
 }
 
 // TetrisStateResponse는 테트리스 게임 상태 응답입니다.
 type TetrisStateResponse struct {
-	Type   string    `json:"type"`
-	RoomID string    `json:"roomId"`
+	Type   string     `json:"type"`
+	RoomID string     `json:"roomId"`
 	Data   TetrisData `json:"data"`
 }
 
-// tetromino shapes: [rotation][cell][row,col] offset from top-left
+// TetrisMoveResultResponse는 move 결과(성공/실패)를 클라이언트에 전달합니다.
+type TetrisMoveResultResponse struct {
+	Type    string `json:"type"`
+	RoomID  string `json:"roomId"`
+	Success bool   `json:"success"`
+}
+
+// tetromino shapes: [rotation][cell][col,row] offset from top-left
 var tetrisShapes = [7][4][4][2]int{
 	{{{-1, 0}, {0, 0}, {1, 0}, {2, 0}}, {{0, -1}, {0, 0}, {0, 1}, {0, 2}}, {{-1, 0}, {0, 0}, {1, 0}, {2, 0}}, {{0, -1}, {0, 0}, {0, 1}, {0, 2}}}, // I
 	{{{0, 0}, {1, 0}, {0, 1}, {1, 1}}, {{0, 0}, {1, 0}, {0, 1}, {1, 1}}, {{0, 0}, {1, 0}, {0, 1}, {1, 1}}, {{0, 0}, {1, 0}, {0, 1}, {1, 1}}},             // O
@@ -56,8 +62,7 @@ type TetrisGame struct {
 	players     [4]*Client
 	board       [][]int
 	scores      [4]int
-	currentTurn int
-	piece       *TetrisPiece
+	pieces      [4]*TetrisPiece
 	gameStarted bool
 	startReady  map[*Client]bool
 	mu          sync.Mutex
@@ -134,6 +139,7 @@ func (g *TetrisGame) OnLeave(client *Client, remainingCount int) {
 	for i := 0; i < tetrisMaxPlayers; i++ {
 		if g.players[i] == client {
 			g.players[i] = nil
+			g.pieces[i] = nil
 			delete(g.startReady, client)
 			break
 		}
@@ -207,57 +213,84 @@ func (g *TetrisGame) startGameLocked() {
 			g.board[r][c] = 0
 		}
 	}
-	g.currentTurn = 0
-	g.spawnPieceLocked()
+	for i := 0; i < tetrisMaxPlayers; i++ {
+		g.pieces[i] = nil
+	}
+	for i := 0; i < tetrisMaxPlayers; i++ {
+		if g.players[i] != nil {
+			if !g.spawnPieceForSlotLocked(i) {
+				g.gameOverLocked()
+				return
+			}
+		}
+	}
 	g.sendStateToAllLocked()
 }
 
 func (g *TetrisGame) resetLocked() {
 	g.gameStarted = false
-	g.piece = nil
+	for i := 0; i < tetrisMaxPlayers; i++ {
+		g.pieces[i] = nil
+	}
 	g.startReady = make(map[*Client]bool)
 }
 
-func (g *TetrisGame) spawnPieceLocked() bool {
-	t := rand.Intn(7)
-	rot := 0
-	x := tetrisCols/2 - 1
-	y := 0
-	g.piece = &TetrisPiece{Type: t, Rotation: rot, X: x, Y: y}
-	if !g.pieceFitsLocked() {
-		g.piece = nil
+// isValidMove: 보드 경계, 굳은 블록, 다른 플레이어의 실시간 블록과 겹치지 않는지 검사
+func (g *TetrisGame) isValidMove(slot int, piece *TetrisPiece) bool {
+	if piece == nil || slot < 0 || slot >= tetrisMaxPlayers {
 		return false
 	}
-	return true
-}
-
-func (g *TetrisGame) pieceFitsLocked() bool {
-	if g.piece == nil {
-		return false
-	}
-	shape := tetrisShapes[g.piece.Type][g.piece.Rotation%4]
+	shape := tetrisShapes[piece.Type][piece.Rotation%4]
 	for _, off := range shape {
-		col := g.piece.X + off[0]
-		row := g.piece.Y + off[1]
+		col := piece.X + off[0]
+		row := piece.Y + off[1]
 		if col < 0 || col >= tetrisCols || row >= tetrisRows {
 			return false
 		}
 		if row >= 0 && g.board[row][col] != 0 {
 			return false
 		}
+		// 다른 플레이어의 실시간 블록과 겹치는지
+		for other := 0; other < tetrisMaxPlayers; other++ {
+			if other == slot || g.pieces[other] == nil {
+				continue
+			}
+			oshape := tetrisShapes[g.pieces[other].Type][g.pieces[other].Rotation%4]
+			for _, ooff := range oshape {
+				oc := g.pieces[other].X + ooff[0]
+				or := g.pieces[other].Y + ooff[1]
+				if col == oc && row == or {
+					return false
+				}
+			}
+		}
 	}
 	return true
 }
 
-func (g *TetrisGame) lockPieceLocked() {
-	if g.piece == nil || g.players[g.currentTurn] == nil {
+func (g *TetrisGame) spawnPieceForSlotLocked(slot int) bool {
+	t := rand.Intn(7)
+	rot := 0
+	x := tetrisCols/2 - 1
+	y := 0
+	g.pieces[slot] = &TetrisPiece{Type: t, Rotation: rot, X: x, Y: y}
+	if !g.isValidMove(slot, g.pieces[slot]) {
+		g.pieces[slot] = nil
+		return false
+	}
+	return true
+}
+
+func (g *TetrisGame) lockPieceLocked(slot int) {
+	if g.pieces[slot] == nil || g.players[slot] == nil {
 		return
 	}
-	color := g.currentTurn + 1
-	shape := tetrisShapes[g.piece.Type][g.piece.Rotation%4]
+	piece := g.pieces[slot]
+	color := slot + 1
+	shape := tetrisShapes[piece.Type][piece.Rotation%4]
 	for _, off := range shape {
-		col := g.piece.X + off[0]
-		row := g.piece.Y + off[1]
+		col := piece.X + off[0]
+		row := piece.Y + off[1]
 		if row >= 0 && row < tetrisRows && col >= 0 && col < tetrisCols {
 			g.board[row][col] = color
 		}
@@ -287,33 +320,18 @@ func (g *TetrisGame) lockPieceLocked() {
 	}
 
 	pts := len(cleared) * 100
-	if pts > 0 && g.players[g.currentTurn] != nil {
-		g.scores[g.currentTurn] += pts
+	if pts > 0 && g.players[slot] != nil {
+		g.scores[slot] += pts
 	}
 
 	lastScorer := ""
-	if g.players[g.currentTurn] != nil {
-		lastScorer = g.players[g.currentTurn].UserID
+	if g.players[slot] != nil {
+		lastScorer = g.players[slot].UserID
 	}
-	g.piece = nil
-	nextTurn := (g.currentTurn + 1) % tetrisMaxPlayers
-	for i := 0; i < tetrisMaxPlayers; i++ {
-		if g.players[nextTurn] != nil {
-			break
-		}
-		nextTurn = (nextTurn + 1) % tetrisMaxPlayers
-	}
-	g.currentTurn = nextTurn
+	g.pieces[slot] = nil
 
-	if !g.spawnPieceLocked() {
-		g.gameStarted = false
-		msg, _ := json.Marshal(GameResultResponse{
-			Type: "game_result", Message: "게임 오버! 보드가 가득 찼습니다.", RoomID: g.room.ID,
-			Data: map[string]any{"scores": g.scores, "players": g.playersUserIDsLocked()},
-			RematchEnabled: true,
-		})
-		g.room.broadcastAll(msg)
-		g.resetLocked()
+	if !g.spawnPieceForSlotLocked(slot) {
+		g.gameOverLocked()
 		return
 	}
 
@@ -324,11 +342,39 @@ func (g *TetrisGame) lockPieceLocked() {
 	g.room.broadcastAll(msg)
 }
 
+func (g *TetrisGame) gameOverLocked() {
+	g.gameStarted = false
+	msg, _ := json.Marshal(GameResultResponse{
+		Type: "game_result", Message: "게임 오버! 보드가 가득 찼습니다.", RoomID: g.room.ID,
+		Data:           map[string]any{"scores": g.scores, "players": g.playersUserIDsLocked()},
+		RematchEnabled: true,
+	})
+	g.room.broadcastAll(msg)
+	g.resetLocked()
+}
+
+func (g *TetrisGame) clientSlot(client *Client) int {
+	for i := 0; i < tetrisMaxPlayers; i++ {
+		if g.players[i] == client {
+			return i
+		}
+	}
+	return -1
+}
+
+func (g *TetrisGame) sendMoveResult(client *Client, success bool) {
+	msg, _ := json.Marshal(TetrisMoveResultResponse{
+		Type: "tetris_move_result", RoomID: g.room.ID, Success: success,
+	})
+	client.SafeSend(msg)
+}
+
 func (g *TetrisGame) handleMoveLocked(client *Client, payload json.RawMessage) {
-	if !g.gameStarted || g.piece == nil {
+	if !g.gameStarted {
 		return
 	}
-	if g.players[g.currentTurn] != client {
+	slot := g.clientSlot(client)
+	if slot < 0 || g.pieces[slot] == nil {
 		return
 	}
 
@@ -339,47 +385,64 @@ func (g *TetrisGame) handleMoveLocked(client *Client, payload json.RawMessage) {
 		return
 	}
 
+	piece := g.pieces[slot]
+
 	switch p.Dir {
 	case "left":
-		g.piece.X--
-		if !g.pieceFitsLocked() {
-			g.piece.X++
-		}
-	case "right":
-		g.piece.X++
-		if !g.pieceFitsLocked() {
-			g.piece.X--
-		}
-	case "down":
-		g.piece.Y++
-		if !g.pieceFitsLocked() {
-			g.piece.Y--
-			g.lockPieceLocked()
+		piece.X--
+		if !g.isValidMove(slot, piece) {
+			piece.X++
+			g.sendMoveResult(client, false)
 			return
 		}
-	case "rotate":
-		g.piece.Rotation = (g.piece.Rotation + 1) % 4
-		if !g.pieceFitsLocked() {
-			g.piece.Rotation = (g.piece.Rotation + 3) % 4
+	case "right":
+		piece.X++
+		if !g.isValidMove(slot, piece) {
+			piece.X--
+			g.sendMoveResult(client, false)
+			return
 		}
+	case "down":
+		piece.Y++
+		if !g.isValidMove(slot, piece) {
+			piece.Y--
+			g.sendMoveResult(client, true) // lock 성공
+			g.lockPieceLocked(slot)
+			return
+		}
+		g.sendMoveResult(client, true)
+	case "rotate":
+		piece.Rotation = (piece.Rotation + 1) % 4
+		if !g.isValidMove(slot, piece) {
+			piece.Rotation = (piece.Rotation + 3) % 4
+			g.sendMoveResult(client, false)
+			return
+		}
+		g.sendMoveResult(client, true)
 	default:
 		return
+	}
+
+	if p.Dir != "down" {
+		g.sendMoveResult(client, true)
 	}
 	g.sendStateToAllLocked()
 }
 
 func (g *TetrisGame) handleFlickLocked(client *Client) {
-	if !g.gameStarted || g.piece == nil {
+	if !g.gameStarted {
 		return
 	}
-	if g.players[g.currentTurn] != client {
+	slot := g.clientSlot(client)
+	if slot < 0 || g.pieces[slot] == nil {
 		return
 	}
-	for g.pieceFitsLocked() {
-		g.piece.Y++
+	for g.isValidMove(slot, g.pieces[slot]) {
+		g.pieces[slot].Y++
 	}
-	g.piece.Y--
-	g.lockPieceLocked()
+	g.pieces[slot].Y--
+	g.sendMoveResult(client, true)
+	g.lockPieceLocked(slot)
 }
 
 func (g *TetrisGame) makeDataLocked() TetrisData {
@@ -388,21 +451,18 @@ func (g *TetrisGame) makeDataLocked() TetrisData {
 		boardCopy[r] = make([]int, tetrisCols)
 		copy(boardCopy[r], g.board[r])
 	}
-	turnID := ""
-	if g.players[g.currentTurn] != nil {
-		turnID = g.players[g.currentTurn].UserID
-	}
-	var pieceCopy *TetrisPiece
-	if g.piece != nil {
-		pc := *g.piece
-		pieceCopy = &pc
+	var piecesCopy [4]*TetrisPiece
+	for i := 0; i < tetrisMaxPlayers; i++ {
+		if g.pieces[i] != nil {
+			pc := *g.pieces[i]
+			piecesCopy[i] = &pc
+		}
 	}
 	return TetrisData{
-		Board:        boardCopy,
-		Players:      g.playersUserIDsLocked(),
-		Scores:       g.scores,
-		CurrentTurn:  turnID,
-		CurrentPiece: pieceCopy,
+		Board:         boardCopy,
+		Players:       g.playersUserIDsLocked(),
+		Scores:        g.scores,
+		CurrentPieces: piecesCopy,
 	}
 }
 

@@ -1,8 +1,9 @@
-  // ── 다인용 테트리스 (Shared Tetris) ────────────────────────────────────────
+  // ── 다인용 테트리스 (Shared Tetris) - 비중첩 그리드 방식 ────────────────────────
 
   const TETRIS_ROWS = 20;
   const TETRIS_COLS = 15;
-  const TETRIS_COLORS = ['', '#ef4444', '#22c55e', '#3b82f6', '#eab308'];
+  // 1=빨강, 2=파랑, 3=노랑, 4=초록
+  const TETRIS_COLORS = ['', '#ef4444', '#3b82f6', '#eab308', '#22c55e'];
 
   const TETRIS_SHAPES = [
     [[-1,0],[0,0],[1,0],[2,0]], [[0,-1],[0,0],[0,1],[0,2]], [[-1,0],[0,0],[1,0],[2,0]], [[0,-1],[0,0],[0,1],[0,2]],
@@ -15,8 +16,7 @@
   ];
 
   let tetrisBoard = [];
-  let tetrisPiece = null;
-  let tetrisTurnId = '';
+  let tetrisPieces = [null, null, null, null];
   let tetrisMySlot = -1;
 
   function showTetrisUI() {
@@ -26,16 +26,19 @@
   function renderTetris(data) {
     if (!data) return;
     tetrisBoard = (data.board || []).map(r => [...r]);
-    tetrisPiece = data.currentPiece ? { ...data.currentPiece } : null;
-    tetrisTurnId = data.currentTurn || '';
+    tetrisPieces = [null, null, null, null];
+    if (data.currentPieces) {
+      for (let i = 0; i < 4; i++) {
+        tetrisPieces[i] = data.currentPieces[i] ? { ...data.currentPieces[i] } : null;
+      }
+    }
 
     const players = data.players || [];
     tetrisMySlot = players.indexOf(currentUserId);
 
     const statusEl = document.getElementById('tetris-status');
     if (statusEl) {
-      const isMyTurn = tetrisTurnId === currentUserId;
-      statusEl.textContent = isMyTurn ? '🎮 내 차례! 방향키/WASD로 조작' : (tetrisTurnId ? `${tetrisTurnId}의 차례...` : '대기 중');
+      statusEl.textContent = '방향키/WASD로 조작 · 스페이스 하드드롭';
     }
 
     const scoresEl = document.getElementById('tetris-scores');
@@ -66,21 +69,28 @@
     cells.forEach(cell => {
       const r = +cell.dataset.r, c = +cell.dataset.c;
       let color = tetrisBoard[r] && tetrisBoard[r][c] ? TETRIS_COLORS[tetrisBoard[r][c]] : '';
-      if (tetrisPiece) {
-        const turnSlot = players.indexOf(tetrisTurnId);
-        const pc = turnSlot >= 0 ? turnSlot + 1 : 1;
-        const shape = TETRIS_SHAPES[tetrisPiece.type * 4 + (tetrisPiece.rotation % 4)];
+      let isMyPiece = false;
+
+      for (let slot = 0; slot < 4; slot++) {
+        const piece = tetrisPieces[slot];
+        if (!piece) continue;
+        const pc = slot + 1;
+        const shape = TETRIS_SHAPES[piece.type * 4 + (piece.rotation % 4)];
         for (const off of shape) {
-          const cc = tetrisPiece.x + off[0];
-          const rr = tetrisPiece.y + off[1];
+          const cc = piece.x + off[0];
+          const rr = piece.y + off[1];
           if (rr === r && cc === c) {
             color = TETRIS_COLORS[pc] || '#888';
+            isMyPiece = (slot === tetrisMySlot);
             break;
           }
         }
+        if (color) break;
       }
+
       cell.style.backgroundColor = color || 'transparent';
       cell.classList.toggle('tetris-filled', !!color);
+      cell.classList.toggle('tetris-my-piece', isMyPiece);
     });
 
     if (data.lastClear && data.lastClear.length > 0) {
@@ -99,21 +109,26 @@
   }
 
   function tetrisSendMove(dir) {
-    if (tetrisTurnId !== currentUserId) return;
+    if (tetrisMySlot < 0) return;
     if (typeof sendGameAction === 'function') {
       sendGameAction({ cmd: 'move', dir });
-    }
-    if (dir === 'down' && window.SoundManager) {
-      window.SoundManager.playPianoNote(130.81, 0.06);
     }
   }
 
   function tetrisSendFlick() {
-    if (tetrisTurnId !== currentUserId) return;
+    if (tetrisMySlot < 0) return;
     if (typeof sendGameAction === 'function') {
       sendGameAction({ cmd: 'flick' });
     }
-    if (window.SoundManager) window.SoundManager.playPianoNote(261.63, 0.08);
+  }
+
+  function tetrisOnMoveResult(success) {
+    if (!window.SoundManager) return;
+    if (success) {
+      window.SoundManager.playPianoNote(523.25, 0.08);
+    } else {
+      window.SoundManager.playPianoNote(130.81, 0.1);
+    }
   }
 
   document.addEventListener('keydown', function(e) {
@@ -132,3 +147,4 @@
 
   window.showTetrisUI = showTetrisUI;
   window.renderTetris = renderTetris;
+  window.tetrisOnMoveResult = tetrisOnMoveResult;

@@ -839,6 +839,10 @@ header {
 .tetris-cell.tetris-filled {
   box-shadow: inset 0 -2px 4px rgba(0,0,0,0.4), 0 1px 2px rgba(255,255,255,0.1);
 }
+.tetris-cell.tetris-my-piece {
+  box-shadow: 0 0 0 2px #fff, inset 0 -2px 4px rgba(0,0,0,0.3);
+  filter: brightness(1.1);
+}
 .tetris-score {
   font-weight: 600;
   font-size: 14px;
