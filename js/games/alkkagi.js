@@ -17,13 +17,12 @@
   const ALKKAGI_CELL = 28;
   const ALKKAGI_GRID = 15;
 
-  const ALKKAGI_CHESS = {
-    K: { maxPower: 0.06, mass: 2.0 },
-    Q: { maxPower: 0.08, mass: 1.5 },
-    R: { maxPower: 0.07, mass: 1.2 },
-    B: { maxPower: 0.07, mass: 1.2 },
-    N: { maxPower: 0.075, mass: 1.0 },
-    P: { maxPower: 0.05, mass: 0.8 }
+  const ALKKAGI_JANGGI = {
+    K: { maxPower: 0.07, mass: 3.5, char: '將' },
+    R: { maxPower: 0.065, mass: 2.2, char: '車' },
+    P: { maxPower: 0.06, mass: 1.8, char: '包' },
+    H: { maxPower: 0.055, mass: 1.4, char: '馬' },
+    E: { maxPower: 0.05, mass: 1.1, char: '象' }
   };
 
   let alkkagiSelectedStone = null;
@@ -53,7 +52,7 @@
     const sc = pxToCell(stone.x, stone.y);
     const col = sc.col;
     const row = sc.row;
-    const role = (stone.role || 'P').toUpperCase();
+    const role = (stone.role || 'E').toUpperCase();
     const color = stone.color;
     const moves = [];
 
@@ -78,32 +77,26 @@
           addIfValid(col + dc, row + dr, true);
         }
       }
-    } else if (role === 'R') {
+    } else if (role === 'R' || role === 'P') {
       for (const [dc, dr] of [[1,0],[-1,0],[0,1],[0,-1]]) {
         for (let d = 1; d < ALKKAGI_GRID; d++) {
           if (addIfValid(col + dc * d, row + dr * d, true)) break;
         }
       }
-    } else if (role === 'B') {
+    } else if (role === 'E') {
       for (const [dc, dr] of [[1,1],[1,-1],[-1,1],[-1,-1]]) {
         for (let d = 1; d < ALKKAGI_GRID; d++) {
           if (addIfValid(col + dc * d, row + dr * d, true)) break;
         }
       }
-    } else if (role === 'Q') {
-      for (const [dc, dr] of [[1,0],[-1,0],[0,1],[0,-1],[1,1],[1,-1],[-1,1],[-1,-1]]) {
-        for (let d = 1; d < ALKKAGI_GRID; d++) {
-          if (addIfValid(col + dc * d, row + dr * d, true)) break;
-        }
-      }
-    } else if (role === 'N') {
+    } else if (role === 'H') {
       const jumps = [[2,1],[2,-1],[-2,1],[-2,-1],[1,2],[1,-2],[-1,2],[-1,-2]];
       jumps.forEach(([dc, dr]) => addIfValid(col + dc, row + dr, true));
     } else {
-      const forward = color === 1 ? -1 : 1;
-      addIfValid(col, row + forward, true);
-      if ((color === 1 && row === 14) || (color === 2 && row === 0)) {
-        addIfValid(col, row + forward * 2, true);
+      for (const [dc, dr] of [[1,0],[-1,0],[0,1],[0,-1]]) {
+        for (let d = 1; d < ALKKAGI_GRID; d++) {
+          if (addIfValid(col + dc * d, row + dr * d, true)) break;
+        }
       }
     }
     return moves;
@@ -142,9 +135,9 @@
     }
     if (stonesEl) {
       const stones = data.stones || [];
-      const black = stones.filter(s => s.color === 1).length;
-      const white = stones.filter(s => s.color === 2).length;
-      stonesEl.textContent = stones.length ? `흑 ${black} : 백 ${white}` : '흑 5 : 백 5';
+      const han = stones.filter(s => s.color === 1).length;
+      const cho = stones.filter(s => s.color === 2).length;
+      stonesEl.textContent = stones.length ? `한 ${han} : 초 ${cho}` : '한 5 : 초 5';
     }
     const timerEl = document.getElementById('alkkagi-placement-timer');
     if (timerEl) {
@@ -230,14 +223,22 @@
       ctx.stroke();
     }
     const stones = (data && data.stones) || [];
+    const JANGGI_CHARS = { K: '將', R: '車', P: '包', H: '馬', E: '象' };
     stones.forEach(s => {
-      ctx.fillStyle = s.color === 1 ? '#111' : '#f5f5f5';
-      ctx.strokeStyle = s.color === 1 ? '#333' : '#ccc';
+      const role = (s.role || 'E').toUpperCase();
+      const char = JANGGI_CHARS[role] || '象';
+      ctx.fillStyle = s.color === 1 ? '#fff5f5' : '#1a1a2e';
+      ctx.strokeStyle = s.color === 1 ? '#dc2626' : '#22c55e';
       ctx.lineWidth = 2;
       ctx.beginPath();
       ctx.arc(s.x, s.y, 18, 0, Math.PI * 2);
       ctx.fill();
       ctx.stroke();
+      ctx.font = 'bold 20px "Noto Sans KR", "Malgun Gothic", sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillStyle = s.color === 1 ? '#dc2626' : '#3b82f6';
+      ctx.fillText(char, s.x, s.y);
     });
   }
 
@@ -252,20 +253,20 @@
     const world = engine.world;
 
     const stoneRadius = 18;
-    const baseDensity = 0.001;
 
     const stones = data.stones || [];
     alkkagiStonesData = stones.map(s => ({ ...s }));
     stones.forEach(s => {
-      const fill = s.color === 1 ? '#111' : '#f5f5f5';
-      const stroke = s.color === 1 ? '#333' : '#ccc';
-      const role = (s.role || 'P').toUpperCase();
-      const mass = (ALKKAGI_CHESS[role] || ALKKAGI_CHESS.P).mass;
+      const role = (s.role || 'E').toUpperCase();
+      const cfg = ALKKAGI_JANGGI[role] || ALKKAGI_JANGGI.E;
+      const mass = cfg.mass;
+      const fill = s.color === 1 ? '#fff5f5' : '#1a1a2e';
+      const stroke = s.color === 1 ? '#dc2626' : '#22c55e';
       const body = M.Bodies.circle(s.x || 100, s.y || 100, stoneRadius, {
         friction: 0.01, frictionAir: 0.008, restitution: 0.6,
-        density: baseDensity * mass,
         render: { fillStyle: fill, strokeStyle: stroke, lineWidth: 2 },
       });
+      M.Body.setMass(body, mass);
       body.alkkagiId = s.id;
       body.alkkagiColor = s.color;
       body.alkkagiRole = role;
@@ -303,8 +304,24 @@
     });
 
     M.Events.on(render, 'afterRender', function() {
+      const ctx = render.context;
+      Object.keys(alkkagiBodies).forEach(id => {
+        const b = alkkagiBodies[id];
+        if (!b || !world.bodies.includes(b)) return;
+        const role = (b.alkkagiRole || 'E').toUpperCase();
+        const cfg = ALKKAGI_JANGGI[role] || ALKKAGI_JANGGI.E;
+        const char = cfg.char || '象';
+        ctx.save();
+        ctx.translate(b.position.x, b.position.y);
+        ctx.rotate(b.angle);
+        ctx.font = 'bold 22px "Noto Sans KR", "Malgun Gothic", sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillStyle = b.alkkagiColor === 1 ? '#dc2626' : '#3b82f6';
+        ctx.fillText(char, 0, 0);
+        ctx.restore();
+      });
       if (alkkagiSelectedStone && alkkagiValidGuides.length > 0) {
-        const ctx = render.context;
         ctx.fillStyle = 'rgba(255,255,255,0.5)';
         ctx.strokeStyle = 'rgba(255,255,255,0.8)';
         ctx.lineWidth = 2;
@@ -370,7 +387,10 @@
           (pair.bodyA.velocity.y - pair.bodyB.velocity.y) ** 2
         );
         if (speed > 0.5 && window.SoundManager) {
-          const freq = Math.min(880, 440 + speed * 80);
+          const massA = pair.bodyA.mass || 1;
+          const massB = pair.bodyB.mass || 1;
+          const avgMass = (massA + massB) / 2;
+          const freq = avgMass >= 2.5 ? 130.81 : (avgMass >= 1.5 ? 196 : 523.25);
           window.SoundManager.playPianoNote(freq, 0.15);
         }
       });
@@ -434,8 +454,8 @@
         const dy = targetPx.y - body.position.y;
         const dist = Math.sqrt(dx * dx + dy * dy) || 1;
         const cellDist = dist / ALKKAGI_CELL;
-        const role = (body.alkkagiRole || 'P').toUpperCase();
-        const cfg = ALKKAGI_CHESS[role] || ALKKAGI_CHESS.P;
+        const role = (body.alkkagiRole || 'E').toUpperCase();
+        const cfg = ALKKAGI_JANGGI[role] || ALKKAGI_JANGGI.E;
         const massFactor = cfg.mass;
         let forceMag = Math.min(cellDist * 0.015, cfg.maxPower) * massFactor;
         forceMag = Math.min(forceMag, cfg.maxPower * massFactor);
@@ -495,25 +515,25 @@
         delete alkkagiBodies[id];
       }
     });
-    const baseDensity = 0.001;
     stones.forEach(s => {
       let body = alkkagiBodies[s.id];
-      const role = (s.role || 'P').toUpperCase();
-      const mass = (ALKKAGI_CHESS[role] || ALKKAGI_CHESS.P).mass;
+      const role = (s.role || 'E').toUpperCase();
+      const cfg = ALKKAGI_JANGGI[role] || ALKKAGI_JANGGI.E;
+      const mass = cfg.mass;
+      const fill = s.color === 1 ? '#fff5f5' : '#1a1a2e';
+      const stroke = s.color === 1 ? '#dc2626' : '#22c55e';
       if (body) {
         Matter.Body.setPosition(body, { x: s.x, y: s.y });
         Matter.Body.setVelocity(body, { x: s.velX || 0, y: s.velY || 0 });
-        Matter.Body.setDensity(body, baseDensity * mass);
+        Matter.Body.setMass(body, mass);
         body.alkkagiRole = role;
       } else {
         const M = Matter;
-        const fill = s.color === 1 ? '#111' : '#f5f5f5';
-        const stroke = s.color === 1 ? '#333' : '#ccc';
         body = M.Bodies.circle(s.x || 100, s.y || 100, 18, {
           friction: 0.01, frictionAir: 0.008, restitution: 0.6,
-          density: baseDensity * mass,
           render: { fillStyle: fill, strokeStyle: stroke, lineWidth: 2 },
         });
+        M.Body.setMass(body, mass);
         body.alkkagiId = s.id;
         body.alkkagiColor = s.color;
         body.alkkagiRole = role;

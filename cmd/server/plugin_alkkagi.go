@@ -26,17 +26,18 @@ type AlkkagiStone struct {
 	VelX  float64 `json:"velX"`
 	VelY  float64 `json:"velY"`
 	Color int     `json:"color"` // 1=흑, 2=백
-	Role  string  `json:"role"`  // K, Q, R, B, N, P
+	Role  string  `json:"role"`  // K, R, P, H, E (장기: 궁, 차, 포, 마, 상)
 	Angle float64 `json:"angle,omitempty"`
 }
 
 // AlkkagiData는 alkkagi_state 응답의 data 필드입니다.
 type AlkkagiData struct {
-	Phase             string         `json:"phase"`             // "ready" | "placement" | "playing"
-	CurrentTurn       string         `json:"currentTurn"`       // 현재 차례 유저 ID (playing 시)
-	Players           [2]string       `json:"players"`             // [0]=흑, [1]=백
-	Stones            []AlkkagiStone `json:"stones"`            // 각 알의 좌표/속도
-	PlacementRemaining int           `json:"placementRemaining"` // 배치 페이즈 남은 초 (0이면 무관)
+	Phase              string         `json:"phase"`              // "ready" | "placement" | "playing"
+	CurrentTurn        string         `json:"currentTurn"`        // 현재 차례 유저 ID (playing 시)
+	Players            [2]string      `json:"players"`            // [0]=한(漢), [1]=초(楚)
+	Teams              [2]string      `json:"teams"`              // [0]="한", [1]="초"
+	Stones             []AlkkagiStone `json:"stones"`             // 각 알의 좌표/속도
+	PlacementRemaining int            `json:"placementRemaining"` // 배치 페이즈 남은 초 (0이면 무관)
 }
 
 // AlkkagiStateResponse는 알까기 게임 상태 응답입니다.
@@ -79,20 +80,22 @@ func cellToPx(col, row int) (x, y float64) {
 	return x, y
 }
 
-var alkkagiRoles = [5]string{"K", "Q", "R", "B", "N"}
+// alkkagiJanggiRoles: 궁(K), 차(R), 포(P), 마(H), 상(E)
+var alkkagiJanggiRoles = [5]string{"K", "R", "P", "H", "E"}
 
-// defaultStones returns 5 black + 5 white stones at default positions (K, Q, R, B, N).
-func defaultStones() []AlkkagiStone {
+// makeJanggiStones returns 5 한(漢) + 5 초(楚) stones at default positions.
+// Color 1=한(빨강), Color 2=초(초록/파랑)
+func makeJanggiStones() []AlkkagiStone {
 	stones := make([]AlkkagiStone, 0, 10)
-	blackCells := [][2]int{{2, 11}, {6, 11}, {10, 11}, {3, 13}, {9, 13}}
-	for i, c := range blackCells {
+	hanCells := [][2]int{{2, 11}, {6, 11}, {10, 11}, {3, 13}, {9, 13}}
+	for i, c := range hanCells {
 		x, y := cellToPx(c[0], c[1])
-		stones = append(stones, AlkkagiStone{ID: i, X: x, Y: y, Color: 1, Role: alkkagiRoles[i]})
+		stones = append(stones, AlkkagiStone{ID: i, X: x, Y: y, Color: 1, Role: alkkagiJanggiRoles[i]})
 	}
-	whiteCells := [][2]int{{2, 3}, {6, 3}, {10, 3}, {3, 1}, {9, 1}}
-	for i, c := range whiteCells {
+	choCells := [][2]int{{2, 3}, {6, 3}, {10, 3}, {3, 1}, {9, 1}}
+	for i, c := range choCells {
 		x, y := cellToPx(c[0], c[1])
-		stones = append(stones, AlkkagiStone{ID: 5 + i, X: x, Y: y, Color: 2, Role: alkkagiRoles[i]})
+		stones = append(stones, AlkkagiStone{ID: 5 + i, X: x, Y: y, Color: 2, Role: alkkagiJanggiRoles[i]})
 	}
 	return stones
 }
@@ -300,8 +303,9 @@ func (g *AlkkagiGame) sendStateWithRemainingLocked(remaining int) {
 		Data: AlkkagiData{
 			Phase:              g.phase,
 			CurrentTurn:        g.turnUserIDLocked(),
-			Players:           g.playersUserIDsLocked(),
-			Stones:            g.stones,
+			Players:            g.playersUserIDsLocked(),
+			Teams:              [2]string{"한", "초"},
+			Stones:             g.stones,
 			PlacementRemaining: remaining,
 		},
 	})
@@ -341,7 +345,7 @@ func (g *AlkkagiGame) placementTimeout() {
 		}
 		placed[[2]int{col, row}] = true
 		x, y := cellToPx(col, row)
-		g.stones = append(g.stones, AlkkagiStone{ID: i, X: x, Y: y, Color: 1, Role: alkkagiRoles[i]})
+		g.stones = append(g.stones, AlkkagiStone{ID: i, X: x, Y: y, Color: 1, Role: alkkagiJanggiRoles[i]})
 	}
 	for i := g.placementCnt[1]; i < alkkagiStonesPerPlayer; i++ {
 		c := whiteDefaults[i]
@@ -351,7 +355,7 @@ func (g *AlkkagiGame) placementTimeout() {
 		}
 		placed[[2]int{col, row}] = true
 		x, y := cellToPx(col, row)
-		g.stones = append(g.stones, AlkkagiStone{ID: 5 + i, X: x, Y: y, Color: 2, Role: alkkagiRoles[i]})
+		g.stones = append(g.stones, AlkkagiStone{ID: 5 + i, X: x, Y: y, Color: 2, Role: alkkagiJanggiRoles[i]})
 	}
 	g.phase = "playing"
 	g.sendStateToAllLocked()
@@ -387,13 +391,13 @@ func (g *AlkkagiGame) handlePlaceLocked(client *Client, payload json.RawMessage)
 		return
 	}
 
-	// 흑(1): row 10~14, 백(2): row 0~4
+	// 한(1): row 10~14, 초(2): row 0~4
 	if color == 1 && (p.Row < 10 || p.Row > 14) {
-		client.SendJSON(ServerResponse{Type: "error", Message: "흑은 아래쪽 5줄(10~14행)에만 배치할 수 있습니다."})
+		client.SendJSON(ServerResponse{Type: "error", Message: "한(漢)은 아래쪽 5줄(10~14행)에만 배치할 수 있습니다."})
 		return
 	}
 	if color == 2 && (p.Row < 0 || p.Row > 4) {
-		client.SendJSON(ServerResponse{Type: "error", Message: "백은 위쪽 5줄(0~4행)에만 배치할 수 있습니다."})
+		client.SendJSON(ServerResponse{Type: "error", Message: "초(楚)는 위쪽 5줄(0~4행)에만 배치할 수 있습니다."})
 		return
 	}
 
@@ -413,7 +417,7 @@ func (g *AlkkagiGame) handlePlaceLocked(client *Client, payload json.RawMessage)
 
 	x, y := cellToPx(p.Col, p.Row)
 	id := (color-1)*alkkagiStonesPerPlayer + g.placementCnt[color-1]
-	role := alkkagiRoles[g.placementCnt[color-1]]
+	role := alkkagiJanggiRoles[g.placementCnt[color-1]]
 	g.stones = append(g.stones, AlkkagiStone{ID: id, X: x, Y: y, Color: color, Role: role})
 	g.placementCnt[color-1]++
 
@@ -443,7 +447,7 @@ func (g *AlkkagiGame) handleSyncLocked(client *Client, payload json.RawMessage) 
 			if r, ok := roleByID[p.Stones[i].ID]; ok {
 				p.Stones[i].Role = r
 			} else {
-				p.Stones[i].Role = "P"
+				p.Stones[i].Role = "E"
 			}
 		}
 	}
@@ -460,11 +464,11 @@ func (g *AlkkagiGame) handleSyncLocked(client *Client, payload json.RawMessage) 
 		}
 	}
 	if blackCount == 0 {
-		g.endMatchLocked(1, "백 승리! 흑돌이 모두 밀려났습니다.")
+		g.endMatchLocked(1, "초(楚) 승리! 한(漢) 기물이 모두 밀려났습니다.")
 		return
 	}
 	if whiteCount == 0 {
-		g.endMatchLocked(0, "흑 승리! 백돌이 모두 밀려났습니다.")
+		g.endMatchLocked(0, "한(漢) 승리! 초(楚) 기물이 모두 밀려났습니다.")
 		return
 	}
 }
@@ -542,6 +546,7 @@ func (g *AlkkagiGame) sendStateToAllLocked() {
 			Phase:              g.phase,
 			CurrentTurn:        g.turnUserIDLocked(),
 			Players:            g.playersUserIDsLocked(),
+			Teams:              [2]string{"한", "초"},
 			Stones:             g.stones,
 			PlacementRemaining: 0,
 		},
@@ -561,6 +566,7 @@ func (g *AlkkagiGame) sendStateToClientLocked(client *Client) {
 			Phase:              g.phase,
 			CurrentTurn:        g.turnUserIDLocked(),
 			Players:            g.playersUserIDsLocked(),
+			Teams:              [2]string{"한", "초"},
 			Stones:             g.stones,
 			PlacementRemaining: 0,
 		},
