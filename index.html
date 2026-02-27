@@ -71,6 +71,10 @@
           <span class="record-game-label">⚫ 알까기</span>
           <span id="record-alkkagi" class="record-val">0승 0패 0무</span>
         </div>
+        <div class="record-popup-row">
+          <span class="record-game-label">🧱 테트리스</span>
+          <span id="record-tetris" class="record-val">0승 0패 0무</span>
+        </div>
       </div>
     </div>
     <button class="header-btn danger" id="btn-leave" style="display:none" onclick="leaveRoom()">🚪 나가기</button>
@@ -206,6 +210,28 @@
                    autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false"
                    onkeydown="if(event.key==='Enter') joinWithCode('alkkagi','code-input-alkkagi')" />
             <button class="card-btn-join-code" onclick="joinWithCode('alkkagi','code-input-alkkagi')">입장</button>
+          </div>
+        </div>
+      </div>
+      <div class="game-card">
+        <div class="card-icon">🧱</div>
+        <div class="card-title">다인용 테트리스 (Shared Tetris)</div>
+        <div class="card-desc">15×20 공유 보드에서 4명이 번갈아 블럭을 놓아요. 줄을 완성하면 점수 획득!</div>
+        <div class="card-badges-inline">
+          <div class="card-badge pvp">PVP</div>
+          <div class="card-badge construction">🚧 공사 중</div>
+        </div>
+        <div class="card-actions-bottom">
+          <div class="card-top-actions">
+            <button class="card-btn-rule"   onclick="showRules('tetris')">📖 룰</button>
+            <button class="card-btn-create" onclick="createRoom('tetris')">➕ 방 만들기</button>
+          </div>
+          <div class="card-join-row">
+            <input type="text" class="card-code-input" id="code-input-tetris"
+                   maxlength="6" placeholder="코드 6자리"
+                   autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false"
+                   onkeydown="if(event.key==='Enter') joinWithCode('tetris','code-input-tetris')" />
+            <button class="card-btn-join-code" onclick="joinWithCode('tetris','code-input-tetris')">입장</button>
           </div>
         </div>
       </div>
@@ -803,6 +829,28 @@
           </div>
         </div>
 
+        <!-- Western Duel container -->
+        <div id="duel-container" style="display:none; flex-direction:column; align-items:center; justify-content:center; width:100%; min-height:320px;">
+          <div id="duel-wrap" class="duel-wrap">
+            <div class="duel-avatar duel-avatar-left" id="duel-avatar-left">?</div>
+            <div class="duel-watch" id="duel-watch" onclick="if(typeof handleDuelClick==='function')handleDuelClick()">
+              <div class="duel-watch-face">⌚</div>
+            </div>
+            <div class="duel-avatar duel-avatar-right" id="duel-avatar-right">?</div>
+          </div>
+          <div id="duel-status" class="duel-status">상대를 기다리는 중...</div>
+        </div>
+
+        <!-- Tetris container (4-player shared) -->
+        <div id="tetris-container" style="display:none; flex-direction:column; align-items:center; gap:12px; width:100%;">
+          <div id="tetris-status" style="font-size:15px; font-weight:600;">대기 중...</div>
+          <div id="tetris-scores" style="display:flex; gap:12px; flex-wrap:wrap;"></div>
+          <div id="tetris-board-wrap" style="position:relative;">
+            <div id="tetris-board" class="tetris-board"></div>
+            <div id="tetris-clear-flash" class="tetris-clear-flash"></div>
+          </div>
+        </div>
+
         <!-- Alkkagi container (Matter.js 물리 보드) -->
         <div id="alkkagi-container" style="display:none; flex-direction:column; align-items:center; gap:12px; width:100%;">
           <div id="alkkagi-status-bar" class="alkkagi-status-bar">
@@ -993,5 +1041,6 @@
 <script src="js/games/indian.js"></script>
 <script src="js/games/thief.js"></script>
 <script src="js/games/mahjong.js"></script>
+<script src="js/games/tetris.js"></script>
 </body>
 </html>

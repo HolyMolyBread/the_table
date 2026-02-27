@@ -815,6 +815,56 @@ header {
   to   { transform: none; opacity: 1; }
 }
 
+/* ── Tetris (4-player shared) ── */
+#tetris-board-wrap {
+  position: relative;
+  background: #0f172a;
+  padding: 6px;
+  border-radius: 10px;
+  box-shadow: 0 6px 24px rgba(0,0,0,0.5);
+  border: 2px solid #1e3a5f;
+}
+.tetris-board {
+  display: grid;
+  grid-template-columns: repeat(15, 22px);
+  grid-template-rows: repeat(20, 22px);
+  gap: 1px;
+}
+.tetris-cell {
+  width: 22px; height: 22px;
+  background: rgba(30, 58, 95, 0.5);
+  border-radius: 2px;
+  transition: background 0.1s, box-shadow 0.15s;
+}
+.tetris-cell.tetris-filled {
+  box-shadow: inset 0 -2px 4px rgba(0,0,0,0.4), 0 1px 2px rgba(255,255,255,0.1);
+}
+.tetris-score {
+  font-weight: 600;
+  font-size: 14px;
+}
+.tetris-clear-flash {
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 24px;
+  font-weight: 800;
+  color: #fff;
+  text-shadow: 0 0 12px rgba(255,255,255,0.9), 0 0 24px var(--accent);
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+.tetris-clear-flash.tetris-flash-visible {
+  opacity: 1;
+  animation: tetrisFlash 1.2s ease-out forwards;
+}
+@keyframes tetrisFlash {
+  0% { transform: translate(-50%, -50%) scale(0.5); opacity: 0; }
+  20% { transform: translate(-50%, -50%) scale(1.2); opacity: 1; }
+  100% { transform: translate(-50%, -50%) scale(1); opacity: 0; }
+}
+
 /* 타일/그리드 게임 전용 모션 */
 @keyframes stonePop {
   0% { transform: scale(0.3); opacity: 0; }

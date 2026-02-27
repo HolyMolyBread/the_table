@@ -96,7 +96,7 @@
 
   // ── 상수 (호이스팅/초기화 순서 문제 방지: 최상단 선언) ───────────────────────
   const TABLE_SEAT_ORDER = ['seat-top', 'seat-right', 'seat-bottom', 'seat-left'];
-  const games = ['omok', 'blackjack', 'tictactoe', 'connect4', 'indian', 'holdem', 'sevenpoker', 'thief', 'onecard', 'mahjong', 'alkkagi'];
+  const games = ['omok', 'blackjack', 'tictactoe', 'connect4', 'indian', 'holdem', 'sevenpoker', 'thief', 'onecard', 'mahjong', 'alkkagi', 'tetris'];
   const RULES = {
     omok: {
         title: '🀱 오목 룰',
@@ -449,6 +449,29 @@
         <ul>
             <li>상대 알을 모두 보드 밖으로 밀어내면 승리!</li>
         </ul>`
+    },
+    tetris: {
+        title: '🧱 다인용 테트리스 (Shared Tetris) 룰',
+        html: `
+        <h3>게임 개요</h3>
+        <ul>
+            <li><strong>4인 협동/경쟁</strong>. 15×20 공유 보드에서 번갈아 블럭을 놓습니다.</li>
+            <li>2명 이상 Ready 시 게임이 시작됩니다.</li>
+        </ul>
+        <h3>조작</h3>
+        <ul>
+            <li>방향키 또는 WASD: 좌/우/아래 이동, 위(W): 회전</li>
+            <li>스페이스: 하드 드롭 (바로 고정)</li>
+        </ul>
+        <h3>득점</h3>
+        <ul>
+            <li>블럭을 고정했을 때 가로 줄이 완성되면, 그 줄을 놓은 유저에게 <strong>줄당 100점</strong>이 부여됩니다.</li>
+            <li>완성된 줄은 지워지고 위 블럭이 내려옵니다.</li>
+        </ul>
+        <h3>게임 오버</h3>
+        <ul>
+            <li>새 블럭을 스폰할 공간이 없으면 게임 종료.</li>
+        </ul>`
     }
   };
   const POKER_HAND_RANKINGS_HTML = `
@@ -466,8 +489,8 @@
       <li>하이카드 (High Card)</li>
     </ol>
   `;
-  const GAME_VIEW_IDS = ['board-placeholder', 'gomoku-container', 'blackjack-container', 'tictactoe-container', 'connect4-container', 'indian-container', 'holdem-container', 'sevenpoker-container', 'thief-container', 'onecard-container', 'mahjong-container', 'alkkagi-container'];
-  const PREFIX_TO_CONTAINER = { omok: 'gomoku-container', blackjack: 'blackjack-container', tictactoe: 'tictactoe-container', connect4: 'connect4-container', indian: 'indian-container', holdem: 'holdem-container', sevenpoker: 'sevenpoker-container', thief: 'thief-container', onecard: 'onecard-container', mahjong: 'mahjong-container', mahjong3: 'mahjong-container', alkkagi: 'alkkagi-container' };
+  const GAME_VIEW_IDS = ['board-placeholder', 'gomoku-container', 'blackjack-container', 'tictactoe-container', 'connect4-container', 'indian-container', 'holdem-container', 'sevenpoker-container', 'thief-container', 'onecard-container', 'mahjong-container', 'alkkagi-container', 'tetris-container'];
+  const PREFIX_TO_CONTAINER = { omok: 'gomoku-container', blackjack: 'blackjack-container', tictactoe: 'tictactoe-container', connect4: 'connect4-container', indian: 'indian-container', holdem: 'holdem-container', sevenpoker: 'sevenpoker-container', thief: 'thief-container', onecard: 'onecard-container', mahjong: 'mahjong-container', mahjong3: 'mahjong-container', alkkagi: 'alkkagi-container', tetris: 'tetris-container' };
   const GAME_STATE_HANDLERS = {
     tictactoe_state:  { logKey: 'ttt-state',       show: () => { if (typeof window.showTicTacToeUI === 'function') window.showTicTacToeUI(); },  render: (data) => { if (typeof window.renderTicTacToe === 'function') window.renderTicTacToe(data); } },
     connect4_state:   { logKey: 'c4-state',       show: () => { if (typeof window.showConnect4UI === 'function') window.showConnect4UI(); },   render: (data) => { if (typeof window.renderConnect4 === 'function') window.renderConnect4(data); } },
@@ -479,6 +502,7 @@
     mahjong_state:    { logKey: 'mahjong-state',  show: () => { if (typeof window.showMahjongUI === 'function') window.showMahjongUI(); },   render: (data) => { if (typeof window.renderMahjong === 'function') window.renderMahjong(data); } },
     mahjong3_state:   { logKey: 'mahjong3-state', show: () => { if (typeof window.showMahjongUI === 'function') window.showMahjongUI(); },   render: (data) => { if (typeof window.renderMahjong === 'function') window.renderMahjong(data); } },
     alkkagi_state:    { logKey: 'alkkagi-state',  show: () => { if (typeof window.showAlkkagiUI === 'function') window.showAlkkagiUI(); },    render: (data) => { if (typeof window.renderAlkkagi === 'function') window.renderAlkkagi(data); } },
+    tetris_state:     { logKey: 'tetris-state',  show: () => { if (typeof window.showTetrisUI === 'function') window.showTetrisUI(); },     render: (data) => { if (typeof window.renderTetris === 'function') window.renderTetris(data); } },
   };
   const PREFIX_TO_TIMER = { omok: ['status-seconds', 'status-timer-block'], tictactoe: ['ttt-seconds', 'ttt-timer-block'], connect4: ['c4-seconds', 'c4-timer-block'], indian: ['indian-seconds', 'indian-timer-block'], holdem: ['holdem-seconds', 'holdem-timer-block'], sevenpoker: ['sevenpoker-seconds', 'sevenpoker-timer-block'], thief: ['thief-seconds', 'thief-timer-block'], onecard: ['onecard-seconds', 'onecard-timer-block'], mahjong: ['mahjong-seconds', 'mahjong-timer-block'], mahjong3: ['mahjong-seconds', 'mahjong-timer-block'] };
 
@@ -656,8 +680,8 @@
   }
   function showOpponentRecordModal(userId, records) {
     const fmt = r => r ? `${r.wins}승 ${r.losses}패 ${r.draws}무` : '0승 0패 0무';
-    const games = ['omok', 'tictactoe', 'connect4', 'holdem', 'sevenpoker', 'indian', 'blackjack_pve', 'blackjack', 'onecard', 'thief', 'mahjong', 'alkkagi'];
-    const labels = { total: '전체', omok: '🀱 오목', tictactoe: '⭕❌ 틱택토', connect4: '🔴🟡 4목', holdem: '♠️ 텍사스 홀덤', sevenpoker: '🃏 세븐 포커', indian: '🃏 인디언 포커', blackjack_pve: '🃏 블랙잭 (PVE)', blackjack: '🃏 블랙잭 (PVP 레이드)', onecard: '🃏 원카드', thief: '🃏 도둑잡기', mahjong: '🀄 마작', alkkagi: '⚫ 알까기' };
+    const games = ['omok', 'tictactoe', 'connect4', 'holdem', 'sevenpoker', 'indian', 'blackjack_pve', 'blackjack', 'onecard', 'thief', 'mahjong', 'alkkagi', 'tetris'];
+    const labels = { total: '전체', omok: '🀱 오목', tictactoe: '⭕❌ 틱택토', connect4: '🔴🟡 4목', holdem: '♠️ 텍사스 홀덤', sevenpoker: '🃏 세븐 포커', indian: '🃏 인디언 포커', blackjack_pve: '🃏 블랙잭 (PVE)', blackjack: '🃏 블랙잭 (PVP 레이드)', onecard: '🃏 원카드', thief: '🃏 도둑잡기', mahjong: '🀄 마작', alkkagi: '⚫ 알까기', tetris: '🧱 테트리스' };
     let html = '';
     html += `<div class="opponent-record-row"><span class="opponent-record-label">${labels.total}</span><span class="opponent-record-val">${fmt(records && records.total)}</span></div>`;
     for (const key of games) {
@@ -1445,7 +1469,7 @@
 
   function clearAllGameContainers() {
     // 모든 게임 컨테이너 숨김 + 내부 콘텐츠 비우기 (UI 잔상 방지)
-    const containerIds = ['gomoku-container', 'blackjack-container', 'tictactoe-container', 'connect4-container', 'indian-container', 'holdem-container', 'sevenpoker-container', 'thief-container', 'onecard-container', 'mahjong-container', 'alkkagi-container'];
+    const containerIds = ['gomoku-container', 'blackjack-container', 'tictactoe-container', 'connect4-container', 'indian-container', 'holdem-container', 'sevenpoker-container', 'thief-container', 'onecard-container', 'mahjong-container', 'alkkagi-container', 'tetris-container'];
     containerIds.forEach(id => {
       const el = document.getElementById(id);
       if (el) {
