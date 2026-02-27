@@ -2,15 +2,18 @@
 
   const SUIKA_W = 400;
   const SUIKA_H = 500;
+  const SUIKA_FORBIDDEN_ZONE = 50;  // 상단 50px 투하 금지선
   const SUIKA_RECHARGE_MS = 3000;
   const SUIKA_MAX_CHARGES = 2;
-  const SUIKA_FRUIT_NAMES = ['체리','딸기','포도','데코폰','오렌지','사과','배','복숭아','파인애플','멜론','수박'];
+  const SUIKA_SYNC_INTERVAL_MS = 100;
+  const SUIKA_GAMEOVER_THRESHOLD_MS = 3000;
+  const SUIKA_FRUIT_NAMES = ['체리','딸기','포도','한라봉','감','사과','배','복숭아','파인애플','멜론','수박'];
   const SUIKA_FRUIT_COLORS = ['#e11d48','#dc2626','#7c3aed','#f97316','#ea580c','#22c55e','#16a34a','#ec4899','#facc15','#84cc16','#15803d'];
   const SUIKA_FRUIT_DEFS = [
-    { radius: 12, score: 1 }, { radius: 15, score: 3 }, { radius: 18, score: 6 },
-    { radius: 22, score: 10 }, { radius: 26, score: 15 }, { radius: 30, score: 21 },
-    { radius: 35, score: 28 }, { radius: 40, score: 36 }, { radius: 46, score: 45 },
-    { radius: 52, score: 55 }, { radius: 60, score: 66 }
+    { radius: 12, score: 2 }, { radius: 15, score: 4 }, { radius: 18, score: 8 },
+    { radius: 22, score: 16 }, { radius: 26, score: 32 }, { radius: 30, score: 64 },
+    { radius: 35, score: 128 }, { radius: 40, score: 256 }, { radius: 46, score: 512 },
+    { radius: 52, score: 1024 }, { radius: 60, score: 2048 }
   ];
 
   let suikaMySlot = -1;
@@ -18,7 +21,11 @@
   let suikaLastChargeAt = 0;
   let suikaHandFruitType = -1;
   let suikaGameStarted = false;
+  let suikaGameOver = false;
+  let suikaIsHost = false;
+  let suikaHostUserId = '';
   let suikaChargeInterval = null;
+  let suikaSyncInterval = null;
   let suikaEngine = null;
   let suikaRender = null;
   let suikaRunner = null;
@@ -28,6 +35,7 @@
   let suikaPendingMerges = new Set();
   let suikaHandPos = { x: 0, y: 0 };
   let suikaScores = [0, 0, 0, 0];
+  let suikaFruitAboveLineSince = null;  // Host: 과일이 금지선 위에 머문 시각
 
   function showSuikaUI() {
     switchGameView('suika');
@@ -70,15 +78,17 @@
     const fruitEl = document.getElementById('suika-hand-fruit');
     if (!hand || !fruitEl) return;
 
-    const canShow = suikaGameStarted && suikaChargedCount >= 1 && suikaMySlot >= 0;
+    const canShow = suikaGameStarted && !suikaGameOver && suikaChargedCount >= 1 && suikaMySlot >= 0;
     if (!canShow) {
       hand.style.display = 'none';
       return;
     }
 
+    // 손 커서: 상단 50px 투하 금지선 위에서만 움직임 (y는 0~50)
+    const y = Math.max(0, Math.min(SUIKA_FORBIDDEN_ZONE - 20, suikaHandPos.y));
     hand.style.display = 'block';
     hand.style.left = suikaHandPos.x + 'px';
-    hand.style.top = suikaHandPos.y + 'px';
+    hand.style.top = y + 'px';
 
     if (suikaHandFruitType >= 0 && suikaHandFruitType < 11) {
       const def = SUIKA_FRUIT_DEFS[suikaHandFruitType];
@@ -125,6 +135,45 @@
 
     suikaRunner = M.Runner.create();
     M.Runner.run(suikaRunner, suikaEngine);
+
+    // Host: 100ms마다 sync_all 전송
+    function tickSync() {
+      if (!suikaGameStarted || suikaGameOver || !suikaIsHost || typeof sendGameAction !== 'function') return;
+      const bodies = [];
+      Object.keys(suikaBodies).forEach(id => {
+        const b = suikaBodies[id];
+        if (b && b.position) {
+          bodies.push({
+            id: +id,
+            x: b.position.x,
+            y: b.position.y,
+            vx: b.velocity ? b.velocity.x : 0,
+            vy: b.velocity ? b.velocity.y : 0,
+          });
+        }
+      });
+      if (bodies.length > 0) sendGameAction({ cmd: 'sync_all', bodies });
+    }
+    suikaSyncInterval = setInterval(tickSync, SUIKA_SYNC_INTERVAL_MS);
+
+    // Host: 과일이 투하 금지선(50px) 위에 3초 이상 머물면 게임오버
+    M.Events.on(suikaEngine, 'afterUpdate', function() {
+      if (!suikaIsHost || suikaGameOver) return;
+      let anyAbove = false;
+      Object.keys(suikaBodies).forEach(id => {
+        const b = suikaBodies[id];
+        if (b && b.position && b.position.y < SUIKA_FORBIDDEN_ZONE) anyAbove = true;
+      });
+      const now = Date.now();
+      if (anyAbove) {
+        if (!suikaFruitAboveLineSince) suikaFruitAboveLineSince = now;
+        else if (now - suikaFruitAboveLineSince >= SUIKA_GAMEOVER_THRESHOLD_MS) {
+          if (typeof sendGameAction === 'function') sendGameAction({ cmd: 'game_over' });
+        }
+      } else {
+        suikaFruitAboveLineSince = null;
+      }
+    });
 
     M.Events.on(suikaEngine, 'collisionStart', function(ev) {
       ev.pairs.forEach(pair => {
@@ -185,6 +234,18 @@
     });
   }
 
+  function applySuikaSyncBodies(bodies) {
+    if (typeof Matter === 'undefined' || !suikaWorld || suikaIsHost) return;
+    const M = Matter;
+    bodies.forEach(b => {
+      const body = suikaBodies[b.id];
+      if (body && M.Bodies.isStatic(body) === false) {
+        M.Body.setPosition(body, { x: b.x, y: b.y });
+        if (body.velocity) M.Body.setVelocity(body, { x: b.vx || 0, y: b.vy || 0 });
+      }
+    });
+  }
+
   function addSuikaFruitLocal(fruit) {
     if (typeof Matter === 'undefined' || !suikaWorld) return;
     const M = Matter;
@@ -205,7 +266,11 @@
     const players = data.players || [];
     suikaMySlot = players.indexOf(currentUserId);
     suikaGameStarted = data.gameStarted || false;
-    suikaScores = data.scores || [0, 0, 0, 0];
+    suikaGameOver = data.gameOver || false;
+    if (suikaGameOver) stopSuikaSyncInterval();
+    suikaHostUserId = data.hostUserId || '';
+    suikaIsHost = (suikaHostUserId === currentUserId);
+    suikaScores = (data.scores || [0, 0, 0, 0]).map(s => typeof s === 'number' ? s : 0);
 
     const charges = data.charges || [];
     const myCharge = suikaMySlot >= 0 ? charges[suikaMySlot] : null;
@@ -225,15 +290,19 @@
     if (statusEl) {
       if (!suikaGameStarted) {
         statusEl.textContent = '2명 이상 Ready 시 게임 시작';
+      } else if (suikaGameOver) {
+        statusEl.textContent = '게임 오버! 과일이 투하 금지선을 3초 이상 넘었습니다.';
       } else {
         statusEl.textContent = suikaChargedCount >= 1 ? '손에 과일이 충전됨! 클릭하여 투하' : '과일 충전 중...';
+        if (suikaIsHost) statusEl.textContent += ' [Host]';
       }
     }
 
     const scoresEl = document.getElementById('suika-scores');
     if (scoresEl && players) {
+      const fmt = v => (typeof v === 'number' && v % 1 !== 0) ? v.toFixed(1) : (v || 0);
       scoresEl.innerHTML = players.map((p, i) =>
-        p ? `<span class="suika-score" style="color:${['#ef4444','#22c55e','#3b82f6','#eab308'][i]||'#999'}">${escapeHTML(p)}: ${suikaScores[i]||0}</span>` : ''
+        p ? `<span class="suika-score" style="color:${['#ef4444','#22c55e','#3b82f6','#eab308'][i]||'#999'}">${escapeHTML(p)}: ${fmt(suikaScores[i])}</span>` : ''
       ).filter(Boolean).join(' | ');
     }
 
@@ -272,9 +341,12 @@
     const wrap = document.getElementById('suika-physics-wrap');
     if (!wrap) return;
     wrap.addEventListener('click', function(e) {
-      if (suikaMySlot < 0 || suikaChargedCount < 1) return;
+      if (suikaMySlot < 0 || suikaChargedCount < 1 || suikaGameOver) return;
       const rect = wrap.getBoundingClientRect();
       const scaleX = SUIKA_W / rect.width;
+      const scaleY = SUIKA_H / rect.height;
+      const relY = (e.clientY - rect.top) * scaleY;
+      if (relY < SUIKA_FORBIDDEN_ZONE) return;
       const x = (e.clientX - rect.left) * scaleX;
       if (typeof sendGameAction === 'function') {
         sendGameAction({ cmd: 'drop', x });
@@ -306,9 +378,21 @@
     }
   }
 
+  function handleSuikaSyncAll(bodies) {
+    applySuikaSyncBodies(bodies);
+  }
+
+  function stopSuikaSyncInterval() {
+    if (suikaSyncInterval) {
+      clearInterval(suikaSyncInterval);
+      suikaSyncInterval = null;
+    }
+  }
+
   window.showSuikaUI = showSuikaUI;
   window.renderSuika = renderSuika;
   window.suikaOnDropResult = handleSuikaDropResult;
+  window.suikaOnSyncAll = handleSuikaSyncAll;
 
   (function() {
     const obs = new MutationObserver(() => {

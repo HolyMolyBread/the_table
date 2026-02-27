@@ -869,7 +869,17 @@ header {
   100% { transform: translate(-50%, -50%) scale(1); opacity: 0; }
 }
 
-/* ── Suika (수박게임) - 충전 게이지 ── */
+/* ── Suika (수박게임) - 투하 금지선, 충전 게이지 ── */
+.suika-forbidden-line {
+  position: absolute;
+  left: 0; right: 0;
+  top: 50px;
+  height: 3px;
+  background: linear-gradient(90deg, transparent, #ef4444 20%, #ef4444 80%, transparent);
+  z-index: 5;
+  pointer-events: none;
+  box-shadow: 0 0 8px rgba(239,68,68,0.6);
+}
 .suika-recharge-bar {
   flex: 1;
   height: 12px;

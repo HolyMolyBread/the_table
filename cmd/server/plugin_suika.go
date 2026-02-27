@@ -24,18 +24,19 @@ type SuikaFruitDef struct {
 	Score  int     `json:"score"`
 }
 
+// 점수: 2^n (체리 2, 딸기 4, ..., 수박 2048)
 var suikaFruitDefs = [11]SuikaFruitDef{
-	{12, 1},   // 1: Cherry
-	{15, 3},   // 2: Strawberry
-	{18, 6},   // 3: Grapes
-	{22, 10},  // 4: Dekopon
-	{26, 15},  // 5: Orange
-	{30, 21},  // 6: Apple
-	{35, 28},  // 7: Pear
-	{40, 36},  // 8: Peach
-	{46, 45},  // 9: Pineapple
-	{52, 55},  // 10: Melon
-	{60, 66},  // 11: Watermelon
+	{12, 2},    // 1: Cherry
+	{15, 4},    // 2: Strawberry
+	{18, 8},    // 3: Grape
+	{22, 16},   // 4: Hallabong
+	{26, 32},   // 5: Persimmon
+	{30, 64},   // 6: Apple
+	{35, 128},  // 7: Pear
+	{40, 256},  // 8: Peach
+	{46, 512},  // 9: Pineapple
+	{52, 1024}, // 10: Melon
+	{60, 2048}, // 11: Watermelon
 }
 
 // SuikaFruit는 컨테이너 내 과일 하나입니다.
@@ -59,8 +60,10 @@ type SuikaData struct {
 	Players     [4]string       `json:"players"`
 	Fruits      []SuikaFruit    `json:"fruits"`
 	Charges     [4]PlayerCharge `json:"charges"`
-	Scores      [4]int          `json:"scores"`
+	Scores      [4]float64      `json:"scores"` // 지분 비율에 따른 소수점 정밀 배분
 	GameStarted bool            `json:"gameStarted"`
+	GameOver    bool            `json:"gameOver"`
+	HostUserID  string          `json:"hostUserId"` // 첫 번째 플레이어 = Host
 }
 
 // SuikaStateResponse는 수박게임 상태 응답입니다.
@@ -77,16 +80,23 @@ type SuikaDropResultResponse struct {
 	Success bool   `json:"success"`
 }
 
+const (
+	suikaForbiddenLineY = 50
+	suikaGameOverPenalty = 100
+)
+
 type SuikaGame struct {
-	room        *Room
-	players     [4]*Client
-	fruits      []SuikaFruit
-	charges     [4]PlayerCharge
-	scores      [4]int
-	gameStarted bool
-	startReady  map[*Client]bool
-	nextFruitID int
-	mu          sync.Mutex
+	room           *Room
+	players        [4]*Client
+	fruits         []SuikaFruit
+	charges        [4]PlayerCharge
+	scores         [4]float64
+	gameStarted    bool
+	gameOver       bool
+	startReady     map[*Client]bool
+	nextFruitID    int
+	lastDropUserID string // 게임오버 시 패널티 대상
+	mu             sync.Mutex
 }
 
 func NewSuikaGame(room *Room) *SuikaGame {
@@ -185,6 +195,10 @@ func (g *SuikaGame) HandleAction(client *Client, action string, payload json.Raw
 		g.handleDropLocked(client, payload)
 	case "merge":
 		g.handleMergeLocked(client, payload)
+	case "sync_all":
+		g.handleSyncAllLocked(client, payload)
+	case "game_over":
+		g.handleGameOverLocked(client, payload)
 	default:
 		client.SendJSON(ServerResponse{Type: "error", Message: fmt.Sprintf("알 수 없는 cmd: %s", base.Cmd)})
 	}
@@ -223,9 +237,11 @@ func (g *SuikaGame) handleReadyLocked(client *Client) {
 func (g *SuikaGame) startGameLocked() {
 	g.startReady = make(map[*Client]bool)
 	g.gameStarted = true
+	g.gameOver = false
 	g.fruits = nil
-	g.scores = [4]int{0, 0, 0, 0}
+	g.scores = [4]float64{0, 0, 0, 0}
 	g.nextFruitID = 0
+	g.lastDropUserID = ""
 	now := time.Now().UnixMilli()
 	for i := 0; i < suikaMaxPlayers; i++ {
 		if g.players[i] != nil {
@@ -237,8 +253,10 @@ func (g *SuikaGame) startGameLocked() {
 
 func (g *SuikaGame) resetLocked() {
 	g.gameStarted = false
+	g.gameOver = false
 	g.fruits = nil
-	g.scores = [4]int{0, 0, 0, 0}
+	g.scores = [4]float64{0, 0, 0, 0}
+	g.lastDropUserID = ""
 	for i := 0; i < suikaMaxPlayers; i++ {
 		g.charges[i] = PlayerCharge{}
 	}
@@ -285,7 +303,7 @@ func (g *SuikaGame) sendDropResult(client *Client, success bool) {
 }
 
 func (g *SuikaGame) handleDropLocked(client *Client, payload json.RawMessage) {
-	if !g.gameStarted {
+	if !g.gameStarted || g.gameOver {
 		return
 	}
 	slot := g.clientSlot(client)
@@ -316,13 +334,14 @@ func (g *SuikaGame) handleDropLocked(client *Client, payload json.RawMessage) {
 		x = suikaContainerW - def.Radius
 	}
 
+	userId := g.players[slot].UserID
 	g.charges[slot].ChargedCount--
 	g.charges[slot].LastChargeAt = time.Now().UnixMilli()
+	g.lastDropUserID = userId
 
 	// Size 1~4 (타입 0~3) 랜덤
 	fruitType := rand.Intn(4)
 	def = suikaFruitDefs[fruitType]
-	userId := g.players[slot].UserID
 	ownerEquity := map[string]float64{userId: 1.0}
 
 	g.fruits = append(g.fruits, SuikaFruit{
@@ -349,7 +368,7 @@ func (g *SuikaGame) findFruitByID(id int) *SuikaFruit {
 }
 
 func (g *SuikaGame) handleMergeLocked(client *Client, payload json.RawMessage) {
-	if !g.gameStarted {
+	if !g.gameStarted || g.gameOver {
 		return
 	}
 
@@ -389,15 +408,16 @@ func (g *SuikaGame) handleMergeLocked(client *Client, payload json.RawMessage) {
 
 	newType := fa.Type + 1
 	def := suikaFruitDefs[newType]
-	scoreToAdd := def.Score
+	scoreToAdd := float64(def.Score)
 
+	// 지분 비율에 따라 소수점까지 정밀 배분
 	for userId, eq := range merged {
 		if eq <= 0 {
 			continue
 		}
 		s := g.userIdToSlot(userId)
 		if s >= 0 {
-			g.scores[s] += int(float64(scoreToAdd) * eq)
+			g.scores[s] += scoreToAdd * eq
 		}
 	}
 
@@ -455,6 +475,8 @@ func (g *SuikaGame) makeDataLocked() SuikaData {
 		Charges:     g.charges,
 		Scores:      g.scores,
 		GameStarted: g.gameStarted,
+		GameOver:    g.gameOver,
+		HostUserID:  g.hostUserIDLocked(),
 	}
 }
 
@@ -466,6 +488,75 @@ func (g *SuikaGame) playersUserIDsLocked() [4]string {
 		}
 	}
 	return out
+}
+
+func (g *SuikaGame) hostUserIDLocked() string {
+	for i := 0; i < suikaMaxPlayers; i++ {
+		if g.players[i] != nil {
+			return g.players[i].UserID
+		}
+	}
+	return ""
+}
+
+func (g *SuikaGame) isHostLocked(client *Client) bool {
+	return g.hostUserIDLocked() == client.UserID
+}
+
+// SuikaSyncBody는 sync_all 페이로드의 바디 하나입니다.
+type SuikaSyncBody struct {
+	ID int     `json:"id"`
+	X  float64 `json:"x"`
+	Y  float64 `json:"y"`
+	VX float64 `json:"vx"`
+	VY float64 `json:"vy"`
+}
+
+// SuikaSyncAllResponse는 sync_all 결과를 모든 클라이언트에 브로드캐스트합니다.
+type SuikaSyncAllResponse struct {
+	Type   string          `json:"type"`
+	RoomID string          `json:"roomId"`
+	Bodies []SuikaSyncBody `json:"bodies"`
+}
+
+func (g *SuikaGame) handleSyncAllLocked(client *Client, payload json.RawMessage) {
+	if !g.gameStarted || g.gameOver {
+		return
+	}
+	if !g.isHostLocked(client) {
+		return
+	}
+	var p struct {
+		Bodies []SuikaSyncBody `json:"bodies"`
+	}
+	if err := json.Unmarshal(payload, &p); err != nil {
+		return
+	}
+	msg, _ := json.Marshal(SuikaSyncAllResponse{
+		Type: "suika_sync_all", RoomID: g.room.ID, Bodies: p.Bodies,
+	})
+	g.room.broadcastAll(msg)
+}
+
+func (g *SuikaGame) handleGameOverLocked(client *Client, payload json.RawMessage) {
+	if !g.gameStarted || g.gameOver {
+		return
+	}
+	if !g.isHostLocked(client) {
+		return
+	}
+	g.gameOver = true
+	// 마지막 투하 유저에게 패널티
+	if g.lastDropUserID != "" {
+		s := g.userIdToSlot(g.lastDropUserID)
+		if s >= 0 {
+			g.scores[s] -= suikaGameOverPenalty
+			if g.scores[s] < 0 {
+				g.scores[s] = 0
+			}
+		}
+	}
+	g.sendStateToAllLocked()
 }
 
 func (g *SuikaGame) sendStateToAllLocked() {

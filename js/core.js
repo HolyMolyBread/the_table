@@ -1360,6 +1360,9 @@
             case 'suika_drop_result':
               if (typeof window.suikaOnDropResult === 'function') window.suikaOnDropResult(parsed.success);
               break;
+            case 'suika_sync_all':
+              if (typeof window.suikaOnSyncAll === 'function') window.suikaOnSyncAll(parsed.bodies || []);
+              break;
             case 'tictactoe_state': case 'connect4_state': case 'indian_state': case 'holdem_state': case 'sevenpoker_state': case 'thief_state': case 'onecard_state': case 'mahjong_state': case 'mahjong3_state': case 'alkkagi_state': case 'tetris_state': case 'duel_state': case 'suika_state': {
               document.getElementById('btn-takeover').style.display = 'none';
               ['status-turn-user', 'ttt-status', 'c4-status', 'indian-status', 'thief-status', 'onecard-status', 'mahjong-status', 'alkkagi-status', 'tetris-status', 'duel-status', 'suika-status'].forEach(id => {
