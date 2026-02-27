@@ -106,7 +106,7 @@ func NewBlackjackGame(room *Room) *BlackjackGame {
 	return &BlackjackGame{room: room, phase: BJBetting}
 }
 
-func init() { RegisterPlugin("blackjack_pve", func(room *Room) GamePlugin { return NewBlackjackGame(room) }) }
+func init() { RegisterPlugin("blackjack", func(room *Room) GamePlugin { return NewBlackjackGame(room) }) }
 
 func (g *BlackjackGame) Name() string { return "블랙잭 PVE (1 vs 딜러 AI)" }
 
@@ -261,7 +261,7 @@ func (g *BlackjackGame) handleHit(client *Client) {
 		g.playerHearts--
 		g.dealerHearts++
 		g.phase = BJSettlement
-		client.RecordResult("blackjack_pve", "lose")
+		client.RecordResult("blackjack", "lose")
 		if g.playerHearts <= 0 || g.dealerHearts <= 0 {
 			g.finishGameOverLocked()
 			g.mu.Unlock()
@@ -404,7 +404,7 @@ func (g *BlackjackGame) settle(stopCh chan struct{}) {
 	g.dealerHearts += dDelta
 	g.phase = BJSettlement
 
-	player.RecordResult("blackjack_pve", result)
+	player.RecordResult("blackjack", result)
 
 	// 게임 오버 체크
 	if g.playerHearts <= 0 || g.dealerHearts <= 0 {
@@ -436,9 +436,9 @@ func (g *BlackjackGame) finishGameOverLocked() {
 	winner := "딜러"
 	if g.playerHearts > 0 {
 		winner = player.UserID
-		player.RecordResult("blackjack_pve", "win")
+		player.RecordResult("blackjack", "win")
 	} else {
-		player.RecordResult("blackjack_pve", "lose")
+		player.RecordResult("blackjack", "lose")
 	}
 	msg := fmt.Sprintf("🏆 게임 종료! [%s] 승리! (❤️ 플레이어 %d vs 딜러 %d)", winner, g.playerHearts, g.dealerHearts)
 	data, _ := json.Marshal(GameResultResponse{

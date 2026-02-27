@@ -79,12 +79,14 @@
     function appendSeatContent(container, playerIdx) {
       const p = playerIdx >= 0 ? players[playerIdx] : null;
       if (!p) return;
+      const isSideSeat = container.classList.contains('seat-left') || container.classList.contains('seat-right');
+
       const nameSpan = document.createElement('span');
       nameSpan.className = 'mahjong-seat-name';
       nameSpan.textContent = p.userId ? p.userId : '—';
 
       const discardsDiv = document.createElement('div');
-      discardsDiv.className = 'mahjong-discards';
+      discardsDiv.className = 'mahjong-discards' + (isSideSeat ? ' side-seat-discards' : '');
       (p.discards || []).forEach(t => {
         discardsDiv.appendChild(createTileDOM(t, false, false));
       });
@@ -101,7 +103,7 @@
       });
 
       const handDiv = document.createElement('div');
-      handDiv.className = 'mahjong-hand opponent-hand';
+      handDiv.className = 'mahjong-hand opponent-hand' + (isSideSeat ? ' side-seat-hand' : '');
       for (let i = 0; i < (p.handCount || 0); i++) {
         handDiv.appendChild(createTileDOM({ type: '', value: 0 }, true, false));
       }

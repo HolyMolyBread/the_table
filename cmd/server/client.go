@@ -60,10 +60,10 @@ func newClient(conn *websocket.Conn, manager *RoomManager) *Client {
 		manager: manager,
 		send:    make(chan []byte, 256),
 		Records: map[string]*GameRecord{
-			"total":         {},
-			"omok":          {},
-			"blackjack_pve": {},
-			"blackjack":     {},
+			"total":          {},
+			"omok":           {},
+			"blackjack":      {},
+			"blackjack_raid": {},
 		},
 		// 100ms마다 토큰 1개 보충, 최대 버스트 10개 (초당 최대 10 메시지)
 		limiter: rate.NewLimiter(rate.Every(100*time.Millisecond), 10),
@@ -128,7 +128,7 @@ func (c *Client) RecordResult(gamePrefix, result string) {
 	}
 
 	// total 갱신 (PVE 전적은 메인 랭킹에서 제외)
-	if gamePrefix != "blackjack_pve" {
+	if gamePrefix != "blackjack" {
 		if c.Records["total"] == nil {
 			c.Records["total"] = &GameRecord{}
 		}

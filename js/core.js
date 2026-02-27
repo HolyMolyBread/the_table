@@ -546,7 +546,7 @@
     </ol>
   `;
   const GAME_VIEW_IDS = ['board-placeholder', 'gomoku-container', 'blackjack-container', 'tictactoe-container', 'connect4-container', 'indian-container', 'holdem-container', 'sevenpoker-container', 'thief-container', 'onecard-container', 'mahjong-container', 'alkkagi-container', 'tetris-container', /* duel-container 제외 */ 'suika-container'];
-  const PREFIX_TO_CONTAINER = { omok: 'gomoku-container', blackjack: 'blackjack-container', tictactoe: 'tictactoe-container', connect4: 'connect4-container', indian: 'indian-container', holdem: 'holdem-container', sevenpoker: 'sevenpoker-container', thief: 'thief-container', onecard: 'onecard-container', mahjong: 'mahjong-container', mahjong3: 'mahjong-container', alkkagi: 'alkkagi-container', alkkagi_janggi: 'alkkagi-container', alkkagi_chess: 'alkkagi-container', alkkagi_original: 'alkkagi-container', tetris: 'tetris-container', suika: 'suika-container' };
+  const PREFIX_TO_CONTAINER = { omok: 'gomoku-container', blackjack: 'blackjack-container', blackjack_raid: 'blackjack-container', tictactoe: 'tictactoe-container', connect4: 'connect4-container', indian: 'indian-container', holdem: 'holdem-container', sevenpoker: 'sevenpoker-container', thief: 'thief-container', onecard: 'onecard-container', mahjong: 'mahjong-container', mahjong3: 'mahjong-container', alkkagi: 'alkkagi-container', alkkagi_janggi: 'alkkagi-container', alkkagi_chess: 'alkkagi-container', alkkagi_original: 'alkkagi-container', tetris: 'tetris-container', suika: 'suika-container' };
   const GAME_STATE_HANDLERS = {
     tictactoe_state:  { logKey: 'ttt-state',       show: () => { if (typeof window.showTicTacToeUI === 'function') window.showTicTacToeUI(); },  render: (data) => { if (typeof window.renderTicTacToe === 'function') window.renderTicTacToe(data); } },
     connect4_state:   { logKey: 'c4-state',       show: () => { if (typeof window.showConnect4UI === 'function') window.showConnect4UI(); },   render: (data) => { if (typeof window.renderConnect4 === 'function') window.renderConnect4(data); } },
@@ -738,8 +738,8 @@
   }
   function showOpponentRecordModal(userId, records) {
     const fmt = r => r ? `${r.wins}승 ${r.losses}패 ${r.draws}무` : '0승 0패 0무';
-    const games = ['omok', 'tictactoe', 'connect4', 'holdem', 'sevenpoker', 'indian', 'blackjack_pve', 'blackjack', 'onecard', 'thief', 'mahjong', 'alkkagi', 'tetris'];
-    const labels = { total: '전체', omok: '🀱 오목', tictactoe: '⭕❌ 틱택토', connect4: '🔴🟡 4목', holdem: '♠️ 텍사스 홀덤', sevenpoker: '🃏 세븐 포커', indian: '🃏 인디언 포커', blackjack_pve: '🃏 블랙잭 (PVE)', blackjack: '🃏 블랙잭 (PVP 레이드)', onecard: '🃏 원카드', thief: '🃏 도둑잡기', mahjong: '🀄 마작', alkkagi: '⚫ 알까기', tetris: '🧱 테트리스' };
+    const games = ['omok', 'tictactoe', 'connect4', 'holdem', 'sevenpoker', 'indian', 'blackjack', 'blackjack_raid', 'onecard', 'thief', 'mahjong', 'alkkagi', 'tetris'];
+    const labels = { total: '전체', omok: '🀱 오목', tictactoe: '⭕❌ 틱택토', connect4: '🔴🟡 4목', holdem: '♠️ 텍사스 홀덤', sevenpoker: '🃏 세븐 포커', indian: '🃏 인디언 포커', blackjack: '🃏 블랙잭 (일반)', blackjack_raid: '🃏 블랙잭 (보스 레이드)', onecard: '🃏 원카드', thief: '🃏 도둑잡기', mahjong: '🀄 마작', alkkagi: '⚫ 알까기', tetris: '🧱 테트리스' };
     let html = '';
     html += `<div class="opponent-record-row"><span class="opponent-record-label">${labels.total}</span><span class="opponent-record-val">${fmt(records && records.total)}</span></div>`;
     for (const key of games) {
@@ -869,8 +869,9 @@
       document.getElementById('btn-send-chat').disabled   = false;
 
       const titleEl = document.getElementById('game-area-title');
-      if      (roomId.startsWith('omok'))      titleEl.textContent = '🀱 오목';
-      else if (roomId.startsWith('blackjack')) titleEl.textContent = '🃏 블랙잭';
+      if      (roomId.startsWith('omok'))           titleEl.textContent = '🀱 오목';
+      else if (roomId.startsWith('blackjack_raid')) titleEl.textContent = '🃏 블랙잭 (보스 레이드)';
+      else if (roomId.startsWith('blackjack'))      titleEl.textContent = '🃏 블랙잭 (일반)';
       else if (roomId.startsWith('tictactoe')) titleEl.textContent = '⭕❌ 틱택토';
       else if (roomId.startsWith('connect4'))  titleEl.textContent = '🔴🟡 4목';
       else if (roomId.startsWith('indian'))    titleEl.textContent = '🃏 인디언 포커';
@@ -973,8 +974,8 @@
     const fmt = r => r ? `${r.wins}승 ${r.losses}패 ${r.draws}무` : '0승 0패 0무';
     if (records.total)      document.getElementById('record-total').textContent      = fmt(records.total);
     if (records.omok)       document.getElementById('record-omok').textContent       = fmt(records.omok);
-    if (records.blackjack_pve) document.getElementById('record-blackjack-pve').textContent = fmt(records.blackjack_pve);
-    if (records.blackjack)   document.getElementById('record-blackjack').textContent   = fmt(records.blackjack);
+    if (records.blackjack)      document.getElementById('record-blackjack').textContent      = fmt(records.blackjack);
+    if (records.blackjack_raid) document.getElementById('record-blackjack-raid').textContent = fmt(records.blackjack_raid);
     if (records.tictactoe)  document.getElementById('record-tictactoe').textContent = fmt(records.tictactoe);
     if (records.connect4)   document.getElementById('record-connect4').textContent   = fmt(records.connect4);
     if (records.indian)     document.getElementById('record-indian').textContent     = fmt(records.indian);
@@ -1113,8 +1114,9 @@
 
   /** 현재 입장한 방의 접두사에 맞는 룰 모달을 표시합니다. */
   function showCurrentRules() {
-    const prefix = currentRoomId.startsWith('omok')      ? 'omok'
-                 : currentRoomId.startsWith('blackjack') ? 'blackjack'
+    const prefix = currentRoomId.startsWith('omok')           ? 'omok'
+                 : currentRoomId.startsWith('blackjack_raid') ? 'blackjack_raid'
+                 : currentRoomId.startsWith('blackjack')     ? 'blackjack'
                  : currentRoomId.startsWith('tictactoe') ? 'tictactoe'
                  : currentRoomId.startsWith('connect4')  ? 'connect4'
                  : currentRoomId.startsWith('indian')   ? 'indian'

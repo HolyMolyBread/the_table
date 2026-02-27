@@ -16,7 +16,7 @@ const botThinkDelay = 1500 * time.Millisecond
 func SpawnBot(m *RoomManager, room *Room, gamePrefix string) error {
 	prefix := strings.ToLower(strings.TrimSpace(gamePrefix))
 	switch prefix {
-	case "omok", "connect4", "tictactoe", "indian", "holdem", "sevenpoker", "thief", "onecard", "mahjong", "mahjong3", "blackjack":
+	case "omok", "connect4", "tictactoe", "indian", "holdem", "sevenpoker", "thief", "onecard", "mahjong", "mahjong3", "blackjack", "blackjack_raid":
 		// 지원하는 게임
 	default:
 		log.Printf("[BOT] 지원하지 않는 게임 접두사: %s", gamePrefix)
@@ -25,7 +25,7 @@ func SpawnBot(m *RoomManager, room *Room, gamePrefix string) error {
 
 	// 인원 제한: 1:1 게임은 2명, 다인(holdem, sevenpoker, thief, onecard, blackjack)은 4명, mahjong3은 3명
 	maxPlayers := 2
-	if prefix == "holdem" || prefix == "sevenpoker" || prefix == "thief" || prefix == "onecard" || prefix == "mahjong" || prefix == "blackjack" {
+	if prefix == "holdem" || prefix == "sevenpoker" || prefix == "thief" || prefix == "onecard" || prefix == "mahjong" || prefix == "blackjack" || prefix == "blackjack_raid" {
 		maxPlayers = 4
 	}
 	if prefix == "mahjong3" {
@@ -56,7 +56,8 @@ func SpawnBot(m *RoomManager, room *Room, gamePrefix string) error {
 			"onecard":     {},
 			"mahjong":     {},
 			"mahjong3":    {},
-			"blackjack":   {},
+			"blackjack":      {},
+			"blackjack_raid": {},
 		},
 	}
 
@@ -409,7 +410,7 @@ func makeBotProcess(bot *Client, room *Room, gamePrefix string) func(msg []byte)
 			}
 
 		case "blackjack_state", "blackjack_pvp_state":
-			if gamePrefix != "blackjack" {
+			if gamePrefix != "blackjack" && gamePrefix != "blackjack_raid" {
 				return
 			}
 			var data map[string]any
@@ -563,6 +564,20 @@ func evaluateOmokMove(board [15][15]int, x, y, myColor, oppColor int) int {
 	return score
 }
 
+// isNearStone은 (x,y) 주변 dist 칸 이내에 돌이 있는지 검사합니다.
+func isNearStone(board [15][15]int, x, y, dist int) bool {
+	for i := x - dist; i <= x+dist; i++ {
+		for j := y - dist; j <= y+dist; j++ {
+			if i >= 0 && i < 15 && j >= 0 && j < 15 {
+				if board[i][j] != 0 {
+					return true
+				}
+			}
+		}
+	}
+	return false
+}
+
 // botPickOmokExcluding은 exclude에 있는 좌표를 제외하고 최적의 수를 선택합니다.
 func botPickOmokExcluding(board [15][15]int, myColor int, exclude map[[2]int]bool) (x, y int) {
 	if myColor == 0 {
@@ -570,12 +585,21 @@ func botPickOmokExcluding(board [15][15]int, myColor int, exclude map[[2]int]boo
 	}
 	oppColor := 3 - myColor
 
+	// 첫 수: 빈 보드면 천원(7,7)에 착수
+	if isEmptyBoard(board) {
+		return 7, 7
+	}
+
 	var bestCandidates [][2]int
 	bestScore := -1
 
+	// 거리 2 이내에 돌이 있는 칸만 후보로 평가 (초반 응수 집중)
 	for i := 0; i < 15; i++ {
 		for j := 0; j < 15; j++ {
 			if board[i][j] != 0 {
+				continue
+			}
+			if !isNearStone(board, i, j, 2) {
 				continue
 			}
 			if exclude != nil && exclude[[2]int{i, j}] {
@@ -593,6 +617,32 @@ func botPickOmokExcluding(board [15][15]int, myColor int, exclude map[[2]int]boo
 				bestCandidates = [][2]int{{i, j}}
 			} else if score == bestScore && score >= 0 {
 				bestCandidates = append(bestCandidates, [2]int{i, j})
+			}
+		}
+	}
+
+	// 후보가 없으면 전체 보드에서 재탐색 (예외 처리)
+	if len(bestCandidates) == 0 {
+		for i := 0; i < 15; i++ {
+			for j := 0; j < 15; j++ {
+				if board[i][j] != 0 {
+					continue
+				}
+				if exclude != nil && exclude[[2]int{i, j}] {
+					continue
+				}
+				if myColor == 1 {
+					if forbidden, _ := IsRenjuForbiddenBoard(board, i, j); forbidden {
+						continue
+					}
+				}
+				score := evaluateOmokMove(board, i, j, myColor, oppColor)
+				if score > bestScore {
+					bestScore = score
+					bestCandidates = [][2]int{{i, j}}
+				} else if score == bestScore && score >= 0 {
+					bestCandidates = append(bestCandidates, [2]int{i, j})
+				}
 			}
 		}
 	}

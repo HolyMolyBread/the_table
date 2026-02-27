@@ -71,6 +71,7 @@
       const val = board[r][c];
       const wasEmpty = prev && prev[r][c] === 0;
       const isNew = wasEmpty && (val === 1 || val === 2);
+      // 보드 초기화(무승부 등) 시 val===0인 셀에서 이전 돌이 남지 않도록 매번 완전히 비움
       cell.classList.remove('ttt-o', 'ttt-x', 'ttt-can-place');
       while (cell.firstChild) cell.removeChild(cell.firstChild);
       cell.onclick = null;

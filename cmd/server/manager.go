@@ -67,7 +67,7 @@ func newRoom(id string) *Room {
 		clients: make(map[*Client]bool),
 	}
 
-	// 가장 긴 접두사 우선 매칭 (blackjack_pve가 blackjack보다 먼저 매칭되도록)
+	// 가장 긴 접두사 우선 매칭 (blackjack_raid가 blackjack보다 먼저 매칭되도록)
 	var bestPrefix string
 	for prefix := range pluginRegistry {
 		if strings.HasPrefix(id, prefix) && len(prefix) > len(bestPrefix) {
@@ -556,6 +556,8 @@ func (m *RoomManager) HandleMessage(client *Client, rawMsg []byte) {
 			prefix = "onecard"
 		} else if strings.HasPrefix(client.RoomID, "mahjong") {
 			prefix = "mahjong"
+		} else if strings.HasPrefix(client.RoomID, "blackjack_raid") {
+			prefix = "blackjack_raid"
 		} else if strings.HasPrefix(client.RoomID, "blackjack") {
 			prefix = "blackjack"
 		}

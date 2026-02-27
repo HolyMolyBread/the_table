@@ -227,18 +227,19 @@ func (g *TicTacToeGame) handlePlace(client *Client, r, c int) {
 	}
 
 	if g.checkDraw() {
-		// 무승부 데스매치: 보드만 초기화, 타이머 유지(멈추지 않음)
+		// 무한 데스매치: 보드 초기화 후 즉시 다음 라운드, endGame/리매치 대기 없음
+		g.board = [3][3]int{}
 		notice, _ := json.Marshal(ServerResponse{
 			Type:    "game_notice",
-			Message: "🤝 무승부! 판 비우고 계속 달립니다!",
+			Message: "🤝 무승부! 판을 비우고 즉시 다음 라운드를 시작합니다!",
 			RoomID:  g.room.ID,
 		})
 		g.room.broadcastAll(notice)
-		log.Printf("[TICTACTOE] room:[%s] 무승부 — 데스매치 재시작", g.room.ID)
 		g.currentTurn = 1 - g.currentTurn
 		g.turnCount++
-		g.board = [3][3]int{}
 		g.broadcastStateLocked()
+		g.startTurnTimerLocked()
+		log.Printf("[TICTACTOE] room:[%s] 무승부 — 데스매치 재시작", g.room.ID)
 		return
 	}
 

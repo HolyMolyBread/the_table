@@ -80,7 +80,7 @@ func NewBlackjackPVPGame(room *Room) *BlackjackPVPGame {
 	}
 }
 
-func init() { RegisterPlugin("blackjack", func(room *Room) GamePlugin { return NewBlackjackPVPGame(room) }) }
+func init() { RegisterPlugin("blackjack_raid", func(room *Room) GamePlugin { return NewBlackjackPVPGame(room) }) }
 
 func (g *BlackjackPVPGame) Name() string { return "PVP 딜러 레이드 블랙잭" }
 
@@ -275,7 +275,7 @@ func (g *BlackjackPVPGame) handleHit(client *Client) {
 		if p.Hearts <= 0 {
 			p.State = "out"
 			if c := g.clientByUserID[uid]; c != nil {
-				c.RecordResult("blackjack", "lose")
+				c.RecordResult("blackjack_raid", "lose")
 			}
 		}
 		g.broadcastStateLocked(fmt.Sprintf("💥 [%s] 버스트! %d점", uid, score))
@@ -411,7 +411,7 @@ func (g *BlackjackPVPGame) settle(stopCh chan struct{}) {
 		if p.Hearts <= 0 {
 			p.State = "out"
 			if c := g.clientByUserID[uid]; c != nil {
-				c.RecordResult("blackjack", "lose")
+				c.RecordResult("blackjack_raid", "lose")
 			}
 		}
 	}
@@ -454,12 +454,12 @@ func (g *BlackjackPVPGame) finishGameOverLocked(playerWin bool) {
 		for uid, p := range g.players {
 			if p.Hearts > 0 {
 				if c := g.clientByUserID[uid]; c != nil {
-					c.RecordResult("blackjack", "win")
+					c.RecordResult("blackjack_raid", "win")
 				}
 			}
 		}
 	}
-	// playerWin=false(딜러 승리) 시: 탈락 시점에 이미 RecordResult("blackjack","lose") 기록됨 → 중복 기록 없음
+	// playerWin=false(딜러 승리) 시: 탈락 시점에 이미 RecordResult("blackjack_raid","lose") 기록됨 → 중복 기록 없음
 
 	msg := fmt.Sprintf("🏆 게임 종료! [%s] 승리!", winner)
 	data, _ := json.Marshal(GameResultResponse{
