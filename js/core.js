@@ -1245,6 +1245,12 @@
               break;
             case 'timer_tick':
               updateGameTimer(parsed.turnUser, parsed.remaining);
+              if (currentRoomId.startsWith('tictactoe') && parsed.remaining !== null && parsed.remaining < 3 && parsed.turnUser === currentUserId) {
+                const tttContainer = document.getElementById('tictactoe-container');
+                if (tttContainer) tttContainer.classList.add('ttt-urgent-flash');
+                setTimeout(() => { if (tttContainer) tttContainer.classList.remove('ttt-urgent-flash'); }, 150);
+                if (window.SoundManager) window.SoundManager.playPianoNote(65.41, 0.06);
+              }
               break;
             case 'game_paused': {
               const playerIds = parsed.playerIds || [];
