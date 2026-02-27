@@ -25,18 +25,17 @@
       scaleBoardToFit();
     };
   
-    /** 모바일에서 오목 보드가 화면 너비를 넘지 않도록 transform: scale() 적용 */
+    /** 모바일에서 오목 보드가 화면 너비를 넘지 않도록 transform: scale() 적용 (필요 시) */
     function scaleBoardToFit() {
       const board   = document.getElementById('gomoku-board');
       const scaler  = document.getElementById('gomoku-board-scaler');
       if (!board || !scaler) return;
-      const boardW  = 490; // 보드 실제 크기 + 여백 고려
-      const available = window.innerWidth - 20;
-      if (available < boardW) {
+      const available = scaler.clientWidth || scaler.parentElement?.clientWidth || (window.innerWidth - 20);
+      const boardW    = board.offsetWidth || board.clientWidth || 478;
+      if (available > 0 && boardW > available) {
         const ratio = available / boardW;
         board.style.transform       = `scale(${ratio})`;
         board.style.transformOrigin = 'top center';
-        // scaler 높이를 축소된 보드 높이에 맞춤 (레이아웃 붕괴 방지)
         board.style.marginBottom    = `-${Math.round(boardW * (1 - ratio))}px`;
       } else {
         board.style.transform    = '';

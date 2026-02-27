@@ -487,17 +487,30 @@ header {
 /* ══ GOMOKU BOARD ════════════════════════════════════════════════════════ */
 #gomoku-container {
   display: none; flex-direction: column; align-items: center; gap: 14px;
+  width: 100%; max-width: 500px; margin: 0 auto;
+}
+#gomoku-board-scaler {
+  width: 100%; max-width: 500px; margin: 0 auto;
+  overflow: hidden;
+  display: flex; justify-content: center; align-items: flex-start;
+  box-sizing: border-box;
 }
 #gomoku-board {
   display: grid;
-  grid-template-columns: repeat(15, 30px);
-  grid-template-rows: repeat(15, 30px);
+  grid-template-columns: repeat(15, 1fr);
+  grid-template-rows: repeat(15, 1fr);
+  width: 100%; max-width: 478px;
+  aspect-ratio: 1;
   background: #c8a45a; padding: 14px;
   border: 2px solid #7a5010; border-radius: 4px;
   box-shadow: 0 4px 20px rgba(0,0,0,0.5);
   user-select: none;
+  box-sizing: border-box;
 }
-.gomoku-cell { position: relative; width: 30px; height: 30px; cursor: default; }
+.gomoku-cell {
+  position: relative; min-width: 0; min-height: 0;
+  box-sizing: border-box; cursor: default;
+}
 .gomoku-cell::before {
   content: ''; position: absolute; top: 50%; left: 0; right: 0;
   height: 1px; background: #7a5010; transform: translateY(-50%); z-index: 0;
@@ -1615,24 +1628,17 @@ header {
   }
   #chat-messages { padding: 8px; }
 
-  /* ── 오목 보드: 모바일 축소 ──
-     15×30px = 450px 보드를 화면 너비에 맞게 scale 다운.
-     wrapper로 감싸 overflow를 숨기고 transform-origin을 top-left로 설정. */
+  /* ── 오목 보드: 모바일 반응형 ── */
   #gomoku-container { gap: 8px; }
   #game-status-bar { max-width: 100%; padding: 8px 10px; }
   #status-seconds { font-size: 24px; }
 
-  /* board를 감싸는 가상 박스로 정확한 크기 확보 */
+  /* board를 감싸는 스케일러: overflow로 격자 밀림 방지 */
   #gomoku-board-scaler {
-    width: 100%;
     overflow: hidden;
     display: flex;
     justify-content: center;
-  }
-  #gomoku-board {
-    transform-origin: top center;
-    /* JS에서 동적으로 scale을 주입하지만 CSS 폴백도 설정 */
-    max-width: 100vw;
+    align-items: flex-start;
   }
 
   /* ── 블랙잭 컨테이너 ── */
@@ -1652,6 +1658,21 @@ header {
   /* ── 리매치 / 관전 메시지 ── */
   #rematch-area { padding: 10px; }
   #btn-rematch { font-size: 13px; }
+}
+
+/* 오목 보드: ≤600px에서 95vw로 화면 넘침 방지 */
+@media (max-width: 600px) {
+  #gomoku-board-scaler {
+    width: 95vw; height: 95vw;
+    max-width: 95vw; max-height: 95vw;
+  }
+  #gomoku-board {
+    width: 95vw !important;
+    height: 95vw !important;
+    max-width: 95vw !important;
+    max-height: 95vw !important;
+    aspect-ratio: 1;
+  }
 }
 
 /* 초소형 화면 (≤400px) 추가 보정 */
