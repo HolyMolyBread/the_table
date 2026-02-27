@@ -857,8 +857,13 @@
   // ── Room State (lobby ↔ room transition) ───────────────────────────────────
   function setRoomState(userId, roomId) {
     if (userId) currentUserId = userId;
+    const prevRoomId = currentRoomId;
     currentRoomId = roomId;
     currentMode = roomId ? 'room' : 'lobby';
+
+    if (prevRoomId && prevRoomId.startsWith('alkkagi') && prevRoomId !== roomId) {
+      if (typeof window.clearAlkkagi === 'function') window.clearAlkkagi();
+    }
 
     if (roomId) {
       document.getElementById('lobby-view').style.display = 'none';
@@ -1608,7 +1613,12 @@
   /** 게임 액션 전송 (광클 방지). opts.skipCooldown=true면 즉시 전송. opts.cooldownMs로 게임별 쿨다운 설정 (기본 400ms, suika 50ms) */
   function sendGameAction(payload, opts) {
     if (!ws || ws.readyState !== WebSocket.OPEN) return;
-    if (!opts || !opts.skipCooldown) {
+    opts = opts || {};
+    if (currentRoomId && String(currentRoomId).startsWith('suika') && payload && payload.cmd === 'drop') {
+      opts.skipCooldown = true;
+      opts.cooldownMs = opts.cooldownMs ?? 50;
+    }
+    if (!opts.skipCooldown) {
       if (actionCooldown) return;
       actionCooldown = true;
       const ms = (opts && opts.cooldownMs != null) ? opts.cooldownMs : 400;

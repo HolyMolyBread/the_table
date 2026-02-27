@@ -158,7 +158,14 @@
     if (players[0] === currentUserId) alkkagiMyColor = 1;
     else if (players[1] === currentUserId) alkkagiMyColor = 2;
     else alkkagiMyColor = 0;
+    const prevMyTurn = alkkagiMyTurn;
     alkkagiMyTurn = (data.currentTurn === currentUserId);
+    if (prevMyTurn !== alkkagiMyTurn) {
+      alkkagiSelectedStone = null;
+      alkkagiSlingshotBody = null;
+      alkkagiSlingshotEnd = null;
+      alkkagiValidGuides = [];
+    }
 
     const statusEl = document.getElementById('alkkagi-status');
     const phaseEl = document.getElementById('alkkagi-phase');
@@ -591,6 +598,7 @@
 
     render.canvas.addEventListener('pointerdown', function(e) {
       e.preventDefault();
+      render.canvas.setPointerCapture(e.pointerId);
       const pos = canvasToWorld(e);
       if (!alkkagiMyTurn || alkkagiMyColor === 0 || !allStonesStopped()) return;
 
@@ -670,8 +678,22 @@
     alkkagiWorld = world;
   }
 
+  function allStonesStoppedForSync() {
+    if (!alkkagiWorld || !alkkagiBodies) return true;
+    const bodies = Object.values(alkkagiBodies);
+    for (let i = 0; i < bodies.length; i++) {
+      const b = bodies[i];
+      if (!b || !alkkagiWorld.bodies.includes(b)) continue;
+      const v = b.velocity;
+      const speed = Math.sqrt(v.x * v.x + v.y * v.y);
+      if (speed > 0.1) return false;
+    }
+    return true;
+  }
+
   function syncAlkkagiStones(stones) {
     if (!alkkagiWorld || !alkkagiBodies) return;
+    if (window.alkkagiJustFlicked || !allStonesStoppedForSync()) return;
     alkkagiStonesData = stones.map(s => ({ ...s }));
     const ids = new Set(stones.map(s => s.id));
     Object.keys(alkkagiBodies).forEach(id => {
@@ -732,24 +754,30 @@
   window.clearAlkkagi = function() {
     alkkagiSlingshotBody = null;
     alkkagiSlingshotEnd = null;
-    if (alkkagiPlacementCanvas) {
-      alkkagiPlacementCanvas.remove();
-      alkkagiPlacementCanvas = null;
-    }
-    if (!alkkagiEngine) return;
-    const M = Matter;
-    if (alkkagiRunner) M.Runner.stop(alkkagiRunner);
-    if (alkkagiRender) M.Render.stop(alkkagiRender);
-    if (alkkagiWorld) M.Composite.clear(alkkagiWorld);
-    alkkagiBodies = {};
-    alkkagiInitialized = false;
-    alkkagiEngine = null;
-    alkkagiRender = null;
-    alkkagiRunner = null;
-    alkkagiWorld = null;
     alkkagiSelectedStone = null;
     alkkagiValidGuides = [];
     alkkagiStonesData = [];
     alkkagiPhase = 'ready';
     window.alkkagiJustFlicked = false;
+    if (alkkagiPlacementCanvas) {
+      alkkagiPlacementCanvas.remove();
+      alkkagiPlacementCanvas = null;
+    }
+    if (alkkagiEngine) {
+      const M = Matter;
+      if (alkkagiRunner) M.Runner.stop(alkkagiRunner);
+      if (alkkagiRender) {
+        M.Render.stop(alkkagiRender);
+        if (alkkagiRender.canvas && alkkagiRender.canvas.parentNode) {
+          alkkagiRender.canvas.remove();
+        }
+      }
+      if (alkkagiWorld) M.Composite.clear(alkkagiWorld);
+      alkkagiEngine = null;
+      alkkagiRender = null;
+      alkkagiRunner = null;
+      alkkagiWorld = null;
+    }
+    alkkagiBodies = {};
+    alkkagiInitialized = false;
   };

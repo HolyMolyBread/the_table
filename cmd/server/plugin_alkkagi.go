@@ -629,6 +629,7 @@ func (g *AlkkagiGame) handleFlickLocked(client *Client, payload json.RawMessage)
 	})
 	g.room.broadcastAll(msg)
 	g.currentTurn = 1 - g.currentTurn
+	g.broadcastStateLocked()
 }
 
 func (g *AlkkagiGame) sendStateToAllLocked() {

@@ -352,7 +352,7 @@ func (g *SuikaGame) handleDropLocked(client *Client, payload json.RawMessage) {
 		ID:          g.nextFruitID,
 		Type:        fruitType,
 		X:           x,
-		Y:           0,
+		Y:           60, // 금지선(50px) 바로 아래에서 화면에 보이도록
 		Radius:      def.Radius,
 		OwnerEquity: ownerEquity,
 	})

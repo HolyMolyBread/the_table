@@ -34,6 +34,7 @@
   let suikaInitialized = false;
   let suikaPendingMerges = new Set();
   let suikaHandPos = { x: 0, y: 0 };
+  let suikaDropX = 200;  // 마우스 X 기준 투하 좌표 (0~400)
   let suikaScores = [0, 0, 0, 0];
   let suikaFruitAboveLineSince = null;  // Host: 과일이 금지선 위에 머문 시각
   let suikaLastDropAt = 0;  // 즉시 드롭용 최소 50ms 간격
@@ -101,6 +102,8 @@
     } else {
       fruitEl.style.display = 'none';
     }
+
+    updateSuikaGhostGuide();
   }
 
   function initSuikaPhysics(container, data) {
@@ -328,35 +331,62 @@
     if (!wrap) return;
     wrap.addEventListener('mousemove', function(e) {
       const rect = wrap.getBoundingClientRect();
+      const scaleX = SUIKA_W / rect.width;
       suikaHandPos.x = e.clientX - rect.left - 20;
       suikaHandPos.y = e.clientY - rect.top - 20;
+      suikaDropX = Math.max(0, Math.min(SUIKA_W, (e.clientX - rect.left) * scaleX));
       updateSuikaHandCursor();
+      updateSuikaGhostGuide();
     });
     wrap.addEventListener('mouseleave', function() {
       const hand = document.getElementById('suika-hand-cursor');
       if (hand) hand.style.display = 'none';
+      const ghost = document.getElementById('suika-ghost-guide');
+      if (ghost) ghost.style.display = 'none';
     });
   }
 
+  function updateSuikaGhostGuide() {
+    const ghostWrap = document.getElementById('suika-ghost-guide');
+    const guideLine = document.getElementById('suika-guide-line');
+    const ghostFruit = document.getElementById('suika-ghost-fruit');
+    if (!ghostWrap || !guideLine || !ghostFruit) return;
+
+    const canShow = suikaGameStarted && !suikaGameOver && suikaChargedCount >= 1 && suikaMySlot >= 0;
+    if (!canShow) {
+      ghostWrap.style.display = 'none';
+      return;
+    }
+
+    ghostWrap.style.display = 'block';
+    guideLine.style.left = suikaDropX + 'px';
+    ghostFruit.style.left = suikaDropX + 'px';
+
+    const type = (suikaHandFruitType >= 0 && suikaHandFruitType < 11) ? suikaHandFruitType : 0;
+    const def = SUIKA_FRUIT_DEFS[type];
+    const r = def.radius;
+    ghostFruit.style.width = (r * 2) + 'px';
+    ghostFruit.style.height = (r * 2) + 'px';
+    ghostFruit.style.backgroundColor = SUIKA_FRUIT_COLORS[type] || 'rgba(255,255,255,0.25)';
+  }
+
   function setupSuikaClick() {
-    const wrap = document.getElementById('suika-physics-wrap');
+    const wrap = document.getElementById('suika-game-wrap');
     if (!wrap) return;
-    wrap.addEventListener('click', function(e) {
+    function doDrop() {
       if (suikaMySlot < 0 || suikaChargedCount < 1 || suikaGameOver) return;
-      const rect = wrap.getBoundingClientRect();
-      const scaleX = SUIKA_W / rect.width;
-      const scaleY = SUIKA_H / rect.height;
-      const relY = (e.clientY - rect.top) * scaleY;
-      if (relY < SUIKA_FORBIDDEN_ZONE) return;
-      const x = (e.clientX - rect.left) * scaleX;
       const now = Date.now();
-      if (now - suikaLastDropAt < 50) return;  // 50ms 최소 간격 (즉시 드롭)
+      if (now - suikaLastDropAt < 50) return;  // 50ms 최소 간격
       suikaLastDropAt = now;
       const type = (suikaHandFruitType >= 0 && suikaHandFruitType <= 3) ? suikaHandFruitType : -1;
-      const payload = type >= 0 ? { cmd: 'drop', x, type } : { cmd: 'drop', x };
+      const payload = type >= 0 ? { cmd: 'drop', x: suikaDropX, type } : { cmd: 'drop', x: suikaDropX };
       if (typeof sendGameAction === 'function') {
-        sendGameAction(payload, { cooldownMs: 50 });
+        sendGameAction(payload, { skipCooldown: true, cooldownMs: 50 });
       }
+    }
+    wrap.addEventListener('pointerdown', function(e) {
+      e.preventDefault();
+      doDrop();
     });
   }
 

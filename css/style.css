@@ -537,9 +537,33 @@ header {
 #alkkagi-board-wrap canvas,
 #tetris-board-wrap,
 #tetris-board,
-#suika-game-wrap,
+#suika-game-wrap {
+  touch-action: none;
+  cursor: crosshair;
+}
 #suika-physics-wrap {
   touch-action: none;
+}
+.suika-ghost-guide {
+  position: absolute;
+  left: 0; top: 0;
+  width: 400px; height: 500px;
+  z-index: 5;
+}
+.suika-guide-line {
+  position: absolute;
+  top: 0; bottom: 0;
+  width: 0;
+  border-left: 2px dashed rgba(255,255,255,0.6);
+  transform: translateX(-50%);
+}
+.suika-ghost-fruit {
+  position: absolute;
+  top: 25px;
+  border-radius: 50%;
+  border: 2px solid rgba(255,255,255,0.7);
+  background: rgba(255,255,255,0.25);
+  transform: translate(-50%, -50%);
 }
 
 /* ══ GOMOKU BOARD ════════════════════════════════════════════════════════ */
@@ -1529,6 +1553,15 @@ header {
 .mahjong-seat.seat-bottom .mahjong-tile,
 .mahjong-seat.seat-bottom .mj-tile { width: 40px; height: 54px; }
 
+/* 내 패: 투명화 방지 — 확실한 불투명 백색 */
+#mahjong-hand .mahjong-tile,
+#mahjong-hand .mj-tile {
+  background-color: #ffffff !important;
+  opacity: 1 !important;
+  border: 1px solid #30363d;
+  box-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+}
+
 .mahjong-seat-name { font-size: 11px; font-weight: 700; color: var(--text-primary); margin-bottom: 2px; }
 .mahjong-meld-area { display: flex; flex-wrap: wrap; gap: 2px; justify-content: center; margin: 2px 0; }
 .mahjong-meld-group { display: flex; gap: 1px; }
@@ -1583,14 +1616,17 @@ header {
 .mahjong-call-btn.chi { background: var(--accent); color: #000; }
 .mahjong-call-btn.pass { background: var(--bg-tertiary); color: #fff; border: 1px solid var(--border); }
 
-/* 상대방 좌석: rotate + overflow visible */
+/* 상대방 좌석: 옆자리는 세로 쌓기, rotate 금지 */
 .mahjong-seat.seat-top .opponent-hand,
 .mahjong-seat.seat-bottom .opponent-hand { flex-direction: row; }
 .mahjong-seat.seat-left .opponent-hand,
 .mahjong-seat.seat-right .opponent-hand {
+  display: flex;
   flex-direction: column;
-  margin: 4px 0;
-  gap: 2px;
+  flex-wrap: nowrap;
+  justify-content: flex-start;
+  gap: 1px;
+  padding: 2px;
   max-height: 140px;
   overflow-y: auto;
   overflow-x: hidden;
@@ -1599,8 +1635,9 @@ header {
 .mahjong-seat.seat-left .opponent-hand .mj-tile,
 .mahjong-seat.seat-right .opponent-hand .mahjong-tile,
 .mahjong-seat.seat-right .opponent-hand .mj-tile {
-  width: 20px; height: 28px; margin: 0;
-  background-size: 200px 108px;
+  width: 22px; height: 30px; margin: 0;
+  background-size: 220px 119px;
+  transform: none !important; /* 패는 가로 모양 유지, 절대 회전 금지 */
 }
 .mahjong-seat.seat-left .mahjong-discards,
 .mahjong-seat.seat-right .mahjong-discards {

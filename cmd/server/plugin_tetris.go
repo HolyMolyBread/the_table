@@ -6,6 +6,7 @@ import (
 	"log"
 	"math/rand"
 	"sync"
+	"time"
 )
 
 const (
@@ -46,15 +47,22 @@ type TetrisMoveResultResponse struct {
 	Success bool   `json:"success"`
 }
 
-// tetromino shapes: [rotation][cell][col,row] offset from top-left
+// tetromino shapes: [type][rotation][cell][col,row] offset from piece (X,Y). SRS 표준 회전.
 var tetrisShapes = [7][4][4][2]int{
-	{{{-1, 0}, {0, 0}, {1, 0}, {2, 0}}, {{0, -1}, {0, 0}, {0, 1}, {0, 2}}, {{-1, 0}, {0, 0}, {1, 0}, {2, 0}}, {{0, -1}, {0, 0}, {0, 1}, {0, 2}}}, // I
-	{{{0, 0}, {1, 0}, {0, 1}, {1, 1}}, {{0, 0}, {1, 0}, {0, 1}, {1, 1}}, {{0, 0}, {1, 0}, {0, 1}, {1, 1}}, {{0, 0}, {1, 0}, {0, 1}, {1, 1}}},             // O
-	{{{0, 0}, {-1, 1}, {0, 1}, {1, 1}}, {{0, 0}, {0, -1}, {0, 1}, {1, 0}}, {{-1, 0}, {0, 0}, {1, 0}, {0, 1}}, {{0, 0}, {-1, 0}, {0, -1}, {0, 1}}},   // T
-	{{{0, 0}, {1, 0}, {-1, 1}, {0, 1}}, {{0, 0}, {0, -1}, {1, 0}, {1, 1}}, {{0, 0}, {1, 0}, {-1, 1}, {0, 1}}, {{0, 0}, {0, -1}, {1, 0}, {1, 1}}},   // S
-	{{{-1, 0}, {0, 0}, {0, 1}, {1, 1}}, {{0, 0}, {1, 0}, {0, -1}, {1, -1}}, {{-1, 0}, {0, 0}, {0, 1}, {1, 1}}, {{0, 0}, {1, 0}, {0, -1}, {1, -1}}},   // Z
-	{{{-1, 0}, {-1, 1}, {0, 1}, {1, 1}}, {{0, 0}, {1, 0}, {0, -1}, {0, 1}}, {{-1, 0}, {0, 0}, {1, 0}, {1, 1}}, {{0, 0}, {-1, 0}, {0, -1}, {0, 1}}},   // J
-	{{{1, 0}, {-1, 1}, {0, 1}, {1, 1}}, {{0, 0}, {0, -1}, {0, 1}, {1, -1}}, {{-1, 0}, {0, 0}, {1, 0}, {-1, 1}}, {{0, 0}, {-1, 0}, {0, -1}, {0, 1}}},   // L
+	// I: horizontal / vertical
+	{{{-1, 0}, {0, 0}, {1, 0}, {2, 0}}, {{0, -1}, {0, 0}, {0, 1}, {0, 2}}, {{-1, 0}, {0, 0}, {1, 0}, {2, 0}}, {{0, -1}, {0, 0}, {0, 1}, {0, 2}}},
+	// O: 2x2 (회전 동일)
+	{{{0, 0}, {1, 0}, {0, 1}, {1, 1}}, {{0, 0}, {1, 0}, {0, 1}, {1, 1}}, {{0, 0}, {1, 0}, {0, 1}, {1, 1}}, {{0, 0}, {1, 0}, {0, 1}, {1, 1}}},
+	// T: ──┴── / ─┬─ / ──┬── / ─┴─
+	{{{0, 0}, {-1, 1}, {0, 1}, {1, 1}}, {{0, 0}, {0, -1}, {0, 1}, {1, 0}}, {{-1, 0}, {0, 0}, {1, 0}, {0, 1}}, {{0, 0}, {-1, 0}, {0, -1}, {0, 1}}},
+	// S: 〓 (가로) / 〓 (세로)
+	{{{0, 0}, {1, 0}, {-1, 1}, {0, 1}}, {{0, 0}, {0, -1}, {1, 0}, {1, 1}}, {{0, 0}, {1, 0}, {-1, 1}, {0, 1}}, {{0, 0}, {0, -1}, {1, 0}, {1, 1}}},
+	// Z: 〓 (가로) / 〓 (세로)
+	{{{-1, 0}, {0, 0}, {0, 1}, {1, 1}}, {{0, 0}, {0, 1}, {1, 1}, {1, 2}}, {{-1, 0}, {0, 0}, {0, 1}, {1, 1}}, {{0, 0}, {0, 1}, {1, 1}, {1, 2}}},
+	// J: ┌── / ─┬ / ──┐ / ┬─
+	{{{-1, 0}, {-1, 1}, {0, 1}, {1, 1}}, {{0, 0}, {1, 0}, {0, -1}, {0, 1}}, {{-1, 0}, {0, 0}, {1, 0}, {1, 1}}, {{0, 0}, {-1, 0}, {0, -1}, {0, 1}}},
+	// L: ──┐ / ┬─ / ┌── / ─┴
+	{{{1, 0}, {-1, 1}, {0, 1}, {1, 1}}, {{0, 0}, {0, -1}, {0, 1}, {1, -1}}, {{-1, 0}, {0, 0}, {1, 0}, {-1, 1}}, {{0, 0}, {-1, 0}, {0, -1}, {0, 1}}},
 }
 
 type TetrisGame struct {
@@ -65,6 +73,7 @@ type TetrisGame struct {
 	pieces      [4]*TetrisPiece
 	gameStarted bool
 	startReady  map[*Client]bool
+	stopTick    chan struct{}
 	mu          sync.Mutex
 }
 
@@ -224,11 +233,55 @@ func (g *TetrisGame) startGameLocked() {
 			}
 		}
 	}
+	g.startGravityTickerLocked()
 	g.sendStateToAllLocked()
+}
+
+func (g *TetrisGame) stopGravityTickerLocked() {
+	if g.stopTick != nil {
+		close(g.stopTick)
+		g.stopTick = nil
+	}
+}
+
+func (g *TetrisGame) startGravityTickerLocked() {
+	g.stopGravityTickerLocked()
+	stopCh := make(chan struct{})
+	g.stopTick = stopCh
+	ticker := time.NewTicker(time.Second)
+	defer ticker.Stop()
+	go func() {
+		for {
+			select {
+			case <-stopCh:
+				return
+			case <-ticker.C:
+				g.mu.Lock()
+				if !g.gameStarted {
+					g.mu.Unlock()
+					return
+				}
+				for i := 0; i < tetrisMaxPlayers; i++ {
+					p := g.pieces[i]
+					if p == nil || g.players[i] == nil {
+						continue
+					}
+					p.Y++
+					if !g.isValidMove(i, p) {
+						p.Y--
+						g.lockPieceLocked(i)
+					}
+				}
+				g.sendStateToAllLocked()
+				g.mu.Unlock()
+			}
+		}
+	}()
 }
 
 func (g *TetrisGame) resetLocked() {
 	g.gameStarted = false
+	g.stopGravityTickerLocked()
 	for i := 0; i < tetrisMaxPlayers; i++ {
 		g.pieces[i] = nil
 	}
