@@ -28,3 +28,38 @@
 
 - AI는 대화가 길어짐에 따라 이전 문맥을 잃어버리는 것을 방지하기 위해, 중요한 구조적 변경이나 새로운 규칙이 합의될 때마다 즉시 `ARCHITECTURE.md`의 해당 섹션이나 '개발 이력 (Phase 로그)'을 업데이트하도록 지시해야 한다.
 - 유저가 새로운 세션을 시작할 때 이 문서(`AI_INSTRUCTIONS.md`)와 `ARCHITECTURE.md`를 먼저 참조하도록 유도한다.
+
+---
+
+## 4. 개발 중 게임 — 핵심 알고리즘 가이드라인
+
+> 수박게임, 다인용 테트리스, 서부의 결투, 알까기(체스/장기 모드) 등 물리·실시간 게임 개발 시 AI가 반드시 이해해야 할 원칙입니다.
+
+### 4.1 Matter.js 물리 엔진 활용 원칙
+
+- **알까기(Alkkagi)**: 2D 물리 기반 튕기기. `Matter.Engine`, `Matter.Bodies`, `Matter.Body.setVelocity` 등으로 기물 충돌·반사 구현.
+- **수박게임(Suika)**: `Matter.Bodies.circle`로 과일 생성, `collisionStart` 이벤트로 동일 타입 합체 감지.
+- **질량·각도 제한**: 체스/장기 모드에서는 기물 타입별 `density`, `restitution`, 발사 각도 범위를 다르게 적용.
+
+### 4.2 호스트 기반 물리 동기화 (Host-based Sync)
+
+- **권위자(Authority)**: 방의 첫 번째 플레이어 = Host. Host 클라이언트만 물리 연산(Matter.js)을 수행합니다.
+- **동기화 주기**: Host는 100ms마다 `sync_all` 액션으로 바디 위치(x, y) 및 속도(vx, vy)를 서버에 전송.
+- **서버 역할**: `sync_all` 수신 시 검증 없이 방 전체에 브로드캐스트. Host가 아닌 클라이언트는 수신 데이터로 로컬 바디 위치·속도를 보정.
+- **목적**: 물리 시뮬레이션의 일관성 유지. 클라이언트 간 물리 엔진 차이로 인한 Desync 방지.
+
+### 4.3 지분형 점수 계산 로직 (Equity-based Scoring)
+
+- **ownerEquity**: 각 과일(또는 유사 객체)에 `{ [userId]: percentage }` 맵 보유. 합체 시 `NewEquity[user] = (ParentA.Equity[user] + ParentB.Equity[user]) / 2`.
+- **점수 배분**: 진화 점수 발생 시 `score * equity`를 소수점까지 정밀하게 각 플레이어에게 배분.
+- **2^n 점수 체계**: 레벨별 점수 = 2^(level). 예: 체리 2, 딸기 4, …, 수박 2048.
+
+### 4.4 가속 타이머 시스템 (Turbo Mode)
+
+- **틱택토**: 매 수마다 제한 시간 0.5초 감소 (최소 1.5초). 3초 미만 시 빨간 배경 깜빡임 + 긴박한 피아노 저음.
+- **일반화**: `remaining = max(minLimit, baseLimit - turnCount * decay)` 패턴 적용 가능.
+
+### 4.5 The Table 특유의 연출
+
+- **피아노 사운드 인터랙션**: `SoundManager.playPianoNote(freq, duration)` — 충돌, 합체, 턴 변경, 금수 클릭 등에 맞춘 주파수·지속시간 설계.
+- **심리전 강조**: 인디언 포커(상대 카드만 보임), 도둑잡기(호버링 딜레이), 포커류(족보 하이라이트) 등에서 심리적 긴장감 연출.
