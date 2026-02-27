@@ -904,6 +904,7 @@
         <!-- Suika container (실시간 충전제) -->
         <div id="suika-container" style="display:none; flex-direction:column; align-items:center; gap:12px; width:100%;">
           <div id="suika-status" style="font-size:15px; font-weight:600;">2명 이상 Ready 시 게임 시작</div>
+          <div id="suika-scores" style="display:flex; gap:12px; flex-wrap:wrap; font-weight:600;"></div>
           <div id="suika-recharge-wrap" style="display:flex; align-items:center; gap:8px; width:100%; max-width:400px;">
             <span style="font-size:12px; color:var(--text-secondary);">과일 충전</span>
             <div id="suika-recharge-bar" class="suika-recharge-bar">
@@ -911,9 +912,11 @@
             </div>
             <span id="suika-recharge-label" style="font-size:11px; color:var(--text-muted); min-width:100px;">0/2</span>
           </div>
-          <div id="suika-container-box" style="position:relative; width:400px; height:500px; background:linear-gradient(180deg,#1e3a5f 0%,#0f172a 100%); border-radius:12px; border:3px solid #334155; overflow:hidden;">
-            <div id="suika-drop-zone" style="position:absolute; inset:0; cursor:pointer;"></div>
-            <div id="suika-fruits" style="position:absolute; inset:0; pointer-events:none;"></div>
+          <div id="suika-game-wrap" style="position:relative; width:400px; height:500px;">
+            <div id="suika-physics-wrap" style="width:400px; height:500px; border-radius:12px; overflow:hidden; border:3px solid #334155;"></div>
+            <div id="suika-hand-cursor" class="suika-hand-cursor" style="display:none;">
+              <div id="suika-hand-fruit" class="suika-hand-fruit"></div>
+            </div>
           </div>
         </div>
 

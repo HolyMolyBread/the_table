@@ -4,41 +4,63 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"math/rand"
 	"sync"
 	"time"
 )
 
 const (
-	suikaRechargeSec   = 3
-	suikaMaxCharges    = 2
-	suikaMaxPlayers    = 4
-	suikaContainerW    = 400
-	suikaContainerH    = 500
-	suikaFruitTypes    = 11 // Cherry(0) ~ Watermelon(10)
+	suikaRechargeSec  = 3
+	suikaMaxCharges   = 2
+	suikaMaxPlayers   = 4
+	suikaContainerW   = 400
+	suikaContainerH   = 500
+	suikaFruitLevels  = 11 // 1~11 (Cherry ~ Watermelon)
 )
+
+// SuikaFruitDef는 레벨별 과일 정의입니다.
+type SuikaFruitDef struct {
+	Radius float64 `json:"radius"`
+	Score  int     `json:"score"`
+}
+
+var suikaFruitDefs = [11]SuikaFruitDef{
+	{12, 1},   // 1: Cherry
+	{15, 3},   // 2: Strawberry
+	{18, 6},   // 3: Grapes
+	{22, 10},  // 4: Dekopon
+	{26, 15},  // 5: Orange
+	{30, 21},  // 6: Apple
+	{35, 28},  // 7: Pear
+	{40, 36},  // 8: Peach
+	{46, 45},  // 9: Pineapple
+	{52, 55},  // 10: Melon
+	{60, 66},  // 11: Watermelon
+}
 
 // SuikaFruit는 컨테이너 내 과일 하나입니다.
 type SuikaFruit struct {
-	ID       int     `json:"id"`
-	Type     int     `json:"type"`     // 0=Cherry ~ 10=Watermelon
-	X        float64 `json:"x"`
-	Y        float64 `json:"y"`
-	Radius   float64 `json:"radius"`
-	OwnerSlot int    `json:"ownerSlot"` // 지분 100% 소유 슬롯
+	ID          int                `json:"id"`
+	Type        int                `json:"type"`        // 0~10 (레벨 1~11)
+	X           float64            `json:"x"`
+	Y           float64            `json:"y"`
+	Radius      float64            `json:"radius"`
+	OwnerEquity map[string]float64 `json:"ownerEquity"` // userId -> 지분율 (0~1)
 }
 
 // PlayerCharge는 유저별 충전 상태입니다.
 type PlayerCharge struct {
-	ChargedCount int64 `json:"chargedCount"` // 0~2
-	LastChargeAt int64 `json:"lastChargeAt"` // Unix ms, 마지막 충전 시각
+	ChargedCount  int64 `json:"chargedCount"`
+	LastChargeAt  int64 `json:"lastChargeAt"`
 }
 
 // SuikaData는 suika_state 응답의 data 필드입니다.
 type SuikaData struct {
-	Players      [4]string       `json:"players"`
-	Fruits       []SuikaFruit    `json:"fruits"`
-	Charges      [4]PlayerCharge `json:"charges"` // 각 슬롯별 충전 상태
-	GameStarted  bool            `json:"gameStarted"`
+	Players     [4]string       `json:"players"`
+	Fruits      []SuikaFruit    `json:"fruits"`
+	Charges     [4]PlayerCharge `json:"charges"`
+	Scores      [4]int          `json:"scores"`
+	GameStarted bool            `json:"gameStarted"`
 }
 
 // SuikaStateResponse는 수박게임 상태 응답입니다.
@@ -48,21 +70,19 @@ type SuikaStateResponse struct {
 	Data   SuikaData `json:"data"`
 }
 
-// SuikaDropResultResponse는 drop 결과(성공/실패)를 클라이언트에 전달합니다.
+// SuikaDropResultResponse는 drop 결과를 클라이언트에 전달합니다.
 type SuikaDropResultResponse struct {
 	Type    string `json:"type"`
 	RoomID  string `json:"roomId"`
 	Success bool   `json:"success"`
 }
 
-// 과일 반지름 (타입별, 픽셀 근사)
-var suikaRadii = [11]float64{12, 15, 18, 22, 26, 30, 35, 40, 46, 52, 60}
-
 type SuikaGame struct {
 	room        *Room
 	players     [4]*Client
 	fruits      []SuikaFruit
 	charges     [4]PlayerCharge
+	scores      [4]int
 	gameStarted bool
 	startReady  map[*Client]bool
 	nextFruitID int
@@ -163,6 +183,8 @@ func (g *SuikaGame) HandleAction(client *Client, action string, payload json.Raw
 		g.handleReadyLocked(client)
 	case "drop":
 		g.handleDropLocked(client, payload)
+	case "merge":
+		g.handleMergeLocked(client, payload)
 	default:
 		client.SendJSON(ServerResponse{Type: "error", Message: fmt.Sprintf("알 수 없는 cmd: %s", base.Cmd)})
 	}
@@ -202,6 +224,7 @@ func (g *SuikaGame) startGameLocked() {
 	g.startReady = make(map[*Client]bool)
 	g.gameStarted = true
 	g.fruits = nil
+	g.scores = [4]int{0, 0, 0, 0}
 	g.nextFruitID = 0
 	now := time.Now().UnixMilli()
 	for i := 0; i < suikaMaxPlayers; i++ {
@@ -215,13 +238,13 @@ func (g *SuikaGame) startGameLocked() {
 func (g *SuikaGame) resetLocked() {
 	g.gameStarted = false
 	g.fruits = nil
+	g.scores = [4]int{0, 0, 0, 0}
 	for i := 0; i < suikaMaxPlayers; i++ {
 		g.charges[i] = PlayerCharge{}
 	}
 	g.startReady = make(map[*Client]bool)
 }
 
-// updateChargesLocked: 경과 시간에 따라 충전 수를 갱신합니다.
 func (g *SuikaGame) updateChargesLocked(slot int) {
 	if slot < 0 || slot >= suikaMaxPlayers || g.players[slot] == nil {
 		return
@@ -239,6 +262,15 @@ func (g *SuikaGame) updateChargesLocked(slot int) {
 func (g *SuikaGame) clientSlot(client *Client) int {
 	for i := 0; i < suikaMaxPlayers; i++ {
 		if g.players[i] == client {
+			return i
+		}
+	}
+	return -1
+}
+
+func (g *SuikaGame) userIdToSlot(userId string) int {
+	for i := 0; i < suikaMaxPlayers; i++ {
+		if g.players[i] != nil && g.players[i].UserID == userId {
 			return i
 		}
 	}
@@ -275,29 +307,31 @@ func (g *SuikaGame) handleDropLocked(client *Client, payload json.RawMessage) {
 		return
 	}
 
-	// x 범위: 컨테이너 내부
 	x := p.X
-	if x < suikaRadii[0] {
-		x = suikaRadii[0]
+	def := suikaFruitDefs[0]
+	if x < def.Radius {
+		x = def.Radius
 	}
-	if x > suikaContainerW-suikaRadii[0] {
-		x = suikaContainerW - suikaRadii[0]
+	if x > suikaContainerW-def.Radius {
+		x = suikaContainerW - def.Radius
 	}
 
-	// 충전 소모
 	g.charges[slot].ChargedCount--
 	g.charges[slot].LastChargeAt = time.Now().UnixMilli()
 
-	// 과일 생성 (타입 0=Cherry, 지분 100% 소유)
-	fruitType := 0
-	radius := suikaRadii[fruitType]
+	// Size 1~4 (타입 0~3) 랜덤
+	fruitType := rand.Intn(4)
+	def = suikaFruitDefs[fruitType]
+	userId := g.players[slot].UserID
+	ownerEquity := map[string]float64{userId: 1.0}
+
 	g.fruits = append(g.fruits, SuikaFruit{
-		ID:        g.nextFruitID,
-		Type:      fruitType,
-		X:         x,
-		Y:         0,
-		Radius:    radius,
-		OwnerSlot: slot,
+		ID:          g.nextFruitID,
+		Type:        fruitType,
+		X:           x,
+		Y:           0,
+		Radius:      def.Radius,
+		OwnerEquity: ownerEquity,
 	})
 	g.nextFruitID++
 
@@ -305,8 +339,98 @@ func (g *SuikaGame) handleDropLocked(client *Client, payload json.RawMessage) {
 	g.sendStateToAllLocked()
 }
 
+func (g *SuikaGame) findFruitByID(id int) *SuikaFruit {
+	for i := range g.fruits {
+		if g.fruits[i].ID == id {
+			return &g.fruits[i]
+		}
+	}
+	return nil
+}
+
+func (g *SuikaGame) handleMergeLocked(client *Client, payload json.RawMessage) {
+	if !g.gameStarted {
+		return
+	}
+
+	var p struct {
+		AID int     `json:"aid"`
+		BID int     `json:"bid"`
+		CX  float64 `json:"cx"`
+		CY  float64 `json:"cy"`
+	}
+	if err := json.Unmarshal(payload, &p); err != nil {
+		return
+	}
+
+	fa := g.findFruitByID(p.AID)
+	fb := g.findFruitByID(p.BID)
+	if fa == nil || fb == nil || fa.Type != fb.Type {
+		return
+	}
+	if fa.Type >= suikaFruitLevels-1 {
+		return
+	}
+
+	// NewEquity[user] = (A.Equity[user] + B.Equity[user]) / 2
+	merged := make(map[string]float64)
+	allUsers := make(map[string]bool)
+	for u := range fa.OwnerEquity {
+		allUsers[u] = true
+	}
+	for u := range fb.OwnerEquity {
+		allUsers[u] = true
+	}
+	for u := range allUsers {
+		a := fa.OwnerEquity[u]
+		b := fb.OwnerEquity[u]
+		merged[u] = (a + b) / 2
+	}
+
+	newType := fa.Type + 1
+	def := suikaFruitDefs[newType]
+	scoreToAdd := def.Score
+
+	for userId, eq := range merged {
+		if eq <= 0 {
+			continue
+		}
+		s := g.userIdToSlot(userId)
+		if s >= 0 {
+			g.scores[s] += int(float64(scoreToAdd) * eq)
+		}
+	}
+
+	// 새 과일 생성 (클라이언트 전달 좌표 우선, 없으면 두 과일 중간)
+	cx, cy := p.CX, p.CY
+	if cx == 0 && cy == 0 {
+		cx = (fa.X + fb.X) / 2
+		cy = (fa.Y + fb.Y) / 2
+	}
+
+	// 기존 과일 제거
+	newFruits := make([]SuikaFruit, 0, len(g.fruits)-2)
+	for _, f := range g.fruits {
+		if f.ID != p.AID && f.ID != p.BID {
+			newFruits = append(newFruits, f)
+		}
+	}
+	g.fruits = newFruits
+
+	g.fruits = append(g.fruits, SuikaFruit{
+		ID:          g.nextFruitID,
+		Type:        newType,
+		X:           cx,
+		Y:           cy,
+		Radius:      def.Radius,
+		OwnerEquity: merged,
+	})
+	g.nextFruitID++
+
+	g.sendStateToAllLocked()
+}
+
 func (g *SuikaGame) makeDataLocked() SuikaData {
-	// 모든 플레이어 충전 상태 갱신
 	for i := 0; i < suikaMaxPlayers; i++ {
 		if g.players[i] != nil {
 			g.updateChargesLocked(i)
@@ -314,12 +438,22 @@ func (g *SuikaGame) makeDataLocked() SuikaData {
 	}
 
 	fruitsCopy := make([]SuikaFruit, len(g.fruits))
-	copy(fruitsCopy, g.fruits)
+	for i := range g.fruits {
+		fruitsCopy[i] = g.fruits[i]
+		if g.fruits[i].OwnerEquity != nil {
+			eq := make(map[string]float64)
+			for k, v := range g.fruits[i].OwnerEquity {
+				eq[k] = v
+			}
+			fruitsCopy[i].OwnerEquity = eq
+		}
+	}
 
 	return SuikaData{
 		Players:     g.playersUserIDsLocked(),
 		Fruits:      fruitsCopy,
 		Charges:     g.charges,
+		Scores:      g.scores,
 		GameStarted: g.gameStarted,
 	}
 }

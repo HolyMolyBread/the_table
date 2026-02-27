@@ -893,6 +893,34 @@ header {
   position: absolute;
   pointer-events: none;
 }
+.suika-hand-cursor {
+  position: absolute;
+  left: 0; top: 0;
+  width: 48px; height: 48px;
+  pointer-events: none;
+  z-index: 10;
+  transform: translate(-50%, -50%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.suika-hand-cursor::before {
+  content: '✋';
+  font-size: 32px;
+  position: absolute;
+  left: 50%; top: 50%;
+  transform: translate(-50%, -50%);
+}
+.suika-hand-fruit {
+  position: absolute;
+  left: 50%; top: 50%;
+  transform: translate(-50%, -50%);
+  border: 2px solid rgba(255,255,255,0.5);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+}
+.suika-score {
+  font-size: 14px;
+}
 
 /* 타일/그리드 게임 전용 모션 */
 @keyframes stonePop {
