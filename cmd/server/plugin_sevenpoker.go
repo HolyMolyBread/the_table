@@ -22,8 +22,9 @@ const (
 
 // SevenPokerPlayerInfo는 한 플레이어의 공개 정보입니다.
 type SevenPokerPlayerInfo struct {
-	UserID   string `json:"userId"`
-	Stars    int    `json:"stars"`
+	PlayerIdx int    `json:"playerIdx"` // 슬롯 인덱스 (상대적 좌석 계산용)
+	UserID    string `json:"userId"`
+	Stars     int    `json:"stars"`
 	Status   string `json:"status"`   // "check" | "fold" | ""
 	Cards    []Card `json:"cards"`    // 본인은 앞면, 타인은 Hidden=true
 	IsActive bool   `json:"isActive"` // 이번 라운드 생존
@@ -782,11 +783,31 @@ func (g *SevenPokerGame) startRoundLocked() {
 	g.pot += g.potCarryOver
 	g.potCarryOver = 0
 
+	// 참가비(Ante): 별 1개 이상인 모든 플레이어에서 1개 차감 → pot
+	for i := 0; i < sevenPokerMaxPlayers; i++ {
+		if g.players[i] != nil && g.stars[i] >= 1 {
+			g.stars[i]--
+			g.pot++
+		}
+	}
+
 	for i := 0; i < sevenPokerMaxPlayers; i++ {
 		g.cards[i] = [sevenPokerCards]Card{} // 핵심: 지난 라운드의 남은 카드 완벽히 초기화
 		g.foldedThisRound[i] = g.players[i] == nil || g.stars[i] <= 0
 		g.actedThisPhase[i] = false
 		g.choiceDone[i] = false
+	}
+	spSurvivors := 0
+	for i := 0; i < sevenPokerMaxPlayers; i++ {
+		if g.players[i] != nil && !g.foldedThisRound[i] {
+			spSurvivors++
+		}
+	}
+	if spSurvivors < 2 {
+		g.potCarryOver += g.pot
+		g.pot = 0
+		g.startRoundLocked()
+		return
 	}
 
 	g.deck = NewShuffledDeck()
@@ -809,7 +830,7 @@ func (g *SevenPokerGame) startRoundLocked() {
 
 	notice, _ := json.Marshal(ServerResponse{
 		Type:    "game_notice",
-		Message: fmt.Sprintf("── 라운드 %d 시작! 4장 초이스 (1장 버리고 1장 공개) ──", g.round),
+		Message: fmt.Sprintf("── 라운드 %d 시작! 참가비 ⭐×1 지불 ── 4장 초이스 (1장 버리고 1장 공개)", g.round),
 		RoomID:  g.room.ID,
 	})
 	g.room.broadcastAll(notice)
@@ -1113,11 +1134,12 @@ func (g *SevenPokerGame) buildSevenPokerDataForPlayer(viewerIdx int) SevenPokerD
 		}
 
 		players = append(players, SevenPokerPlayerInfo{
-			UserID:   g.players[i].UserID,
-			Stars:    g.stars[i],
-			Status:   status,
-			Cards:    cards,
-			IsActive: !g.foldedThisRound[i],
+			PlayerIdx: i,
+			UserID:    g.players[i].UserID,
+			Stars:     g.stars[i],
+			Status:     status,
+			Cards:      cards,
+			IsActive:   !g.foldedThisRound[i],
 		})
 	}
 

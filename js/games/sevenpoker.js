@@ -18,17 +18,14 @@
     document.getElementById('sevenpoker-pot-bar').textContent = `팟 ⭐×${data.pot || 0}`;
 
     const playersEl = document.getElementById('sevenpoker-players');
+    const meSlotEl = document.getElementById('sevenpoker-me-slot');
     if (playersEl && data.players) {
       const players = data.players;
-      const numPlayers = players.length;
-      const myIdx = players.findIndex(p => p.userId === currentUserId);
-      const ordered = players
-        .map((p, playerIdx) => ({ ...p, playerIdx, relativeIdx: (playerIdx - myIdx + numPlayers) % numPlayers }))
-        .sort((a, b) => a.relativeIdx - b.relativeIdx);
-      const opponents = ordered.filter(p => p.relativeIdx !== 0);
-      const me = ordered.find(p => p.relativeIdx === 0);
+      const numPlayers = 4;
+      const myIdx = (players.find(p => p.userId === currentUserId)?.playerIdx ?? players.findIndex(p => p.userId === currentUserId)) % numPlayers;
+      const RELATIVE_TO_SEAT = { 1: 'seat-left', 2: 'seat-top', 3: 'seat-right' };
 
-      function renderPlayerBox(p) {
+      function renderPlayerBox(p, seatClass) {
         const isMe = p.userId === currentUserId;
         const isTurn = p.userId === data.currentTurn;
         const folded = p.status === 'fold';
@@ -43,24 +40,26 @@
         const nameHtml = !isMe
           ? `<span class="clickable-nickname" onclick="requestOpponentRecord('${escapeForJsAttr(p.userId)}')" title="전적 보기">${escapeHTML(p.userId)}</span>`
           : escapeHTML(p.userId) + ' (나)';
-        return `
-          <div class="sevenpoker-player-box ${isMe ? 'is-me' : 'is-opponent'} ${isTurn ? 'my-turn' : ''} ${folded ? 'folded' : ''}">
-            <div style="display:flex; align-items:center; gap:4px;"><div class="sevenpoker-player-name" style="flex:1; min-width:0;">${nameHtml}</div></div>
+        const inner = `<div style="display:flex; align-items:center; gap:4px;"><div class="sevenpoker-player-name" style="flex:1; min-width:0;">${nameHtml}</div></div>
             <div class="sevenpoker-player-stars">⭐×${p.stars}</div>
             <div class="sevenpoker-player-status">${folded ? '🏳️ 폴드' : p.status === 'check' ? '✅ 체크' : ''}</div>
-            <div class="sevenpoker-player-cards">${cardsHtml}</div>
-          </div>`;
+            <div class="sevenpoker-player-cards">${cardsHtml}</div>`;
+        if (seatClass) {
+          return `<div class="table-seat sevenpoker-player-box ${seatClass} ${isMe ? 'is-me' : 'is-opponent'} ${isTurn ? 'my-turn' : ''} ${folded ? 'folded' : ''}">${inner}</div>`;
+        }
+        return `<div class="sevenpoker-player-box is-me ${isTurn ? 'my-turn' : ''} ${folded ? 'folded' : ''}">${inner}</div>`;
       }
 
-      playersEl.className = '';
-      playersEl.style.cssText = 'display: flex; flex-direction: column; gap: 16px; align-items: stretch; width: 100%; max-width: 100%; padding: 0 8px;';
-      playersEl.innerHTML = `
-        <div style="display:flex; justify-content:center; gap:12px; flex-wrap:wrap; width:100%;">
-          ${opponents.map(renderPlayerBox).join('')}
-        </div>
-        <div style="display:flex; justify-content:center; gap:12px; width:100%;">
-          ${me ? renderPlayerBox(me) : ''}
-        </div>`;
+      const opponents = players
+        .map(p => ({ ...p, relativeIdx: ((p.playerIdx ?? players.indexOf(p)) - myIdx + numPlayers) % numPlayers }))
+        .filter(p => p.relativeIdx !== 0)
+        .sort((a, b) => a.relativeIdx - b.relativeIdx);
+      const me = players.find(p => p.userId === currentUserId);
+
+      playersEl.innerHTML = opponents.map(p => renderPlayerBox(p, RELATIVE_TO_SEAT[p.relativeIdx] || 'seat-top')).join('');
+      if (meSlotEl && me) {
+        meSlotEl.innerHTML = renderPlayerBox(me, null);
+      }
     }
 
     const canAct = isMyTurn && isPlayer && data.phase !== 'waiting' && data.phase !== 'showdown' && data.phase !== 'choice';

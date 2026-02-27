@@ -31,17 +31,14 @@
     }
 
     const playersEl = document.getElementById('holdem-players');
+    const meSlotEl = document.getElementById('holdem-me-slot');
     if (playersEl && data.players) {
       const players = data.players;
-      const numPlayers = players.length;
-      const myIdx = players.findIndex(p => p.userId === currentUserId);
-      const ordered = players
-        .map((p, playerIdx) => ({ ...p, playerIdx, relativeIdx: (playerIdx - myIdx + numPlayers) % numPlayers }))
-        .sort((a, b) => a.relativeIdx - b.relativeIdx);
-      const opponentsFirst = ordered.filter(p => p.relativeIdx !== 0);
-      const meLast = ordered.filter(p => p.relativeIdx === 0);
-      const renderOrder = [...opponentsFirst, ...meLast];
-      playersEl.innerHTML = renderOrder.map(p => {
+      const numPlayers = 4;
+      const myIdx = (players.find(p => p.userId === currentUserId)?.playerIdx ?? players.findIndex(p => p.userId === currentUserId)) % numPlayers;
+      const RELATIVE_TO_SEAT = { 1: 'seat-left', 2: 'seat-top', 3: 'seat-right' };
+
+      function renderPlayerBox(p, seatClass) {
         const isMe = p.userId === currentUserId;
         const isTurn = p.userId === data.currentTurn;
         const folded = p.status === 'fold';
@@ -50,17 +47,29 @@
           ? `<span class="clickable-nickname" onclick="requestOpponentRecord('${escapeForJsAttr(p.userId)}')" title="전적 보기">${escapeHTML(p.userId)}</span>`
           : escapeHTML(p.userId) + ' (나)';
         const dealerBadge = p.isDealer ? '<div class="holdem-dealer-btn" title="딜러">D</div>' : '';
-        return `
-          <div class="holdem-player-box ${isTurn ? 'my-turn' : ''} ${folded ? 'folded' : ''}">
-            <div style="display:flex; align-items:center; gap:4px;">
-              <div class="holdem-player-name" style="flex:1; min-width:0;">${nameHtml}</div>
-              ${dealerBadge}
-            </div>
-            <div class="holdem-player-stars">⭐×${p.stars}</div>
-            <div class="holdem-player-status">${folded ? '🏳️ 폴드' : p.status === 'check' ? '✅ 체크' : ''}</div>
-            <div class="holdem-player-cards">${cardsHtml}</div>
-          </div>`;
-      }).join('');
+        const inner = `<div style="display:flex; align-items:center; gap:4px;">
+            <div class="holdem-player-name" style="flex:1; min-width:0;">${nameHtml}</div>
+            ${dealerBadge}
+          </div>
+          <div class="holdem-player-stars">⭐×${p.stars}</div>
+          <div class="holdem-player-status">${folded ? '🏳️ 폴드' : p.status === 'check' ? '✅ 체크' : ''}</div>
+          <div class="holdem-player-cards">${cardsHtml}</div>`;
+        if (seatClass) {
+          return `<div class="table-seat holdem-player-box ${seatClass} ${isTurn ? 'my-turn' : ''} ${folded ? 'folded' : ''}">${inner}</div>`;
+        }
+        return `<div class="holdem-player-box ${isTurn ? 'my-turn' : ''} ${folded ? 'folded' : ''}">${inner}</div>`;
+      }
+
+      const opponents = players
+        .map(p => ({ ...p, relativeIdx: ((p.playerIdx ?? players.indexOf(p)) - myIdx + numPlayers) % numPlayers }))
+        .filter(p => p.relativeIdx !== 0)
+        .sort((a, b) => a.relativeIdx - b.relativeIdx);
+      const me = players.find(p => p.userId === currentUserId);
+
+      playersEl.innerHTML = opponents.map(p => renderPlayerBox(p, RELATIVE_TO_SEAT[p.relativeIdx] || 'seat-top')).join('');
+      if (meSlotEl && me) {
+        meSlotEl.innerHTML = renderPlayerBox(me, null);
+      }
     }
 
     const canAct = isMyTurn && isPlayer && data.phase !== 'waiting' && data.phase !== 'showdown';

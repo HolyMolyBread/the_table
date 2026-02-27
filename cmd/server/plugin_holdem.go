@@ -20,8 +20,9 @@ const (
 
 // HoldemPlayerInfo는 한 플레이어의 공개 정보입니다.
 type HoldemPlayerInfo struct {
-	UserID   string  `json:"userId"`
-	Stars    int     `json:"stars"`
+	PlayerIdx int     `json:"playerIdx"` // 슬롯 인덱스 (상대적 좌석 계산용)
+	UserID    string  `json:"userId"`
+	Stars     int     `json:"stars"`
 	Status   string  `json:"status"`   // "check" | "fold" | ""
 	Cards    []Card  `json:"cards"`   // 본인은 앞면, 타인은 Hidden=true
 	IsActive bool    `json:"isActive"` // 이번 라운드 생존
@@ -682,9 +683,29 @@ func (g *HoldemGame) startRoundLocked() {
 	g.pot += g.potCarryOver
 	g.potCarryOver = 0
 
+	// 참가비(Ante): 별 1개 이상인 모든 플레이어에서 1개 차감 → pot
+	for i := 0; i < holdemMaxPlayers; i++ {
+		if g.players[i] != nil && g.stars[i] >= 1 {
+			g.stars[i]--
+			g.pot++
+		}
+	}
+
 	for i := 0; i < holdemMaxPlayers; i++ {
 		g.foldedThisRound[i] = g.players[i] == nil || g.stars[i] <= 0 // 파산자는 라운드 제외
 		g.actedThisPhase[i] = false
+	}
+	survivors := 0
+	for i := 0; i < holdemMaxPlayers; i++ {
+		if g.players[i] != nil && !g.foldedThisRound[i] {
+			survivors++
+		}
+	}
+	if survivors < 2 {
+		g.potCarryOver += g.pot
+		g.pot = 0
+		g.startRoundLocked()
+		return
 	}
 
 	// 딜러 버튼 이동 (다음 생존 플레이어)
@@ -714,7 +735,7 @@ func (g *HoldemGame) startRoundLocked() {
 
 	notice, _ := json.Marshal(ServerResponse{
 		Type:    "game_notice",
-		Message: fmt.Sprintf("── 라운드 %d 시작! 프리플랍 (개인 카드 2장) ──", g.round),
+		Message: fmt.Sprintf("── 라운드 %d 시작! 참가비 ⭐×1 지불 ── 프리플랍 (개인 카드 2장)", g.round),
 		RoomID:  g.room.ID,
 	})
 	g.room.broadcastAll(notice)
@@ -968,8 +989,9 @@ func (g *HoldemGame) buildHoldemDataForPlayer(viewerIdx int) HoldemData {
 		}
 
 		players = append(players, HoldemPlayerInfo{
-			UserID:   g.players[i].UserID,
-			Stars:    g.stars[i],
+			PlayerIdx: i,
+			UserID:    g.players[i].UserID,
+			Stars:     g.stars[i],
 			Status:   status,
 			Cards:    cards,
 			IsActive: !g.foldedThisRound[i],

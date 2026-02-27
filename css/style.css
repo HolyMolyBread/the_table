@@ -1237,10 +1237,15 @@ header {
   padding: 2px 6px; border-radius: 6px; border: 1px solid var(--danger);
   z-index: 5;
 }
-.holdem-players-grid {
-  display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px;
-  width: 100%;
+#holdem-table-wrap, #sevenpoker-table-wrap {
+  min-height: 380px;
 }
+#holdem-table-wrap .table-seat.seat-top { top: 16px !important; left: 50% !important; transform: translateX(-50%) !important; }
+#holdem-table-wrap .table-seat.seat-left { left: 16px !important; top: 50% !important; transform: translateY(-50%) !important; }
+#holdem-table-wrap .table-seat.seat-right { right: 16px !important; top: 50% !important; transform: translateY(-50%) !important; }
+#sevenpoker-table-wrap .table-seat.seat-top { top: 16px !important; left: 50% !important; transform: translateX(-50%) !important; }
+#sevenpoker-table-wrap .table-seat.seat-left { left: 16px !important; top: 50% !important; transform: translateY(-50%) !important; }
+#sevenpoker-table-wrap .table-seat.seat-right { right: 16px !important; top: 50% !important; transform: translateY(-50%) !important; }
 .holdem-player-box {
   background: var(--bg-tertiary); border: 1px solid var(--border);
   border-radius: var(--radius); padding: 10px 12px;
