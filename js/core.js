@@ -807,13 +807,13 @@
       const btnReady = document.getElementById('btn-ready');
       const readyCountEl = document.getElementById('ready-count');
       const readyHintEl = document.getElementById('ready-hint');
-      if (!roomId.startsWith('blackjack')) {
+      if (roomId.startsWith('blackjack_pve_')) {
+        readyArea.style.display = 'none';
+      } else {
         readyArea.style.display = 'flex';
         if (btnReady) btnReady.disabled = false;
         if (readyCountEl) readyCountEl.textContent = roomId.startsWith('mahjong3') ? '0/3' : (roomId.startsWith('mahjong') ? '0/4' : '0/0');
         if (readyHintEl) readyHintEl.textContent = roomId.startsWith('mahjong3') ? '3인이 모두 준비해야 게임이 시작됩니다' : (roomId.startsWith('mahjong') ? '4인이 모두 준비해야 게임이 시작됩니다' : '전원이 준비해야 게임이 시작됩니다');
-      } else {
-        readyArea.style.display = 'none';
       }
 
     } else {
