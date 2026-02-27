@@ -884,7 +884,7 @@
             </div>
           </div>
           <div id="onecard-actions-row">
-            <button id="btn-onecard-call" onclick="onecardCallOneCard()" disabled>🚨 원카드!</button>
+            <button id="btn-onecard-call" onclick="onecardCallOneCard()" disabled style="display:none;">🚨 원카드!</button>
           </div>
         </div>
 
@@ -1062,10 +1062,10 @@
   <div id="onecard-suit-box">
     <div id="onecard-suit-title">7 카드 — 다음 문양 선택</div>
     <div id="onecard-suit-btns">
-      <button type="button" class="suit-btn" onclick="onecardPickSuit('♠')">♠</button>
-      <button type="button" class="suit-btn" onclick="onecardPickSuit('♥')">♥</button>
-      <button type="button" class="suit-btn" onclick="onecardPickSuit('♦')">♦</button>
-      <button type="button" class="suit-btn" onclick="onecardPickSuit('♣')">♣</button>
+      <button type="button" class="suit-btn suit-black" onclick="onecardPickSuit('♠')">♠</button>
+      <button type="button" class="suit-btn suit-red" onclick="onecardPickSuit('♥')">♥</button>
+      <button type="button" class="suit-btn suit-red" onclick="onecardPickSuit('♦')">♦</button>
+      <button type="button" class="suit-btn suit-black" onclick="onecardPickSuit('♣')">♣</button>
     </div>
   </div>
 </div>

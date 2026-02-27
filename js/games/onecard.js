@@ -4,6 +4,11 @@
   let lastOneCardHandJson = '';
   let lastOneCardMyTurn = false;
 
+  function suitColorClass(suit) {
+    if (!suit) return '';
+    return (suit === '♥' || suit === '♦') ? 'suit-red' : 'suit-black';
+  }
+
   function showOneCardUI() {
     switchGameView('onecard');
     lastOneCardTopJson = '';
@@ -82,7 +87,9 @@
     }
 
     const btnCall = document.getElementById('btn-onecard-call');
+    const showOneCardBtn = !!oneCardVuln;
     if (btnCall) {
+      btnCall.style.display = showOneCardBtn ? '' : 'none';
       btnCall.disabled = !oneCardVuln || !ws || ws.readyState !== WebSocket.OPEN;
     }
 
@@ -127,6 +134,7 @@
     }
 
     const topEl = document.getElementById('onecard-top-card');
+    const centerWrap = document.getElementById('onecard-center');
     if (topEl) {
       const topJson = JSON.stringify(top);
       if (topJson !== lastOneCardTopJson) {
@@ -135,6 +143,22 @@
         const cardEl = topEl.firstElementChild || topEl;
         if (cardEl && top.suit && window.applyCardFlipAnim) window.applyCardFlipAnim(cardEl);
       }
+    }
+
+    const targetSuit = data.targetSuit || '';
+    let targetDisplay = document.getElementById('onecard-target-suit-display');
+    if (targetSuit && centerWrap) {
+      if (!targetDisplay) {
+        targetDisplay = document.createElement('div');
+        targetDisplay.id = 'onecard-target-suit-display';
+        targetDisplay.className = 'target-suit-display';
+        centerWrap.insertBefore(targetDisplay, centerWrap.firstChild);
+      }
+      targetDisplay.textContent = targetSuit;
+      targetDisplay.className = 'target-suit-display ' + suitColorClass(targetSuit);
+      targetDisplay.style.display = '';
+    } else if (targetDisplay) {
+      targetDisplay.style.display = 'none';
     }
     const canPlay = isMyTurn && top.suit;
     const hasPlayableCard = canPlay && (data.hand?.some(c => onecardIsPlayable(data, c)) ?? false);
@@ -156,9 +180,9 @@
       if (hand.length === 0 && data.players && data.players.some(p => p.userId === currentUserId)) {
         console.warn("내 손패가 비어있습니다. 서버 데이터를 점검하세요.");
       }
-      const handJson = JSON.stringify(hand.map((c, i) => ({ ...c, _playable: canPlay && onecardIsPlayable(data, c), _index: i })));
-      if (handJson !== lastOneCardHandJson) {
-        lastOneCardHandJson = handJson;
+      const handDataJson = JSON.stringify(hand.map(c => ({ suit: c.suit, value: c.value })));
+      if (handDataJson !== lastOneCardHandJson) {
+        lastOneCardHandJson = handDataJson;
         handEl.innerHTML = hand.map((c, i) => {
           const playable = canPlay && onecardIsPlayable(data, c);
           const cardWithIdx = { ...c, _index: i };

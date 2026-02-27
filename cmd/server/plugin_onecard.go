@@ -28,6 +28,7 @@ type OneCardData struct {
 	Hand            []Card `json:"hand"`
 	TopCard         Card   `json:"topCard"`
 	TargetSuit      string `json:"targetSuit,omitempty"`      // 7 카드로 강제된 문양
+	TargetSuitColor string `json:"targetSuitColor,omitempty"` // "red" | "black" (가독성용)
 	DeckCount       int    `json:"deckCount"`
 	DiscardCount    int    `json:"discardCount"`
 	Turn            string `json:"turn"`
@@ -45,6 +46,7 @@ type OneCardPlayerInfo struct {
 	CardCount int    `json:"cardCount"`
 	IsTurn    bool   `json:"isTurn"`
 	Status    string `json:"status,omitempty"` // "escaped" | "bankrupt"
+	IsSafe    bool   `json:"isSafe,omitempty"` // 원카드 호출로 안전 상태 (1장이어도 콜 대상 아님)
 }
 
 // OneCardStateResponse는 원카드 게임 상태 응답입니다.
@@ -69,7 +71,8 @@ type OneCardGame struct {
 	skipNext         bool
 	attackPenalty    int
 	playAgain        bool   // K 카드로 인한 연속 턴
-	oneCardVulnerable string   // 손패 1장인 유저 ID
+	oneCardVulnerable string            // 손패 1장이면서 원카드 미호출 유저 ID
+	isOneCardSafe    map[string]bool   // userId -> 원카드 호출로 안전 (1장→2장→1장 시 다시 콜 필요)
 	playerCount      int
 	winners          []string // 탈출 성공 (손패 0장)
 	losers           []string // 파산 (20장 초과)
@@ -82,7 +85,13 @@ type OneCardGame struct {
 }
 
 func NewOneCardGame(room *Room) *OneCardGame {
-	return &OneCardGame{room: room, direction: 1, startReady: make(map[*Client]bool), rematchReady: make(map[*Client]bool)}
+	return &OneCardGame{
+		room:          room,
+		direction:     1,
+		startReady:    make(map[*Client]bool),
+		rematchReady:  make(map[*Client]bool),
+		isOneCardSafe: make(map[string]bool),
+	}
 }
 
 func init() { RegisterPlugin("onecard", func(room *Room) GamePlugin { return NewOneCardGame(room) }) }
@@ -459,14 +468,8 @@ func (g *OneCardGame) handlePlay(client *Client, index int, targetSuit string) {
 		notice = fmt.Sprintf("[%s]가 %s%s를 냈습니다.", client.UserID, card.Suit, card.Value)
 	}
 
-	// 원카드 취약 상태 갱신 (손패 1장인 사람이 없으면 비활성화)
-	g.oneCardVulnerable = ""
-	for i := 0; i < oneCardMaxPlayers; i++ {
-		if g.players[i] != nil && len(g.hands[i]) == 1 {
-			g.oneCardVulnerable = g.players[i].UserID
-			break
-		}
-	}
+	g.updateOneCardSafety(idx)
+	g.refreshOneCardVulnerableLocked()
 
 	msg, _ := json.Marshal(ServerResponse{Type: "game_notice", Message: notice, RoomID: g.room.ID})
 	g.room.broadcastAll(msg)
@@ -556,14 +559,8 @@ func (g *OneCardGame) handleDraw(client *Client) {
 		g.room.broadcastAll(notice)
 	}
 
-	// 원카드 취약 상태 갱신 (손패 1장인 사람이 없으면 비활성화)
-	g.oneCardVulnerable = ""
-	for i := 0; i < oneCardMaxPlayers; i++ {
-		if g.players[i] != nil && len(g.hands[i]) == 1 {
-			g.oneCardVulnerable = g.players[i].UserID
-			break
-		}
-	}
+	g.updateOneCardSafety(idx)
+	g.refreshOneCardVulnerableLocked()
 
 	// 파산 체크 (20장 초과)
 	if len(g.hands[idx]) > oneCardBankruptcyLimit {
@@ -604,7 +601,8 @@ func (g *OneCardGame) handleCallOneCard(client *Client) {
 	}
 
 	if client.UserID == g.oneCardVulnerable {
-		g.oneCardVulnerable = ""
+		g.isOneCardSafe[client.UserID] = true
+		g.refreshOneCardVulnerableLocked()
 		notice, _ := json.Marshal(ServerResponse{
 			Type:    "game_notice",
 			Message: fmt.Sprintf("[%s]가 원카드!를 선언하여 안전해졌습니다!", client.UserID),
@@ -620,12 +618,15 @@ func (g *OneCardGame) handleCallOneCard(client *Client) {
 			}
 		}
 		if victimIdx >= 0 {
+			victimName := g.oneCardVulnerable
 			if c, ok := g.drawFromDeckLocked(); ok {
 				g.hands[victimIdx] = append(g.hands[victimIdx], c)
 			}
+			g.updateOneCardSafety(victimIdx)
+			g.refreshOneCardVulnerableLocked()
 			notice, _ := json.Marshal(ServerResponse{
 				Type:    "game_notice",
-				Message: fmt.Sprintf("[%s]가 [%s]에게 원카드!를 외쳐 벌칙 1장 드로우!", client.UserID, g.oneCardVulnerable),
+				Message: fmt.Sprintf("[%s]가 [%s]에게 원카드!를 외쳐 벌칙 1장 드로우!", client.UserID, victimName),
 				RoomID:  g.room.ID,
 			})
 			g.room.broadcastAll(notice)
@@ -633,7 +634,7 @@ func (g *OneCardGame) handleCallOneCard(client *Client) {
 			if len(g.hands[victimIdx]) > oneCardBankruptcyLimit {
 				victim := g.players[victimIdx]
 				g.losers = append(g.losers, victim.UserID)
-				g.oneCardVulnerable = ""
+				g.refreshOneCardVulnerableLocked()
 				msg := fmt.Sprintf("💀 [%s] 파산! (손패 %d장 초과)", victim.UserID, oneCardBankruptcyLimit)
 				notice, _ := json.Marshal(ServerResponse{Type: "game_notice", Message: msg, RoomID: g.room.ID})
 				g.room.broadcastAll(notice)
@@ -656,16 +657,9 @@ func (g *OneCardGame) handleCallOneCard(client *Client) {
 				g.sendStateToAllLocked()
 				return
 			}
-			// 원카드 취약 상태 갱신 (벌칙 후)
-			g.oneCardVulnerable = ""
-			for i := 0; i < oneCardMaxPlayers; i++ {
-				if g.players[i] != nil && len(g.hands[i]) == 1 {
-					g.oneCardVulnerable = g.players[i].UserID
-					break
-				}
-			}
+			g.refreshOneCardVulnerableLocked()
 		} else {
-			g.oneCardVulnerable = ""
+			g.refreshOneCardVulnerableLocked()
 		}
 	}
 	g.sendStateToAllLocked()
@@ -762,6 +756,31 @@ func (g *OneCardGame) playerIndex(c *Client) int {
 	return -1
 }
 
+// updateOneCardSafety는 손패 변화에 따라 isOneCardSafe를 갱신합니다.
+// 1장이 되면 미호출 상태(false), 2장 이상이면 안전(true). handleCallOneCard에서 본인 호출 시 true로 덮어씀.
+func (g *OneCardGame) updateOneCardSafety(idx int) {
+	if idx < 0 || idx >= oneCardMaxPlayers || g.players[idx] == nil {
+		return
+	}
+	userID := g.players[idx].UserID
+	if len(g.hands[idx]) == 1 {
+		g.isOneCardSafe[userID] = false // 1장이면 콜 전까지 취약
+	} else {
+		g.isOneCardSafe[userID] = true // 2장 이상이면 안전 (또는 0장=탈출)
+	}
+}
+
+// refreshOneCardVulnerableLocked는 oneCardVulnerable을 isOneCardSafe 기준으로 갱신합니다.
+func (g *OneCardGame) refreshOneCardVulnerableLocked() {
+	g.oneCardVulnerable = ""
+	for i := 0; i < oneCardMaxPlayers; i++ {
+		if g.players[i] != nil && len(g.hands[i]) == 1 && !g.isOneCardSafe[g.players[i].UserID] {
+			g.oneCardVulnerable = g.players[i].UserID
+			break
+		}
+	}
+}
+
 func (g *OneCardGame) newOneCardDeck() []Card {
 	deck := NewShuffledDeck()
 	deck = append(deck, oneCardBJoker, oneCardCJoker)
@@ -793,6 +812,7 @@ func (g *OneCardGame) startGameLocked() {
 	g.deck = deck
 	g.discardPile = nil
 	g.targetSuit = ""
+	g.isOneCardSafe = make(map[string]bool)
 	g.direction = 1
 	g.skipNext = false
 	g.attackPenalty = 0
@@ -1045,12 +1065,20 @@ func (g *OneCardGame) sendStateToClientLocked(client *Client) {
 			CardCount: len(g.hands[i]),
 			IsTurn:    i == g.currentTurn,
 			Status:    status,
+			IsSafe:    g.isOneCardSafe[g.players[i].UserID],
 		})
 	}
 
 	turnUser := ""
 	if g.players[g.currentTurn] != nil {
 		turnUser = g.players[g.currentTurn].UserID
+	}
+
+	targetSuitColor := ""
+	if g.targetSuit == "♥" || g.targetSuit == "♦" {
+		targetSuitColor = "red"
+	} else if g.targetSuit == "♠" || g.targetSuit == "♣" {
+		targetSuitColor = "black"
 	}
 
 	myHand := make([]Card, len(g.hands[idx]))
@@ -1063,6 +1091,7 @@ func (g *OneCardGame) sendStateToClientLocked(client *Client) {
 		Hand:              myHand,
 		TopCard:           g.topCard,
 		TargetSuit:        g.targetSuit,
+		TargetSuitColor:   targetSuitColor,
 		DeckCount:         len(g.deck),
 		DiscardCount:      len(g.discardPile),
 		Turn:              turnUser,
@@ -1104,6 +1133,7 @@ func (g *OneCardGame) sendStateToSpectatorLocked(client *Client) {
 			CardCount: len(g.hands[i]),
 			IsTurn:    i == g.currentTurn,
 			Status:    status,
+			IsSafe:    g.isOneCardSafe[g.players[i].UserID],
 		})
 	}
 	canTakeover := false
