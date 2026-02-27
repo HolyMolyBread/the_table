@@ -7,12 +7,20 @@
   // ── SoundManager (Web Audio API 피아노 효과음) ─────────────────────────────────
   const SoundManager = {
     _ctx: null,
+    _masterGainNode: null,
     _resumed: false,
     _getContext() {
       if (!this._ctx) {
         this._ctx = new (window.AudioContext || window.webkitAudioContext)();
+        this._masterGainNode = this._ctx.createGain();
+        this._masterGainNode.gain.value = 0.3;
+        this._masterGainNode.connect(this._ctx.destination);
       }
       return this._ctx;
+    },
+    _getMasterGain() {
+      this._getContext();
+      return this._masterGainNode;
     },
     async _ensureResumed() {
       const ctx = this._getContext();
@@ -24,11 +32,12 @@
     playPianoNote(frequency, duration) {
       try {
         const ctx = this._getContext();
+        const master = this._getMasterGain();
         this._ensureResumed().then(() => {
           const osc = ctx.createOscillator();
           const gain = ctx.createGain();
           osc.connect(gain);
-          gain.connect(ctx.destination);
+          gain.connect(master);
           osc.type = 'sine';
           osc.frequency.value = frequency;
           gain.gain.setValueAtTime(0, ctx.currentTime);
@@ -41,6 +50,28 @@
     }
   };
   window.SoundManager = SoundManager;
+
+  // 볼륨 슬라이더 → masterGainNode 연동
+  (function initVolumeSlider() {
+    const run = () => {
+      const slider = document.getElementById('volume-slider');
+      const icon = document.getElementById('vol-icon');
+      if (slider && window.SoundManager) {
+        slider.addEventListener('input', () => {
+          const v = parseFloat(slider.value);
+          if (window.SoundManager._getMasterGain()) {
+            window.SoundManager._getMasterGain().gain.value = v;
+          }
+          if (icon) icon.textContent = v <= 0 ? '🔇' : (v < 0.5 ? '🔈' : '🔊');
+        });
+      }
+    };
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', run);
+    } else {
+      run();
+    }
+  })();
 
   // ── State ──────────────────────────────────────────────────────────────────
   let actionCooldown = false;  // 게임 액션 광클 방지 (0.4초 쿨다운)

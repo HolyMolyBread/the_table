@@ -105,6 +105,29 @@ header {
 .header-btn:hover { border-color: var(--accent); color: var(--accent); }
 .header-btn.danger { border-color: var(--danger); color: var(--danger); }
 .header-btn.danger:hover { background: var(--danger); color: #fff; }
+
+/* ── 볼륨 조절 (헤더) ── */
+.header-volume-control {
+  display: flex; align-items: center; gap: 6px;
+  padding: 4px 8px; border-radius: var(--radius);
+  background: var(--bg-tertiary); border: 1px solid var(--border);
+}
+.header-volume-control #vol-icon { font-size: 14px; line-height: 1; }
+.header-volume-control #volume-slider {
+  width: 72px; height: 4px; -webkit-appearance: none; appearance: none;
+  background: var(--border); border-radius: 2px; outline: none;
+}
+.header-volume-control #volume-slider::-webkit-slider-thumb {
+  -webkit-appearance: none; appearance: none;
+  width: 12px; height: 12px; border-radius: 50%;
+  background: var(--accent); cursor: pointer;
+  box-shadow: 0 0 4px rgba(88,166,255,0.5);
+}
+.header-volume-control #volume-slider::-moz-range-thumb {
+  width: 12px; height: 12px; border-radius: 50%;
+  background: var(--accent); cursor: pointer; border: none;
+  box-shadow: 0 0 4px rgba(88,166,255,0.5);
+}
 /* ── App ── */
 #app { flex: 1; overflow: hidden; position: relative; display: flex; flex-direction: column; }
 
