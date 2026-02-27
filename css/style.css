@@ -526,12 +526,22 @@ header {
 .gomoku-cell.can-place { cursor: pointer; }
 .gomoku-cell.can-place:hover { background: rgba(0,0,0,0.12); border-radius: 50%; }
 .gomoku-stone {
-  position: absolute; width: 84%; height: 84%;
+  position: absolute; width: 80%; height: 80%;
   top: 50%; left: 50%; transform: translate(-50%,-50%);
   border-radius: 50%; z-index: 2; pointer-events: none;
+  box-sizing: border-box;
+  box-shadow: inset 0 -3px 6px rgba(0,0,0,0.3);
 }
-.gomoku-stone.black { background: radial-gradient(circle at 38% 35%, #777, #111); box-shadow: 2px 3px 7px rgba(0,0,0,0.65); }
-.gomoku-stone.white { background: radial-gradient(circle at 38% 35%, #fff, #c8c8c8); box-shadow: 2px 3px 7px rgba(0,0,0,0.3); border: 1px solid #999; }
+.gomoku-stone.black {
+  background: #1a1a1a;
+  border: 2px solid rgba(230, 237, 243, 0.3);
+  box-shadow: inset 0 -3px 6px rgba(0,0,0,0.3), inset 0 2px 4px rgba(255,255,255,0.1);
+}
+.gomoku-stone.white {
+  background: #fdfdfd;
+  border: 2px solid #30363d;
+  box-shadow: inset 0 -3px 6px rgba(0,0,0,0.3), 0 2px 5px rgba(0,0,0,0.2);
+}
 .gomoku-stone.last-move::after {
   content: ''; position: absolute; width: 28%; height: 28%;
   background: rgba(230,30,30,0.9); border-radius: 50%;
