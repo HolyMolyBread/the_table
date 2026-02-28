@@ -217,6 +217,10 @@ func (g *ThiefGame) OnLeave(client *Client, remainingCount int) {
 	g.gameStarted = false
 	g.startReady = make(map[*Client]bool)
 	g.rematchReady = make(map[*Client]bool)
+	upd, _ := json.Marshal(ReadyUpdateMessage{
+		Type: "ready_update", RoomID: g.room.ID, ReadyCount: 0, TotalCount: totalCount,
+	})
+	g.room.broadcastAll(upd)
 	log.Printf("[THIEF] room:[%s] [%s] 퇴장 — 매치 종료", g.room.ID, client.UserID)
 }
 
@@ -429,6 +433,12 @@ func (g *ThiefGame) handleDraw(client *Client, targetID string, drawIndex int) {
 			room.broadcastAll(data)
 			g.gameStarted = false
 			g.stopTurnTimerLocked()
+			g.startReady = make(map[*Client]bool)
+			g.rematchReady = make(map[*Client]bool)
+			upd, _ := json.Marshal(ReadyUpdateMessage{
+				Type: "ready_update", RoomID: room.ID, ReadyCount: 0, TotalCount: totalCount,
+			})
+			room.broadcastAll(upd)
 			return
 		}
 
@@ -637,6 +647,12 @@ func (g *ThiefGame) startGameLocked() {
 			})
 			room.broadcastAll(data)
 			g.gameStarted = false
+			g.startReady = make(map[*Client]bool)
+			g.rematchReady = make(map[*Client]bool)
+			upd, _ := json.Marshal(ReadyUpdateMessage{
+				Type: "ready_update", RoomID: room.ID, ReadyCount: 0, TotalCount: totalCount,
+			})
+			room.broadcastAll(upd)
 			return
 		}
 

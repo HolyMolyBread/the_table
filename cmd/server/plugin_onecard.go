@@ -217,6 +217,10 @@ func (g *OneCardGame) OnLeave(client *Client, remainingCount int) {
 		g.startReady = make(map[*Client]bool)
 		g.rematchReady = make(map[*Client]bool)
 		g.stopTurnTimerLocked()
+		upd, _ := json.Marshal(ReadyUpdateMessage{
+			Type: "ready_update", RoomID: g.room.ID, ReadyCount: 0, TotalCount: totalCount,
+		})
+		g.room.broadcastAll(upd)
 		log.Printf("[ONECARD] room:[%s] [%s] 퇴장 — 매치 종료 (losers 추가)", g.room.ID, client.UserID)
 		return
 	}
@@ -266,6 +270,10 @@ func (g *OneCardGame) OnLeave(client *Client, remainingCount int) {
 	g.gameStarted = false
 	g.startReady = make(map[*Client]bool)
 	g.rematchReady = make(map[*Client]bool)
+	upd, _ := json.Marshal(ReadyUpdateMessage{
+		Type: "ready_update", RoomID: g.room.ID, ReadyCount: 0, TotalCount: totalCount,
+	})
+	g.room.broadcastAll(upd)
 	log.Printf("[ONECARD] room:[%s] [%s] 퇴장 — 매치 종료 (생존자 부족)", g.room.ID, client.UserID)
 }
 
@@ -492,6 +500,12 @@ func (g *OneCardGame) handlePlay(client *Client, index int, targetSuit string) {
 			g.room.broadcastAll(data)
 			g.gameStarted = false
 			g.stopTurnTimerLocked()
+			g.startReady = make(map[*Client]bool)
+			g.rematchReady = make(map[*Client]bool)
+			upd, _ := json.Marshal(ReadyUpdateMessage{
+				Type: "ready_update", RoomID: g.room.ID, ReadyCount: 0, TotalCount: totalCount,
+			})
+			g.room.broadcastAll(upd)
 			return
 		}
 	}
@@ -582,6 +596,12 @@ func (g *OneCardGame) handleDraw(client *Client) {
 			g.room.broadcastAll(data)
 			g.gameStarted = false
 			g.stopTurnTimerLocked()
+			g.startReady = make(map[*Client]bool)
+			g.rematchReady = make(map[*Client]bool)
+			upd, _ := json.Marshal(ReadyUpdateMessage{
+				Type: "ready_update", RoomID: g.room.ID, ReadyCount: 0, TotalCount: totalCount,
+			})
+			g.room.broadcastAll(upd)
 			return
 		}
 	}
@@ -652,6 +672,12 @@ func (g *OneCardGame) handleCallOneCard(client *Client) {
 					g.room.broadcastAll(data)
 					g.gameStarted = false
 					g.stopTurnTimerLocked()
+					g.startReady = make(map[*Client]bool)
+					g.rematchReady = make(map[*Client]bool)
+					upd, _ := json.Marshal(ReadyUpdateMessage{
+						Type: "ready_update", RoomID: g.room.ID, ReadyCount: 0, TotalCount: totalCount,
+					})
+					g.room.broadcastAll(upd)
 					return
 				}
 				g.sendStateToAllLocked()

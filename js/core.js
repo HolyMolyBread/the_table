@@ -1117,6 +1117,18 @@
     clearTimeout(modal._autoClose);
   }
 
+  /** 게임 종료 후 준비 레이어 강제 표시 (블랙잭 레이드 정산 등) */
+  window.showReadyLayerForGameEnd = function(total) {
+    const n = total ?? 2;
+    const readyArea = document.getElementById('ready-area');
+    const readyBtn = document.getElementById('btn-ready');
+    if (readyArea) readyArea.style.display = 'flex';
+    if (readyBtn) { readyBtn.style.display = 'block'; readyBtn.disabled = false; }
+    document.getElementById('ready-count').textContent = `0/${n}`;
+    const rematchArea = document.getElementById('rematch-area');
+    if (rematchArea) rematchArea.style.display = 'none';
+  };
+
   /** 현재 입장한 방의 접두사에 맞는 룰 모달을 표시합니다. */
   function showCurrentRules() {
     const prefix = currentRoomId.startsWith('omok')           ? 'omok'
@@ -1330,19 +1342,31 @@
               }
               if (parsed.rematchEnabled) {
                 const total = parsed.data?.totalCount ?? 2;
-                if (currentRoomId && currentRoomId.startsWith('alkkagi')) {
+                const readyArea = document.getElementById('ready-area');
+                const readyBtn = document.getElementById('btn-ready');
+                const rematchArea = document.getElementById('rematch-area');
+                const useReadyArea = currentRoomId && (
+                  currentRoomId.startsWith('alkkagi') ||
+                  currentRoomId.startsWith('blackjack_raid') ||
+                  currentRoomId.startsWith('mahjong') ||
+                  currentRoomId.startsWith('mahjong3') ||
+                  currentRoomId.startsWith('holdem') ||
+                  currentRoomId.startsWith('sevenpoker') ||
+                  currentRoomId.startsWith('thief') ||
+                  currentRoomId.startsWith('onecard') ||
+                  currentRoomId.startsWith('tetris') ||
+                  currentRoomId.startsWith('duel') ||
+                  currentRoomId.startsWith('suika')
+                );
+                if (useReadyArea) {
+                  if (readyArea) readyArea.style.display = 'flex';
+                  if (readyBtn) { readyBtn.style.display = 'block'; readyBtn.disabled = false; }
                   document.getElementById('ready-count').textContent = `0/${total}`;
-                  document.getElementById('btn-ready').disabled = false;
-                  const readyArea = document.getElementById('ready-area');
-                  if (readyArea) { readyArea.style.display = 'flex'; }
-                  const rematchArea = document.getElementById('rematch-area');
-                  if (rematchArea) { rematchArea.style.display = 'none'; }
+                  if (rematchArea) rematchArea.style.display = 'none';
                 } else {
                   document.getElementById('rematch-count').textContent = `0/${total}`;
                   document.getElementById('btn-rematch').disabled = false;
-                  const rematchArea = document.getElementById('rematch-area');
-                  rematchArea.style.display = 'flex';
-                  rematchArea.classList.add('visible');
+                  if (rematchArea) { rematchArea.style.display = 'flex'; rematchArea.classList.add('visible'); }
                 }
               }
               break;
@@ -1354,10 +1378,12 @@
               const ready = parsed.readyCount ?? 0;
               const total = parsed.totalCount ?? 0;
               const readyBtn = document.getElementById('btn-ready');
+              const readyArea = document.getElementById('ready-area');
               document.getElementById('ready-count').textContent = `${ready}/${total}`;
+              if (ready < total && readyBtn) readyBtn.style.display = 'block';
               if (parsed.myReady === true && readyBtn) readyBtn.style.display = 'none';
               if (ready >= total && total > 1) {
-                document.getElementById('ready-area').style.display = 'none';
+                if (readyArea) readyArea.style.display = 'none';
                 if (readyBtn) readyBtn.disabled = false;
               }
               break;

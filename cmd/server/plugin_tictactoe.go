@@ -396,6 +396,17 @@ func (g *TicTacToeGame) endGameLocked() {
 	g.board        = [3][3]int{}
 	g.gameStarted  = false
 	g.rematchReady = [2]bool{}
+	g.startReady   = [2]bool{}
+	total := 0
+	for i := 0; i < 2; i++ {
+		if g.players[i] != nil {
+			total++
+		}
+	}
+	upd, _ := json.Marshal(ReadyUpdateMessage{
+		Type: "ready_update", RoomID: g.room.ID, ReadyCount: 0, TotalCount: total,
+	})
+	g.room.broadcastAll(upd)
 }
 
 // resetLocked는 게임 상태와 players를 모두 초기화합니다.

@@ -399,7 +399,18 @@ func (g *IndianGame) endGameLocked(winnerIdx, loserIdx int) {
 	g.phase = "waiting"
 	g.currentTurn = 0
 	g.rematchReady = [2]bool{}
+	g.startReady = [2]bool{}
 	g.stopTurnTimerLocked()
+	total := 0
+	for i := 0; i < 2; i++ {
+		if g.players[i] != nil {
+			total++
+		}
+	}
+	upd, _ := json.Marshal(ReadyUpdateMessage{
+		Type: "ready_update", RoomID: g.room.ID, ReadyCount: 0, TotalCount: total,
+	})
+	g.room.broadcastAll(upd)
 }
 
 // ── 라운드 관리 ───────────────────────────────────────────────────────────────

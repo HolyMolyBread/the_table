@@ -324,6 +324,10 @@
     window.bjResultTimer = setTimeout(() => {
       overlayEl.style.display = 'none';
       window.bjResultTimer = null;
+      if (typeof window.showReadyLayerForGameEnd === 'function') {
+        const total = gameResultData.data?.totalCount ?? 2;
+        window.showReadyLayerForGameEnd(total);
+      }
     }, 5000);
   }
 

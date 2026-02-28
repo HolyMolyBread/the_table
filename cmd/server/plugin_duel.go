@@ -301,6 +301,10 @@ func (g *DuelGame) endDuelFoulLocked(foulIdx int, foulUserID string) {
 	g.room.broadcastAll(msg)
 	g.phase = "waiting"
 	g.startReady = [2]bool{false, false}
+	upd, _ := json.Marshal(ReadyUpdateMessage{
+		Type: "ready_update", RoomID: g.room.ID, ReadyCount: 0, TotalCount: totalCount,
+	})
+	g.room.broadcastAll(upd)
 }
 
 func (g *DuelGame) resolveDuelLocked() {
@@ -344,6 +348,10 @@ func (g *DuelGame) resolveDuelLocked() {
 	g.room.broadcastAll(msg)
 	g.phase = "waiting"
 	g.startReady = [2]bool{false, false}
+	upd, _ := json.Marshal(ReadyUpdateMessage{
+		Type: "ready_update", RoomID: g.room.ID, ReadyCount: 0, TotalCount: totalCount,
+	})
+	g.room.broadcastAll(upd)
 }
 
 func (g *DuelGame) sendStateToAllLocked() {

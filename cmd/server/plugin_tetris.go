@@ -404,6 +404,16 @@ func (g *TetrisGame) gameOverLocked() {
 	})
 	g.room.broadcastAll(msg)
 	g.resetLocked()
+	total := 0
+	for i := 0; i < tetrisMaxPlayers; i++ {
+		if g.players[i] != nil {
+			total++
+		}
+	}
+	upd, _ := json.Marshal(ReadyUpdateMessage{
+		Type: "ready_update", RoomID: g.room.ID, ReadyCount: 0, TotalCount: total,
+	})
+	g.room.broadcastAll(upd)
 }
 
 func (g *TetrisGame) clientSlot(client *Client) int {

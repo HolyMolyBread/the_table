@@ -508,6 +508,12 @@ func (g *BlackjackPVPGame) finishGameOverLocked(playerWin bool) {
 		Data:           resultData,
 	})
 	g.room.broadcastAll(data)
+	g.readyStatus = make(map[string]bool)
+	total := len(g.players)
+	upd, _ := json.Marshal(ReadyUpdateMessage{
+		Type: "ready_update", RoomID: g.room.ID, ReadyCount: 0, TotalCount: total,
+	})
+	g.room.broadcastAll(upd)
 	g.broadcastStateLocked(msg)
 }
 

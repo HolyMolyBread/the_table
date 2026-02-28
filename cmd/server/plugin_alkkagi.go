@@ -15,6 +15,8 @@ const (
 	alkkagiPlacementTime   = 20
 	alkkagiBoardSize       = 15
 	alkkagiCellPx          = 28
+	alkkagiBoundsMin       = -40
+	alkkagiBoundsMax       = 540
 )
 
 // ── 응답 타입 ─────────────────────────────────────────────────────────────────
@@ -555,7 +557,13 @@ func (g *AlkkagiGame) handleSyncLocked(client *Client, payload json.RawMessage) 
 			}
 		}
 	}
-	g.stones = p.Stones
+	filtered := make([]AlkkagiStone, 0, len(p.Stones))
+	for _, s := range p.Stones {
+		if s.X >= alkkagiBoundsMin && s.X <= alkkagiBoundsMax && s.Y >= alkkagiBoundsMin && s.Y <= alkkagiBoundsMax {
+			filtered = append(filtered, s)
+		}
+	}
+	g.stones = filtered
 	g.broadcastStateLocked()
 
 	// 승패 판정: 특정 색상 돌이 0개면 해당 유저 패배

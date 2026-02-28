@@ -16,6 +16,8 @@
   const ALKKAGI_W = 420, ALKKAGI_H = 420;
   const ALKKAGI_CELL = 28;
   const ALKKAGI_GRID = 15;
+  const ALKKAGI_VIEW = 500;      // 물리 엔진 캔버스 크기
+  const ALKKAGI_OFFSET = 40;     // 보드 좌상단 오프셋 (캔버스 내 중앙 배치)
 
   const ALKKAGI_JANGGI = {
     K: { maxPower: 0.084, mass: 4.0, radius: 24, char: '將' },
@@ -73,6 +75,10 @@
       x: (col + 0.5) * ALKKAGI_CELL,
       y: (row + 0.5) * ALKKAGI_CELL
     };
+  }
+  function cellToPxWorld(col, row) {
+    const p = cellToPx(col, row);
+    return { x: p.x + ALKKAGI_OFFSET, y: p.y + ALKKAGI_OFFSET };
   }
 
   function getValidChessMoves(stone, allStones) {
@@ -405,6 +411,7 @@
   function initAlkkagiPhysics(container, data) {
     const M = Matter;
     const W = ALKKAGI_W, H = ALKKAGI_H;
+    const O = ALKKAGI_OFFSET;
 
     const engine = M.Engine.create();
     engine.gravity.x = 0;
@@ -428,7 +435,9 @@
         fill = s.color === 1 ? '#fff5f5' : '#1a1a2e';
         stroke = s.color === 1 ? '#dc2626' : '#22c55e';
       }
-      const body = M.Bodies.circle(s.x || 100, s.y || 100, radius, {
+      const wx = (s.x || 100) + O;
+      const wy = (s.y || 100) + O;
+      const body = M.Bodies.circle(wx, wy, radius, {
         friction: 0.05, frictionAir: 0.02, restitution: 0.5,
         render: { fillStyle: fill, strokeStyle: stroke, lineWidth: 2 },
       });
@@ -444,28 +453,46 @@
       element: container,
       engine: engine,
       options: {
-        width: W,
-        height: H,
+        width: ALKKAGI_VIEW,
+        height: ALKKAGI_VIEW,
         wireframes: false,
-        background: '#c8a45a',
+        background: '#1a1a2e',
       },
     });
     M.Render.run(render);
 
     M.Events.on(render, 'beforeRender', function() {
       const ctx = render.context;
-      ctx.strokeStyle = 'rgba(122,80,16,0.7)';
-      ctx.lineWidth = 1.2;
-      const cellW = W / 15, cellH = H / 15;
+      ctx.fillStyle = '#c8a45a';
+      ctx.fillRect(O, O, W, H);
+      ctx.strokeStyle = 'rgba(122,80,16,0.9)';
+      ctx.lineWidth = 1.4;
+      const cellW = ALKKAGI_CELL, cellH = ALKKAGI_CELL;
       for (let i = 0; i <= 15; i++) {
         ctx.beginPath();
-        ctx.moveTo(i * cellW, 0);
-        ctx.lineTo(i * cellW, H);
+        ctx.moveTo(O + i * cellW, O);
+        ctx.lineTo(O + i * cellW, O + H);
         ctx.stroke();
         ctx.beginPath();
-        ctx.moveTo(0, i * cellH);
-        ctx.lineTo(W, i * cellH);
+        ctx.moveTo(O, O + i * cellH);
+        ctx.lineTo(O + W, O + i * cellH);
         ctx.stroke();
+      }
+      if (alkkagiMode === 'janggi') {
+        ctx.strokeStyle = 'rgba(122,80,16,0.85)';
+        ctx.lineWidth = 1.6;
+        const palace = (topRow, leftCol) => {
+          const x0 = O + leftCol * cellW, y0 = O + topRow * cellH;
+          const x1 = x0 + 3 * cellW, y1 = y0 + 3 * cellH;
+          ctx.beginPath();
+          ctx.moveTo(x0, y0);
+          ctx.lineTo(x1, y1);
+          ctx.moveTo(x1, y0);
+          ctx.lineTo(x0, y1);
+          ctx.stroke();
+        };
+        palace(0, 6);
+        palace(12, 6);
       }
     });
 
@@ -494,7 +521,7 @@
         ctx.strokeStyle = 'rgba(255,255,255,0.8)';
         ctx.lineWidth = 2;
         alkkagiValidGuides.forEach(g => {
-          const p = cellToPx(g.col, g.row);
+          const p = cellToPxWorld(g.col, g.row);
           ctx.beginPath();
           ctx.arc(p.x, p.y, 14, 0, Math.PI * 2);
           ctx.fill();
@@ -509,20 +536,35 @@
         const dist = Math.sqrt(dx * dx + dy * dy) || 1;
         const ux = dx / dist;
         const uy = dy / dist;
-        ctx.strokeStyle = 'rgba(255,255,255,0.9)';
-        ctx.lineWidth = 3;
+        const role = (b.alkkagiRole || '').toUpperCase();
+        const cfg = getAlkkagiCfg(role, alkkagiMode);
+        const cellDist = dist / ALKKAGI_CELL;
+        const massFactor = cfg.mass;
+        let forceMag = Math.min(cellDist * 0.012, cfg.maxPower) * massFactor;
+        forceMag = Math.min(forceMag, cfg.maxPower * massFactor);
+        const atMaxPower = forceMag >= cfg.maxPower * massFactor * 0.98;
+        ctx.strokeStyle = atMaxPower ? 'rgba(239,68,68,0.95)' : 'rgba(255,255,255,0.9)';
+        ctx.lineWidth = atMaxPower ? 5 : 3;
         ctx.beginPath();
         ctx.moveTo(b.position.x, b.position.y);
         ctx.lineTo(end.x, end.y);
         ctx.stroke();
+        const maxDistPx = (cfg.maxPower / 0.012) * ALKKAGI_CELL;
+        ctx.setLineDash([6, 6]);
+        ctx.strokeStyle = atMaxPower ? 'rgba(239,68,68,0.6)' : 'rgba(88,166,255,0.5)';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.arc(b.position.x, b.position.y, maxDistPx, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.setLineDash([]);
         const numDots = 5;
         const step = dist / (numDots + 1);
         for (let i = 1; i <= numDots; i++) {
           const px = b.position.x + ux * step * i;
           const py = b.position.y + uy * step * i;
           const r = Math.max(3, 6 - i * 0.8);
-          ctx.fillStyle = 'rgba(255,255,255,0.85)';
-          ctx.strokeStyle = 'rgba(88,166,255,0.9)';
+          ctx.fillStyle = atMaxPower ? 'rgba(239,68,68,0.85)' : 'rgba(255,255,255,0.85)';
+          ctx.strokeStyle = atMaxPower ? 'rgba(239,68,68,0.95)' : 'rgba(88,166,255,0.9)';
           ctx.lineWidth = 1.5;
           ctx.beginPath();
           ctx.arc(px, py, r, 0, Math.PI * 2);
@@ -546,7 +588,7 @@
         const speed = Math.sqrt(v.x * v.x + v.y * v.y);
         if (speed > 0.1) isMoving = true;
         const x = b.position.x, y = b.position.y;
-        if (x < -50 || x > 470 || y < -50 || y > 470) {
+        if (x < -40 || x > 540 || y < -40 || y > 540) {
           if (window.SoundManager) window.SoundManager.playPianoNote(130.81, 0.25);
           M.Composite.remove(world, b);
           delete alkkagiBodies[b.alkkagiId];
@@ -561,8 +603,8 @@
           if (b && world.bodies.includes(b)) {
             currentStones.push({
               id: b.alkkagiId,
-              x: b.position.x,
-              y: b.position.y,
+              x: b.position.x - O,
+              y: b.position.y - O,
               velX: b.velocity.x,
               velY: b.velocity.y,
               color: b.alkkagiColor,
@@ -621,7 +663,7 @@
       Object.keys(alkkagiBodies).forEach(id => {
         const b = alkkagiBodies[id];
         if (b && world.bodies.includes(b)) {
-          list.push({ x: b.position.x, y: b.position.y, color: b.alkkagiColor });
+          list.push({ x: b.position.x - O, y: b.position.y - O, color: b.alkkagiColor });
         }
       });
       return list;
@@ -630,7 +672,7 @@
     function hitTestGuide(pos) {
       for (let i = 0; i < alkkagiValidGuides.length; i++) {
         const g = alkkagiValidGuides[i];
-        const p = cellToPx(g.col, g.row);
+        const p = cellToPxWorld(g.col, g.row);
         const dx = pos.x - p.x;
         const dy = pos.y - p.y;
         if (dx * dx + dy * dy <= 20 * 20) return i;
@@ -678,7 +720,7 @@
         if (guideIdx >= 0 && alkkagiSelectedStone) {
           const body = alkkagiSelectedStone;
           const g = alkkagiValidGuides[guideIdx];
-          const targetPx = cellToPx(g.col, g.row);
+          const targetPx = cellToPxWorld(g.col, g.row);
           applySlingshotFlick(body, body.position, targetPx, true);
           alkkagiSelectedStone = null;
           alkkagiValidGuides = [];
@@ -696,7 +738,7 @@
       if (hit.length > 0) {
         const body = hit[0];
         if (alkkagiMode === 'chess') {
-          const stoneData = { x: body.position.x, y: body.position.y, color: body.alkkagiColor, role: body.alkkagiRole };
+          const stoneData = { x: body.position.x - O, y: body.position.y - O, color: body.alkkagiColor, role: body.alkkagiRole };
           alkkagiValidGuides = getValidChessMoves(stoneData, getStonesForMoves());
           alkkagiSelectedStone = body;
           if (window.SoundManager) {
@@ -787,15 +829,17 @@
         fill = s.color === 1 ? '#fff5f5' : '#1a1a2e';
         stroke = s.color === 1 ? '#dc2626' : '#22c55e';
       }
+      const wx = (s.x || 100) + ALKKAGI_OFFSET;
+      const wy = (s.y || 100) + ALKKAGI_OFFSET;
       if (body) {
-        Matter.Body.setPosition(body, { x: s.x, y: s.y });
+        Matter.Body.setPosition(body, { x: wx, y: wy });
         Matter.Body.setVelocity(body, { x: s.velX || 0, y: s.velY || 0 });
         Matter.Body.setMass(body, mass);
         body.alkkagiRole = role;
       } else {
         const M = Matter;
         const radius = getAlkkagiRadius(role, alkkagiMode);
-        body = M.Bodies.circle(s.x || 100, s.y || 100, radius, {
+        body = M.Bodies.circle(wx, wy, radius, {
           friction: 0.05, frictionAir: 0.02, restitution: 0.5,
           render: { fillStyle: fill, strokeStyle: stroke, lineWidth: 2 },
         });

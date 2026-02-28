@@ -768,6 +768,11 @@ func (g *SevenPokerGame) endMatchLocked() {
 		g.choiceDone[i] = false
 	}
 	g.deck = nil
+	g.startReady = make(map[*Client]bool)
+	upd, _ := json.Marshal(ReadyUpdateMessage{
+		Type: "ready_update", RoomID: g.room.ID, ReadyCount: 0, TotalCount: totalCount,
+	})
+	g.room.broadcastAll(upd)
 }
 
 func (g *SevenPokerGame) startRoundLocked() {

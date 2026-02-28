@@ -667,6 +667,11 @@ func (g *HoldemGame) endMatchLocked() {
 	}
 	g.communityCards = [5]Card{}
 	g.deck = nil
+	g.startReady = make(map[*Client]bool)
+	upd, _ := json.Marshal(ReadyUpdateMessage{
+		Type: "ready_update", RoomID: g.room.ID, ReadyCount: 0, TotalCount: totalCount,
+	})
+	g.room.broadcastAll(upd)
 }
 
 func (g *HoldemGame) startRoundLocked() {
