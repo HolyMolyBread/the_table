@@ -34,9 +34,21 @@
     const meSlotEl = document.getElementById('sevenpoker-me-slot');
     if (playersEl && data.players) {
       const players = data.players;
-      const numPlayers = 4;
-      const myIdx = (players.find(p => p.userId === currentUserId)?.playerIdx ?? players.findIndex(p => p.userId === currentUserId)) % numPlayers;
-      const RELATIVE_TO_SEAT = { 1: 'seat-left', 2: 'seat-top', 3: 'seat-right' };
+      const totalPlayers = players.length;
+      const myIdx = players.find(p => p.userId === currentUserId)?.playerIdx ?? players.findIndex(p => p.userId === currentUserId);
+      let seatMap;
+      if (totalPlayers === 2) {
+        seatMap = { top: (myIdx + 1) % 2, left: -1, right: -1 };
+      } else if (totalPlayers === 3) {
+        seatMap = { right: (myIdx + 1) % 3, top: (myIdx + 2) % 3, left: -1 };
+      } else {
+        const n = totalPlayers;
+        seatMap = { right: (myIdx + 1) % n, top: (myIdx + 2) % n, left: (myIdx + 3) % n };
+      }
+      const idxToSeat = {};
+      if (seatMap.top >= 0) idxToSeat[seatMap.top] = 'seat-top';
+      if (seatMap.left >= 0) idxToSeat[seatMap.left] = 'seat-left';
+      if (seatMap.right >= 0) idxToSeat[seatMap.right] = 'seat-right';
 
       function renderPlayerBox(p, seatClass) {
         const isMe = p.userId === currentUserId;
@@ -64,12 +76,12 @@
       }
 
       const opponents = players
-        .map(p => ({ ...p, relativeIdx: ((p.playerIdx ?? players.indexOf(p)) - myIdx + numPlayers) % numPlayers }))
-        .filter(p => p.relativeIdx !== 0)
-        .sort((a, b) => a.relativeIdx - b.relativeIdx);
+        .map((p, i) => ({ ...p, playerIdx: p.playerIdx ?? i }))
+        .filter(p => p.userId !== currentUserId && idxToSeat[p.playerIdx])
+        .sort((a, b) => a.playerIdx - b.playerIdx);
       const me = players.find(p => p.userId === currentUserId);
 
-      playersEl.innerHTML = opponents.map(p => renderPlayerBox(p, RELATIVE_TO_SEAT[p.relativeIdx] || 'seat-top')).join('');
+      playersEl.innerHTML = opponents.map(p => renderPlayerBox(p, idxToSeat[p.playerIdx])).join('');
       if (meSlotEl && me) {
         meSlotEl.innerHTML = renderPlayerBox(me, null);
       }

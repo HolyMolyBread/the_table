@@ -18,6 +18,7 @@
     const ready = isReady === true;
     const readyBtnText = ready ? '✓ 준비 완료' : '준비';
     const readyBtnDisabled = ready ? ' disabled' : '';
+    const readyBtnStyle = ready ? ' style="display:none"' : '';
     const cardsHtml = (handInfo.cards || []).map(card => {
       if (card.hidden) return `<div class="bj-card hidden"></div>`;
       const suit = card.suit || card.Suit || '';
@@ -33,7 +34,7 @@
     const actionsHtml = showActions ? `
       <div class="bj-player-actions">
         <div id="bj-start-buttons">
-          <button class="bj-btn bj-btn-bet" id="bj-ready-btn" onclick="bjStart()"${readyBtnDisabled}>${readyBtnText}</button>
+          <button class="bj-btn bj-btn-bet" id="bj-ready-btn" onclick="bjStart()"${readyBtnDisabled}${readyBtnStyle}>${readyBtnText}</button>
         </div>
         <div id="bj-game-buttons" style="display:none">
           <button class="bj-btn bj-btn-hit" onclick="bjHit()">Hit</button>
@@ -78,12 +79,24 @@
 
     if (players) {
       const turnOrder = data.turnOrder || data.TurnOrder || Object.keys(players);
-      const numPlayers = turnOrder.length;
+      const totalPlayers = turnOrder.length;
       const myIdx = turnOrder.indexOf(currentUserId);
       const currentTurnIdx = data.currentTurnIdx ?? data.CurrentTurnIdx ?? 0;
-      const ordered = turnOrder
-        .map((userId, i) => ({ userId, playerIdx: i, relativeIdx: (i - myIdx + numPlayers) % numPlayers }))
-        .sort((a, b) => a.relativeIdx - b.relativeIdx);
+      let seatMap;
+      if (totalPlayers === 2) {
+        seatMap = { top: (myIdx + 1) % 2, left: -1, right: -1 };
+      } else if (totalPlayers === 3) {
+        seatMap = { right: (myIdx + 1) % 3, top: (myIdx + 2) % 3, left: -1 };
+      } else {
+        const n = totalPlayers;
+        seatMap = { right: (myIdx + 1) % n, top: (myIdx + 2) % n, left: (myIdx + 3) % n };
+      }
+      const order = [];
+      if (seatMap.right >= 0) order.push(seatMap.right);
+      if (seatMap.top >= 0) order.push(seatMap.top);
+      order.push(myIdx);
+      if (seatMap.left >= 0) order.push(seatMap.left);
+      const ordered = order.map(i => ({ userId: turnOrder[i], playerIdx: i }));
       const readyStatus = data.ReadyStatus || data.readyStatus || {};
       playersRowEl.innerHTML = ordered.map(({ userId }) => {
         const p = players[userId];
@@ -123,6 +136,31 @@
         boxEl.classList.add('lose');
       } else {
         boxEl.classList.add('push');
+      }
+
+      const raidDetailsEl = document.getElementById('bj-raid-details');
+      if (raidDetailsEl && data.raidResult) {
+        const rr = data.raidResult;
+        let html = '';
+        if (rr.dealerDamage != null && rr.dealerDamage > 0) {
+          html += `<div style="margin-bottom:8px;">👿 딜러 피해: -${rr.dealerDamage}HP</div>`;
+        }
+        if (rr.dealerHp != null) {
+          const dealerHeartsEl = document.getElementById('bj-dealer-hearts');
+          if (dealerHeartsEl) dealerHeartsEl.innerHTML = renderBJHeartsBar(rr.dealerHp);
+        }
+        if (rr.playerChanges && typeof rr.playerChanges === 'object') {
+          Object.entries(rr.playerChanges).forEach(([userId, diff]) => {
+            const label = userId === currentUserId ? '나' : escapeHTML(userId);
+            const sign = diff >= 0 ? '+' : '';
+            html += `<div style="margin-bottom:4px;">👤 ${label}: ${sign}${diff}HP</div>`;
+          });
+        }
+        raidDetailsEl.innerHTML = html;
+        raidDetailsEl.style.display = html ? 'block' : 'none';
+      } else if (raidDetailsEl) {
+        raidDetailsEl.innerHTML = '';
+        raidDetailsEl.style.display = 'none';
       }
 
       overlayEl.style.display = 'flex';
@@ -186,6 +224,8 @@
   function bjStart() {
     if (!ws || ws.readyState !== WebSocket.OPEN || !currentRoomId) return;
     sendGameAction({ cmd: 'ready' });
+    const btn = document.getElementById('bj-ready-btn');
+    if (btn) btn.style.display = 'none';
   }
   function bjHit() {
     if (!ws || ws.readyState !== WebSocket.OPEN) return;
@@ -216,6 +256,7 @@
       message: data.message,
       mainPlayerId: currentUserId,
       gameOverPlayerWin: data.gameOverWin,
+      raidResult: data.raidResult,
       _isMyTurn: isMyTurn,
       _turnOrder: turnOrder,
       _currentTurnIdx: data.currentTurnIdx ?? data.CurrentTurnIdx,
@@ -248,5 +289,44 @@
     }
   }
 
+  function showBlackjackRaidResultOverlay(gameResultData) {
+    const overlayEl = document.getElementById('bj-result-overlay');
+    const boxEl = document.getElementById('bj-result-box');
+    const msgTextEl = document.getElementById('bj-result-msg');
+    const raidDetailsEl = document.getElementById('bj-raid-details');
+    if (!overlayEl || !boxEl || !msgTextEl) return;
+    msgTextEl.textContent = gameResultData.message || '게임 종료';
+    boxEl.className = 'unified-result-box';
+    boxEl.classList.toggle('win', gameResultData.data?.playerWin === true);
+    boxEl.classList.toggle('lose', gameResultData.data?.playerWin === false);
+    if (raidDetailsEl && gameResultData.data) {
+      const d = gameResultData.data;
+      let html = '';
+      if (d.dealerDamage != null && d.dealerDamage > 0) {
+        html += `<div style="margin-bottom:8px;">👿 딜러 피해: -${d.dealerDamage}HP</div>`;
+      }
+      if (d.dealerHp != null) {
+        const dealerHeartsEl = document.getElementById('bj-dealer-hearts');
+        if (dealerHeartsEl) dealerHeartsEl.innerHTML = renderBJHeartsBar(d.dealerHp);
+      }
+      if (d.playerChanges && typeof d.playerChanges === 'object') {
+        Object.entries(d.playerChanges).forEach(([userId, diff]) => {
+          const label = userId === currentUserId ? '나' : escapeHTML(userId);
+          const sign = diff >= 0 ? '+' : '';
+          html += `<div style="margin-bottom:4px;">👤 ${label}: ${sign}${diff}HP</div>`;
+        });
+      }
+      raidDetailsEl.innerHTML = html;
+      raidDetailsEl.style.display = html ? 'block' : 'none';
+    }
+    overlayEl.style.display = 'flex';
+    if (window.bjResultTimer) clearTimeout(window.bjResultTimer);
+    window.bjResultTimer = setTimeout(() => {
+      overlayEl.style.display = 'none';
+      window.bjResultTimer = null;
+    }, 5000);
+  }
+
   window.renderBlackjackPVPState = renderBlackjackPVPState;
   window.adaptPVPToPVEData = adaptPVPToPVEData;
+  window.showBlackjackRaidResultOverlay = showBlackjackRaidResultOverlay;

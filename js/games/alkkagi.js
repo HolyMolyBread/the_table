@@ -18,20 +18,22 @@
   const ALKKAGI_GRID = 15;
 
   const ALKKAGI_JANGGI = {
-    K: { maxPower: 0.07, mass: 3.5, char: '將' },
-    R: { maxPower: 0.065, mass: 2.2, char: '車' },
-    P: { maxPower: 0.06, mass: 1.8, char: '包' },
-    H: { maxPower: 0.055, mass: 1.4, char: '馬' },
-    E: { maxPower: 0.05, mass: 1.1, char: '象' }
+    K: { maxPower: 0.084, mass: 4.0, radius: 24, char: '將' },
+    R: { maxPower: 0.078, mass: 2.5, radius: 20, char: '車' },
+    P: { maxPower: 0.072, mass: 2.0, radius: 19, char: '包' },
+    H: { maxPower: 0.066, mass: 1.6, radius: 18, char: '馬' },
+    E: { maxPower: 0.066, mass: 1.6, radius: 18, char: '象' },
+    S: { maxPower: 0.06, mass: 1.2, radius: 15, char: '卒' }
   };
   const ALKKAGI_CHESS = {
-    K: { maxPower: 0.07, mass: 3.5, char: '♔' },
-    Q: { maxPower: 0.065, mass: 2.2, char: '♕' },
-    R: { maxPower: 0.065, mass: 2.2, char: '♖' },
-    B: { maxPower: 0.055, mass: 1.4, char: '♗' },
-    N: { maxPower: 0.055, mass: 1.4, char: '♘' }
+    K: { maxPower: 0.084, mass: 4.0, radius: 24, char: '♔' },
+    Q: { maxPower: 0.078, mass: 3.0, radius: 22, char: '♕' },
+    R: { maxPower: 0.078, mass: 2.5, radius: 20, char: '♖' },
+    B: { maxPower: 0.066, mass: 1.8, radius: 18, char: '♗' },
+    N: { maxPower: 0.066, mass: 1.6, radius: 17, char: '♘' },
+    P: { maxPower: 0.06, mass: 1.2, radius: 15, char: '♙' }
   };
-  const ALKKAGI_ORIGINAL = { _: { maxPower: 0.05, mass: 1.1, char: '' } };
+  const ALKKAGI_ORIGINAL = { _: { maxPower: 0.06, mass: 1.1, radius: 18, char: '' } };
 
   let alkkagiSelectedStone = null;
   let alkkagiValidGuides = [];
@@ -47,6 +49,11 @@
     if (mode === 'chess') return ALKKAGI_CHESS[role] || ALKKAGI_CHESS.N;
     if (mode === 'janggi') return ALKKAGI_JANGGI[role] || ALKKAGI_JANGGI.E;
     return ALKKAGI_ORIGINAL._;
+  }
+
+  function getAlkkagiRadius(role, mode) {
+    const cfg = getAlkkagiCfg(role, mode);
+    return (cfg && cfg.radius != null) ? cfg.radius : 18;
   }
 
   function getAlkkagiChar(role, mode) {
@@ -133,6 +140,13 @@
     } else if (role === 'N' || role === 'H') {
       const jumps = [[2,1],[2,-1],[-2,1],[-2,-1],[1,2],[1,-2],[-1,2],[-1,-2]];
       jumps.forEach(([dc, dr]) => addIfValid(col + dc, row + dr, true));
+    } else if (role === 'S') {
+      for (let dc = -1; dc <= 1; dc++) {
+        for (let dr = -1; dr <= 1; dr++) {
+          if (dc === 0 && dr === 0) continue;
+          addIfValid(col + dc, row + dr, true);
+        }
+      }
     } else {
       for (const [dc, dr] of [[1,0],[-1,0],[0,1],[0,-1]]) {
         for (let d = 1; d < ALKKAGI_GRID; d++) {
@@ -153,6 +167,10 @@
     alkkagiPhase = data.phase || 'ready';
     if (alkkagiPhase === 'ready') {
       if (typeof window.clearAlkkagi === 'function') window.clearAlkkagi();
+      const readyArea = document.getElementById('ready-area');
+      const rematchArea = document.getElementById('rematch-area');
+      if (readyArea) { readyArea.style.display = 'flex'; }
+      if (rematchArea) { rematchArea.style.display = 'none'; }
     }
     const players = data.players || [];
     if (players[0] === currentUserId) alkkagiMyColor = 1;
@@ -175,7 +193,8 @@
       const nextRole = alkkagiMyColor === 1 ? (data.nextRoleBlack || '') : (alkkagiMyColor === 2 ? (data.nextRoleWhite || '') : '');
       if (alkkagiPhase === 'placement' && nextRole) {
         const char = getAlkkagiChar(nextRole, alkkagiMode);
-        nextRoleEl.innerHTML = `다음 배치: <span class="alkkagi-next-role-icon">${char || '●'}</span>`;
+        const iconSize = alkkagiMode === 'chess' ? '1.4em' : '1em';
+        nextRoleEl.innerHTML = `다음 배치: <span class="alkkagi-next-role-icon" style="font-size:${iconSize};font-weight:800;">${char || '●'}</span>`;
         nextRoleEl.style.display = 'inline';
       } else {
         nextRoleEl.style.display = 'none';
@@ -189,7 +208,7 @@
       } else if (alkkagiPhase === 'playing') {
         const turn = data.currentTurn || '';
         statusEl.textContent = turn === currentUserId
-          ? '🎯 내 차례 — 돌을 당겨 쏘세요!'
+          ? '🎯 내 차례 — 돌을 클릭하고 쏠 방향을 조절하세요'
           : turn ? `⏳ ${escapeHTML(turn)}의 차례` : '알까기';
       } else {
         statusEl.textContent = '알까기 — 상대방을 기다리는 중...';
@@ -200,9 +219,10 @@
     }
     if (stonesEl) {
       const stones = data.stones || [];
-      const han = stones.filter(s => s.color === 1).length;
-      const cho = stones.filter(s => s.color === 2).length;
-      stonesEl.textContent = stones.length ? `한 ${han} : 초 ${cho}` : '한 5 : 초 5';
+      const teams = data.teams || ['한', '초'];
+      const c1 = stones.filter(s => s.color === 1).length;
+      const c2 = stones.filter(s => s.color === 2).length;
+      stonesEl.textContent = stones.length ? `${teams[0] || '한'} ${c1} : ${teams[1] || '초'} ${c2}` : `${teams[0] || '한'} 7 : ${teams[1] || '초'} 7`;
     }
     const timerEl = document.getElementById('alkkagi-placement-timer');
     if (timerEl) {
@@ -294,10 +314,15 @@
   function updateAlkkagiPlacement(data) {
     if (!alkkagiPlacementCanvas) return;
     alkkagiPlacementNextRole = alkkagiMyColor === 1 ? (data && data.nextRoleBlack) || '' : (alkkagiMyColor === 2 ? (data && data.nextRoleWhite) || '' : '');
+    const mode = (data && data.mode) || 'janggi';
     const ctx = alkkagiPlacementCanvas.getContext('2d');
     ctx.fillStyle = '#c8a45a';
     ctx.fillRect(0, 0, ALKKAGI_W, ALKKAGI_H);
-    ctx.strokeStyle = 'rgba(122,80,16,0.4)';
+    if (alkkagiPhase === 'placement' && alkkagiMyColor > 0) {
+      ctx.fillStyle = alkkagiMyColor === 1 ? 'rgba(220,38,38,0.18)' : 'rgba(59,130,246,0.18)';
+      ctx.fillRect(0, alkkagiMyColor === 1 ? 10 * ALKKAGI_CELL : 0, ALKKAGI_W, 5 * ALKKAGI_CELL);
+    }
+    ctx.strokeStyle = 'rgba(122,80,16,0.5)';
     ctx.lineWidth = 1;
     for (let i = 0; i <= 15; i++) {
       ctx.beginPath();
@@ -310,22 +335,29 @@
       ctx.stroke();
     }
     const stones = (data && data.stones) || [];
-    const mode = (data && data.mode) || 'janggi';
     stones.forEach(s => {
       const role = (s.role || '').toUpperCase();
       const char = getAlkkagiChar(role, mode);
-      ctx.fillStyle = s.color === 1 ? '#fff5f5' : '#1a1a2e';
-      ctx.strokeStyle = s.color === 1 ? '#dc2626' : '#22c55e';
+      const radius = getAlkkagiRadius(role, mode);
+      if (mode === 'original') {
+        ctx.fillStyle = s.color === 1 ? '#1a1a2e' : '#fff5f5';
+        ctx.strokeStyle = s.color === 1 ? '#334155' : '#94a3b8';
+      } else {
+        ctx.fillStyle = s.color === 1 ? '#fff5f5' : '#1a1a2e';
+        ctx.strokeStyle = s.color === 1 ? '#dc2626' : '#22c55e';
+      }
       ctx.lineWidth = 2;
       ctx.beginPath();
-      ctx.arc(s.x, s.y, 18, 0, Math.PI * 2);
+      ctx.arc(s.x, s.y, radius, 0, Math.PI * 2);
       ctx.fill();
       ctx.stroke();
-      ctx.font = 'bold 20px "Noto Sans KR", "Malgun Gothic", sans-serif';
+      const fontSz = Math.max(14, Math.min(22, radius * 1.1));
+      ctx.font = `bold ${fontSz}px "Noto Sans KR", "Malgun Gothic", sans-serif`;
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
-      ctx.fillStyle = s.color === 1 ? '#dc2626' : '#3b82f6';
+      ctx.fillStyle = (mode === 'original' && !char) ? (s.color === 1 ? '#94a3b8' : '#64748b') : (s.color === 1 ? '#dc2626' : '#3b82f6');
       if (char) ctx.fillText(char, s.x, s.y);
+      else if (mode === 'original') ctx.fillText('●', s.x, s.y);
     });
     if (alkkagiPlacementMousePos && alkkagiMyColor > 0 && alkkagiPlacementNextRole !== undefined) {
       const col = Math.floor(alkkagiPlacementMousePos.x / ALKKAGI_CELL);
@@ -340,20 +372,31 @@
       if (inBounds && inMyZone && !occupied) {
         const gx = (col + 0.5) * ALKKAGI_CELL;
         const gy = (row + 0.5) * ALKKAGI_CELL;
-        const char = getAlkkagiChar(alkkagiPlacementNextRole, mode);
-        ctx.globalAlpha = 0.5;
-        ctx.fillStyle = alkkagiMyColor === 1 ? '#fff5f5' : '#1a1a2e';
-        ctx.strokeStyle = alkkagiMyColor === 1 ? '#dc2626' : '#22c55e';
-        ctx.lineWidth = 2;
+        const ghostChar = getAlkkagiChar(alkkagiPlacementNextRole, mode);
+        const ghostRadius = getAlkkagiRadius(alkkagiPlacementNextRole, mode);
+        ctx.globalAlpha = 0.75;
+        if (mode === 'original') {
+          ctx.fillStyle = alkkagiMyColor === 1 ? '#1a1a2e' : '#fff5f5';
+          ctx.strokeStyle = alkkagiMyColor === 1 ? '#334155' : '#94a3b8';
+        } else {
+          ctx.fillStyle = alkkagiMyColor === 1 ? '#fff5f5' : '#1a1a2e';
+          ctx.strokeStyle = alkkagiMyColor === 1 ? '#dc2626' : '#3b82f6';
+        }
+        ctx.lineWidth = 5;
         ctx.beginPath();
-        ctx.arc(gx, gy, 18, 0, Math.PI * 2);
+        ctx.arc(gx, gy, ghostRadius, 0, Math.PI * 2);
         ctx.fill();
         ctx.stroke();
-        ctx.font = 'bold 20px "Noto Sans KR", "Malgun Gothic", sans-serif';
+        const displayChar = ghostChar || '●';
+        const ghostFontSz = Math.max(22, Math.min(32, ghostRadius * 1.5));
+        ctx.font = `bold ${ghostFontSz}px "Noto Sans KR", "Malgun Gothic", sans-serif`;
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-        ctx.fillStyle = alkkagiMyColor === 1 ? '#dc2626' : '#3b82f6';
-        if (char) ctx.fillText(char, gx, gy);
+        ctx.fillStyle = (mode === 'original') ? (alkkagiMyColor === 1 ? '#94a3b8' : '#64748b') : (alkkagiMyColor === 1 ? '#dc2626' : '#3b82f6');
+        ctx.fillText(displayChar, gx, gy);
+        ctx.font = 'bold 16px "Noto Sans KR", sans-serif';
+        ctx.fillStyle = 'rgba(0,0,0,0.85)';
+        ctx.fillText('⌖ 배치 예정', gx, gy + ghostRadius + 16);
         ctx.globalAlpha = 1;
       }
     }
@@ -369,8 +412,6 @@
 
     const world = engine.world;
 
-    const stoneRadius = 18;
-
     const stones = data.stones || [];
     alkkagiMode = data.mode || 'janggi';
     alkkagiStonesData = stones.map(s => ({ ...s }));
@@ -378,10 +419,17 @@
       const role = (s.role || '').toUpperCase();
       const cfg = getAlkkagiCfg(role, alkkagiMode);
       const mass = cfg.mass;
-      const fill = s.color === 1 ? '#fff5f5' : '#1a1a2e';
-      const stroke = s.color === 1 ? '#dc2626' : '#22c55e';
-      const body = M.Bodies.circle(s.x || 100, s.y || 100, stoneRadius, {
-        friction: 0.01, frictionAir: 0.008, restitution: 0.6,
+      const radius = getAlkkagiRadius(role, alkkagiMode);
+      let fill, stroke;
+      if (alkkagiMode === 'original') {
+        fill = s.color === 1 ? '#1a1a2e' : '#fff5f5';
+        stroke = s.color === 1 ? '#334155' : '#94a3b8';
+      } else {
+        fill = s.color === 1 ? '#fff5f5' : '#1a1a2e';
+        stroke = s.color === 1 ? '#dc2626' : '#22c55e';
+      }
+      const body = M.Bodies.circle(s.x || 100, s.y || 100, radius, {
+        friction: 0.05, frictionAir: 0.02, restitution: 0.5,
         render: { fillStyle: fill, strokeStyle: stroke, lineWidth: 2 },
       });
       M.Body.setMass(body, mass);
@@ -406,8 +454,8 @@
 
     M.Events.on(render, 'beforeRender', function() {
       const ctx = render.context;
-      ctx.strokeStyle = 'rgba(122,80,16,0.4)';
-      ctx.lineWidth = 1;
+      ctx.strokeStyle = 'rgba(122,80,16,0.7)';
+      ctx.lineWidth = 1.2;
       const cellW = W / 15, cellH = H / 15;
       for (let i = 0; i <= 15; i++) {
         ctx.beginPath();
@@ -428,14 +476,17 @@
         if (!b || !world.bodies.includes(b)) return;
         const role = (b.alkkagiRole || '').toUpperCase();
         const char = getAlkkagiChar(role, alkkagiMode);
+        const displayChar = char || (alkkagiMode === 'original' ? '●' : '');
         ctx.save();
         ctx.translate(b.position.x, b.position.y);
         ctx.rotate(b.angle);
-        ctx.font = 'bold 22px "Noto Sans KR", "Malgun Gothic", sans-serif';
+        const radius = getAlkkagiRadius(role, alkkagiMode);
+        const fontSz = Math.max(14, Math.min(22, radius * 1.1));
+        ctx.font = `bold ${fontSz}px "Noto Sans KR", "Malgun Gothic", sans-serif`;
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-        ctx.fillStyle = b.alkkagiColor === 1 ? '#dc2626' : '#3b82f6';
-        if (char) ctx.fillText(char, 0, 0);
+        ctx.fillStyle = (alkkagiMode === 'original') ? (b.alkkagiColor === 1 ? '#94a3b8' : '#64748b') : (b.alkkagiColor === 1 ? '#dc2626' : '#3b82f6');
+        if (displayChar) ctx.fillText(displayChar, 0, 0);
         ctx.restore();
       });
       if (alkkagiMode === 'chess' && alkkagiSelectedStone && alkkagiValidGuides.length > 0) {
@@ -452,12 +503,32 @@
       }
       if (alkkagiSlingshotBody && alkkagiSlingshotEnd) {
         const b = alkkagiSlingshotBody;
+        const end = alkkagiSlingshotEnd;
+        const dx = end.x - b.position.x;
+        const dy = end.y - b.position.y;
+        const dist = Math.sqrt(dx * dx + dy * dy) || 1;
+        const ux = dx / dist;
+        const uy = dy / dist;
         ctx.strokeStyle = 'rgba(255,255,255,0.9)';
         ctx.lineWidth = 3;
         ctx.beginPath();
         ctx.moveTo(b.position.x, b.position.y);
-        ctx.lineTo(alkkagiSlingshotEnd.x, alkkagiSlingshotEnd.y);
+        ctx.lineTo(end.x, end.y);
         ctx.stroke();
+        const numDots = 5;
+        const step = dist / (numDots + 1);
+        for (let i = 1; i <= numDots; i++) {
+          const px = b.position.x + ux * step * i;
+          const py = b.position.y + uy * step * i;
+          const r = Math.max(3, 6 - i * 0.8);
+          ctx.fillStyle = 'rgba(255,255,255,0.85)';
+          ctx.strokeStyle = 'rgba(88,166,255,0.9)';
+          ctx.lineWidth = 1.5;
+          ctx.beginPath();
+          ctx.arc(px, py, r, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.stroke();
+        }
       }
     });
 
@@ -708,8 +779,14 @@
       const role = (s.role || '').toUpperCase();
       const cfg = getAlkkagiCfg(role, alkkagiMode);
       const mass = cfg.mass;
-      const fill = s.color === 1 ? '#fff5f5' : '#1a1a2e';
-      const stroke = s.color === 1 ? '#dc2626' : '#22c55e';
+      let fill, stroke;
+      if (alkkagiMode === 'original') {
+        fill = s.color === 1 ? '#1a1a2e' : '#fff5f5';
+        stroke = s.color === 1 ? '#334155' : '#94a3b8';
+      } else {
+        fill = s.color === 1 ? '#fff5f5' : '#1a1a2e';
+        stroke = s.color === 1 ? '#dc2626' : '#22c55e';
+      }
       if (body) {
         Matter.Body.setPosition(body, { x: s.x, y: s.y });
         Matter.Body.setVelocity(body, { x: s.velX || 0, y: s.velY || 0 });
@@ -717,8 +794,9 @@
         body.alkkagiRole = role;
       } else {
         const M = Matter;
-        body = M.Bodies.circle(s.x || 100, s.y || 100, 18, {
-          friction: 0.01, frictionAir: 0.008, restitution: 0.6,
+        const radius = getAlkkagiRadius(role, alkkagiMode);
+        body = M.Bodies.circle(s.x || 100, s.y || 100, radius, {
+          friction: 0.05, frictionAir: 0.02, restitution: 0.5,
           render: { fillStyle: fill, strokeStyle: stroke, lineWidth: 2 },
         });
         M.Body.setMass(body, mass);
@@ -756,6 +834,9 @@
     alkkagiSlingshotEnd = null;
     alkkagiSelectedStone = null;
     alkkagiValidGuides = [];
+    alkkagiPlacementNextRole = '';
+    alkkagiPlacementData = null;
+    alkkagiPlacementMousePos = null;
     alkkagiStonesData = [];
     alkkagiPhase = 'ready';
     window.alkkagiJustFlicked = false;

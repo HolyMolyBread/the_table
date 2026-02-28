@@ -1048,10 +1048,10 @@ header {
 .indian-player-area.active-turn { box-shadow: 0 0 20px red; border-radius: 8px; }
 .indian-avatar-unit {
   position: relative; flex-shrink: 0;
-  width: 90px; height: 100px; display: flex; flex-direction: column; align-items: center;
+  width: 90px; height: 100px; display: flex; flex-direction: column; align-items: center; justify-content: center;
 }
 .indian-card-forehead {
-  position: absolute; top: -8px; left: 50%; transform: translateX(-50%);
+  position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
   z-index: 2; perspective: 400px;
 }
 .indian-player-info { flex: 1; display: flex; flex-direction: column; gap: 4px; }
@@ -1067,9 +1067,9 @@ header {
 .indian-hearts-count {
   font-size: 20px; font-weight: 800; color: #f87171; margin-left: 4px;
 }
-/* 카드 표시 */
+/* 카드 표시 — 세로축 중앙 정렬 */
 .indian-card-wrap,
-.indian-card-forehead { flex-shrink: 0; perspective: 400px; }
+.indian-card-forehead { flex-shrink: 0; perspective: 400px; margin-top: 0; }
 .indian-card-forehead .indian-card-face,
 .indian-card-forehead .indian-card-back { margin: 0 auto; }
 .indian-card-face {
@@ -1363,7 +1363,7 @@ header {
 #mahjong-table {
   width: 100%; aspect-ratio: 1/1; max-width: min(95vw, 560px);
   display: grid;
-  grid-template-columns: minmax(70px, 1fr) minmax(140px, 2fr) minmax(70px, 1fr);
+  grid-template-columns: 56px minmax(140px, 2fr) 56px;
   grid-template-rows: minmax(50px, 1fr) minmax(140px, 2fr) minmax(80px, 1fr);
   grid-template-areas:
     ". seat-top ."
@@ -1387,9 +1387,9 @@ header {
   background: rgba(0,0,0,0.25); border-radius: 8px; padding: 4px;
 }
 .mahjong-seat.seat-top    { flex-direction: column; }
-.mahjong-seat.seat-left   { flex-direction: column; }
-.mahjong-seat.seat-right  { flex-direction: column; }
-.mahjong-seat.seat-bottom { flex-direction: column; justify-content: flex-end; }
+.mahjong-seat.seat-left   { flex-direction: column; max-width: 56px; justify-self: start; position: relative; z-index: 5; }
+.mahjong-seat.seat-right  { flex-direction: column; max-width: 56px; justify-self: end; position: relative; z-index: 5; }
+.mahjong-seat.seat-bottom { flex-direction: column; justify-content: flex-end; position: relative; z-index: 15; }
 .mahjong-seat.my-turn { border: 2px solid var(--accent); box-shadow: 0 0 12px rgba(88,166,255,0.4); }
 
 .center-pond {
@@ -1480,14 +1480,16 @@ header {
 .mahjong-discards .mj-tile.m-green { background-position: -130px -105px; }
 .mahjong-discards .mj-tile.m-red { background-position: -156px -105px; }
 
-/* 마작 패 전용 스프라이트 기반 스타일 */
+/* 마작 패 전용 스프라이트 기반 스타일 — 투명화 방지 */
 .mj-tile {
   display: inline-block;
   width: 40px;
   height: 54px;
+  background-color: #fff !important;
   background-image: url('/assets/images/mahjong_tiles_sprite.svg');
   background-repeat: no-repeat;
   background-size: 400px 216px;
+  opacity: 1 !important;
   border-radius: 4px;
   box-shadow: 1px 1px 3px rgba(0,0,0,0.3);
   vertical-align: middle;
@@ -1542,11 +1544,13 @@ header {
 .mj-tile.m-green { background-position: -200px -162px; }
 .mj-tile.m-red { background-position: -240px -162px; }
 
-/* 기존 mahjong-tile 호환 (폴백) */
+/* 기존 mahjong-tile 호환 (폴백) — 투명화 방지 */
 .mahjong-tile {
   display: inline-flex; align-items: center; justify-content: center;
   width: 30px; height: 40px; font-size: 24px;
-  background: #fff; color: #111;
+  background: #fff !important;
+  opacity: 1 !important;
+  color: #111;
   border: 1px solid #30363d; border-radius: 4px;
   border-bottom: 2px solid rgba(0,0,0,0.2);
   box-shadow: 2px 2px 4px rgba(0,0,0,0.3);
@@ -1568,7 +1572,12 @@ header {
 .mahjong-seat.seat-bottom .mahjong-tile,
 .mahjong-seat.seat-bottom .mj-tile { width: 40px; height: 54px; }
 
-/* 내 패: 투명화 방지 — 확실한 불투명 백색 */
+/* 내 패: 투명화 방지 — 확실한 불투명 백색, 상대 패에 가려지지 않도록 z-index */
+#mahjong-hand,
+#mahjong-discards-me {
+  position: relative;
+  z-index: 20;
+}
 #mahjong-hand .mahjong-tile,
 #mahjong-hand .mj-tile {
   background-color: #ffffff !important;
@@ -1640,7 +1649,7 @@ header {
   flex-direction: column;
   flex-wrap: nowrap;
   justify-content: flex-start;
-  gap: 1px;
+  gap: 0;
   padding: 2px;
   max-height: 140px;
   overflow-y: auto;
@@ -1650,10 +1659,80 @@ header {
 .mahjong-seat.seat-left .opponent-hand .mj-tile,
 .mahjong-seat.seat-right .opponent-hand .mahjong-tile,
 .mahjong-seat.seat-right .opponent-hand .mj-tile {
-  width: 22px; height: 30px; margin: 0;
-  background-size: 220px 119px;
+  width: 20px; height: 28px; margin: 0;
+  font-size: 16px;
+  background-size: 200px 112px;
   transform: none !important; /* 패는 가로 모양 유지, 절대 회전 금지 */
 }
+/* 좌우 좌석 패 스프라이트 위치 (20x28) */
+.mahjong-seat.seat-left .opponent-hand .mj-tile.m-1m,
+.mahjong-seat.seat-right .opponent-hand .mj-tile.m-1m { background-position: 0 0; }
+.mahjong-seat.seat-left .opponent-hand .mj-tile.m-2m,
+.mahjong-seat.seat-right .opponent-hand .mj-tile.m-2m { background-position: -20px 0; }
+.mahjong-seat.seat-left .opponent-hand .mj-tile.m-3m,
+.mahjong-seat.seat-right .opponent-hand .mj-tile.m-3m { background-position: -40px 0; }
+.mahjong-seat.seat-left .opponent-hand .mj-tile.m-4m,
+.mahjong-seat.seat-right .opponent-hand .mj-tile.m-4m { background-position: -60px 0; }
+.mahjong-seat.seat-left .opponent-hand .mj-tile.m-5m,
+.mahjong-seat.seat-right .opponent-hand .mj-tile.m-5m { background-position: -80px 0; }
+.mahjong-seat.seat-left .opponent-hand .mj-tile.m-6m,
+.mahjong-seat.seat-right .opponent-hand .mj-tile.m-6m { background-position: -100px 0; }
+.mahjong-seat.seat-left .opponent-hand .mj-tile.m-7m,
+.mahjong-seat.seat-right .opponent-hand .mj-tile.m-7m { background-position: -120px 0; }
+.mahjong-seat.seat-left .opponent-hand .mj-tile.m-8m,
+.mahjong-seat.seat-right .opponent-hand .mj-tile.m-8m { background-position: -140px 0; }
+.mahjong-seat.seat-left .opponent-hand .mj-tile.m-9m,
+.mahjong-seat.seat-right .opponent-hand .mj-tile.m-9m { background-position: -160px 0; }
+.mahjong-seat.seat-left .opponent-hand .mj-tile.m-1p,
+.mahjong-seat.seat-right .opponent-hand .mj-tile.m-1p { background-position: 0 -28px; }
+.mahjong-seat.seat-left .opponent-hand .mj-tile.m-2p,
+.mahjong-seat.seat-right .opponent-hand .mj-tile.m-2p { background-position: -20px -28px; }
+.mahjong-seat.seat-left .opponent-hand .mj-tile.m-3p,
+.mahjong-seat.seat-right .opponent-hand .mj-tile.m-3p { background-position: -40px -28px; }
+.mahjong-seat.seat-left .opponent-hand .mj-tile.m-4p,
+.mahjong-seat.seat-right .opponent-hand .mj-tile.m-4p { background-position: -60px -28px; }
+.mahjong-seat.seat-left .opponent-hand .mj-tile.m-5p,
+.mahjong-seat.seat-right .opponent-hand .mj-tile.m-5p { background-position: -80px -28px; }
+.mahjong-seat.seat-left .opponent-hand .mj-tile.m-6p,
+.mahjong-seat.seat-right .opponent-hand .mj-tile.m-6p { background-position: -100px -28px; }
+.mahjong-seat.seat-left .opponent-hand .mj-tile.m-7p,
+.mahjong-seat.seat-right .opponent-hand .mj-tile.m-7p { background-position: -120px -28px; }
+.mahjong-seat.seat-left .opponent-hand .mj-tile.m-8p,
+.mahjong-seat.seat-right .opponent-hand .mj-tile.m-8p { background-position: -140px -28px; }
+.mahjong-seat.seat-left .opponent-hand .mj-tile.m-9p,
+.mahjong-seat.seat-right .opponent-hand .mj-tile.m-9p { background-position: -160px -28px; }
+.mahjong-seat.seat-left .opponent-hand .mj-tile.m-1s,
+.mahjong-seat.seat-right .opponent-hand .mj-tile.m-1s { background-position: 0 -56px; }
+.mahjong-seat.seat-left .opponent-hand .mj-tile.m-2s,
+.mahjong-seat.seat-right .opponent-hand .mj-tile.m-2s { background-position: -20px -56px; }
+.mahjong-seat.seat-left .opponent-hand .mj-tile.m-3s,
+.mahjong-seat.seat-right .opponent-hand .mj-tile.m-3s { background-position: -40px -56px; }
+.mahjong-seat.seat-left .opponent-hand .mj-tile.m-4s,
+.mahjong-seat.seat-right .opponent-hand .mj-tile.m-4s { background-position: -60px -56px; }
+.mahjong-seat.seat-left .opponent-hand .mj-tile.m-5s,
+.mahjong-seat.seat-right .opponent-hand .mj-tile.m-5s { background-position: -80px -56px; }
+.mahjong-seat.seat-left .opponent-hand .mj-tile.m-6s,
+.mahjong-seat.seat-right .opponent-hand .mj-tile.m-6s { background-position: -100px -56px; }
+.mahjong-seat.seat-left .opponent-hand .mj-tile.m-7s,
+.mahjong-seat.seat-right .opponent-hand .mj-tile.m-7s { background-position: -120px -56px; }
+.mahjong-seat.seat-left .opponent-hand .mj-tile.m-8s,
+.mahjong-seat.seat-right .opponent-hand .mj-tile.m-8s { background-position: -140px -56px; }
+.mahjong-seat.seat-left .opponent-hand .mj-tile.m-9s,
+.mahjong-seat.seat-right .opponent-hand .mj-tile.m-9s { background-position: -160px -56px; }
+.mahjong-seat.seat-left .opponent-hand .mj-tile.m-east,
+.mahjong-seat.seat-right .opponent-hand .mj-tile.m-east { background-position: 0 -84px; }
+.mahjong-seat.seat-left .opponent-hand .mj-tile.m-south,
+.mahjong-seat.seat-right .opponent-hand .mj-tile.m-south { background-position: -20px -84px; }
+.mahjong-seat.seat-left .opponent-hand .mj-tile.m-west,
+.mahjong-seat.seat-right .opponent-hand .mj-tile.m-west { background-position: -40px -84px; }
+.mahjong-seat.seat-left .opponent-hand .mj-tile.m-north,
+.mahjong-seat.seat-right .opponent-hand .mj-tile.m-north { background-position: -60px -84px; }
+.mahjong-seat.seat-left .opponent-hand .mj-tile.m-white,
+.mahjong-seat.seat-right .opponent-hand .mj-tile.m-white { background-position: -80px -84px; }
+.mahjong-seat.seat-left .opponent-hand .mj-tile.m-green,
+.mahjong-seat.seat-right .opponent-hand .mj-tile.m-green { background-position: -100px -84px; }
+.mahjong-seat.seat-left .opponent-hand .mj-tile.m-red,
+.mahjong-seat.seat-right .opponent-hand .mj-tile.m-red { background-position: -120px -84px; }
 .mahjong-seat.seat-left .mahjong-discards,
 .mahjong-seat.seat-right .mahjong-discards {
   display: grid;
@@ -1668,11 +1747,80 @@ header {
 .mahjong-seat.seat-left .mahjong-discards .mj-tile,
 .mahjong-seat.seat-right .mahjong-discards .mahjong-tile,
 .mahjong-seat.seat-right .mahjong-discards .mj-tile {
-  width: 22px; height: 30px; margin: 0;
-  background-size: 220px 119px;
+  width: 20px; height: 28px; margin: 0;
+  background-size: 200px 112px;
 }
+/* 좌우 좌석 버림패 스프라이트 위치 (20x28) */
+.mahjong-seat.seat-left .mahjong-discards .mj-tile.m-1m,
+.mahjong-seat.seat-right .mahjong-discards .mj-tile.m-1m { background-position: 0 0; }
+.mahjong-seat.seat-left .mahjong-discards .mj-tile.m-2m,
+.mahjong-seat.seat-right .mahjong-discards .mj-tile.m-2m { background-position: -20px 0; }
+.mahjong-seat.seat-left .mahjong-discards .mj-tile.m-3m,
+.mahjong-seat.seat-right .mahjong-discards .mj-tile.m-3m { background-position: -40px 0; }
+.mahjong-seat.seat-left .mahjong-discards .mj-tile.m-4m,
+.mahjong-seat.seat-right .mahjong-discards .mj-tile.m-4m { background-position: -60px 0; }
+.mahjong-seat.seat-left .mahjong-discards .mj-tile.m-5m,
+.mahjong-seat.seat-right .mahjong-discards .mj-tile.m-5m { background-position: -80px 0; }
+.mahjong-seat.seat-left .mahjong-discards .mj-tile.m-6m,
+.mahjong-seat.seat-right .mahjong-discards .mj-tile.m-6m { background-position: -100px 0; }
+.mahjong-seat.seat-left .mahjong-discards .mj-tile.m-7m,
+.mahjong-seat.seat-right .mahjong-discards .mj-tile.m-7m { background-position: -120px 0; }
+.mahjong-seat.seat-left .mahjong-discards .mj-tile.m-8m,
+.mahjong-seat.seat-right .mahjong-discards .mj-tile.m-8m { background-position: -140px 0; }
+.mahjong-seat.seat-left .mahjong-discards .mj-tile.m-9m,
+.mahjong-seat.seat-right .mahjong-discards .mj-tile.m-9m { background-position: -160px 0; }
+.mahjong-seat.seat-left .mahjong-discards .mj-tile.m-1p,
+.mahjong-seat.seat-right .mahjong-discards .mj-tile.m-1p { background-position: 0 -28px; }
+.mahjong-seat.seat-left .mahjong-discards .mj-tile.m-2p,
+.mahjong-seat.seat-right .mahjong-discards .mj-tile.m-2p { background-position: -20px -28px; }
+.mahjong-seat.seat-left .mahjong-discards .mj-tile.m-3p,
+.mahjong-seat.seat-right .mahjong-discards .mj-tile.m-3p { background-position: -40px -28px; }
+.mahjong-seat.seat-left .mahjong-discards .mj-tile.m-4p,
+.mahjong-seat.seat-right .mahjong-discards .mj-tile.m-4p { background-position: -60px -28px; }
+.mahjong-seat.seat-left .mahjong-discards .mj-tile.m-5p,
+.mahjong-seat.seat-right .mahjong-discards .mj-tile.m-5p { background-position: -80px -28px; }
+.mahjong-seat.seat-left .mahjong-discards .mj-tile.m-6p,
+.mahjong-seat.seat-right .mahjong-discards .mj-tile.m-6p { background-position: -100px -28px; }
+.mahjong-seat.seat-left .mahjong-discards .mj-tile.m-7p,
+.mahjong-seat.seat-right .mahjong-discards .mj-tile.m-7p { background-position: -120px -28px; }
+.mahjong-seat.seat-left .mahjong-discards .mj-tile.m-8p,
+.mahjong-seat.seat-right .mahjong-discards .mj-tile.m-8p { background-position: -140px -28px; }
+.mahjong-seat.seat-left .mahjong-discards .mj-tile.m-9p,
+.mahjong-seat.seat-right .mahjong-discards .mj-tile.m-9p { background-position: -160px -28px; }
+.mahjong-seat.seat-left .mahjong-discards .mj-tile.m-1s,
+.mahjong-seat.seat-right .mahjong-discards .mj-tile.m-1s { background-position: 0 -56px; }
+.mahjong-seat.seat-left .mahjong-discards .mj-tile.m-2s,
+.mahjong-seat.seat-right .mahjong-discards .mj-tile.m-2s { background-position: -20px -56px; }
+.mahjong-seat.seat-left .mahjong-discards .mj-tile.m-3s,
+.mahjong-seat.seat-right .mahjong-discards .mj-tile.m-3s { background-position: -40px -56px; }
+.mahjong-seat.seat-left .mahjong-discards .mj-tile.m-4s,
+.mahjong-seat.seat-right .mahjong-discards .mj-tile.m-4s { background-position: -60px -56px; }
+.mahjong-seat.seat-left .mahjong-discards .mj-tile.m-5s,
+.mahjong-seat.seat-right .mahjong-discards .mj-tile.m-5s { background-position: -80px -56px; }
+.mahjong-seat.seat-left .mahjong-discards .mj-tile.m-6s,
+.mahjong-seat.seat-right .mahjong-discards .mj-tile.m-6s { background-position: -100px -56px; }
+.mahjong-seat.seat-left .mahjong-discards .mj-tile.m-7s,
+.mahjong-seat.seat-right .mahjong-discards .mj-tile.m-7s { background-position: -120px -56px; }
+.mahjong-seat.seat-left .mahjong-discards .mj-tile.m-8s,
+.mahjong-seat.seat-right .mahjong-discards .mj-tile.m-8s { background-position: -140px -56px; }
+.mahjong-seat.seat-left .mahjong-discards .mj-tile.m-9s,
+.mahjong-seat.seat-right .mahjong-discards .mj-tile.m-9s { background-position: -160px -56px; }
+.mahjong-seat.seat-left .mahjong-discards .mj-tile.m-east,
+.mahjong-seat.seat-right .mahjong-discards .mj-tile.m-east { background-position: 0 -84px; }
+.mahjong-seat.seat-left .mahjong-discards .mj-tile.m-south,
+.mahjong-seat.seat-right .mahjong-discards .mj-tile.m-south { background-position: -20px -84px; }
+.mahjong-seat.seat-left .mahjong-discards .mj-tile.m-west,
+.mahjong-seat.seat-right .mahjong-discards .mj-tile.m-west { background-position: -40px -84px; }
+.mahjong-seat.seat-left .mahjong-discards .mj-tile.m-north,
+.mahjong-seat.seat-right .mahjong-discards .mj-tile.m-north { background-position: -60px -84px; }
+.mahjong-seat.seat-left .mahjong-discards .mj-tile.m-white,
+.mahjong-seat.seat-right .mahjong-discards .mj-tile.m-white { background-position: -80px -84px; }
+.mahjong-seat.seat-left .mahjong-discards .mj-tile.m-green,
+.mahjong-seat.seat-right .mahjong-discards .mj-tile.m-green { background-position: -100px -84px; }
+.mahjong-seat.seat-left .mahjong-discards .mj-tile.m-red,
+.mahjong-seat.seat-right .mahjong-discards .mj-tile.m-red { background-position: -120px -84px; }
 .opponent-hand {
-  display: flex; flex-wrap: nowrap; gap: 1px; padding: 4px;
+  display: flex; flex-wrap: nowrap; gap: 0; padding: 2px;
   overflow: visible;
 }
 .opponent-hand .mahjong-tile,

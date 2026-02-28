@@ -285,10 +285,14 @@
     }
 
     if (suikaChargedCount > prevCount && suikaGameStarted) {
-      suikaHandFruitType = Math.floor(Math.random() * 4);
       playSuikaChargeSound();
     }
-    if (suikaChargedCount < 1) suikaHandFruitType = -1;
+    const nextTypes = data.nextFruitTypes;
+    if (suikaMySlot >= 0 && nextTypes && nextTypes[suikaMySlot] !== undefined && suikaChargedCount >= 1) {
+      suikaHandFruitType = nextTypes[suikaMySlot];
+    } else if (suikaChargedCount < 1) {
+      suikaHandFruitType = -1;
+    }
 
     const statusEl = document.getElementById('suika-status');
     if (statusEl) {
@@ -392,8 +396,6 @@
 
   function handleSuikaDropResult(success) {
     if (success) {
-      suikaHandFruitType = -1;
-      updateSuikaHandCursor();
       if (window.SoundManager) window.SoundManager.playPianoNote(261.63, 0.08);
     }
   }

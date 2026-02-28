@@ -18,6 +18,13 @@ type PVPBJPlayer struct {
 	State  string   `json:"state"` // "playing" | "stand" | "bust" | "out"
 }
 
+// RaidResultData는 라운드/게임 종료 시 HP 정산 데이터입니다.
+type RaidResultData struct {
+	DealerHP       int            `json:"dealerHp"`
+	DealerDamage   int            `json:"dealerDamage"`
+	PlayerChanges  map[string]int  `json:"playerChanges"` // { "userId": -10 } (음수=손실)
+}
+
 // PVPBJData는 PVP 블랙잭 게임 상태 스냅샷입니다.
 type PVPBJData struct {
 	Phase          string                  `json:"phase"`
@@ -29,6 +36,7 @@ type PVPBJData struct {
 	ReadyStatus    map[string]bool         `json:"readyStatus,omitempty"`
 	Message        string                 `json:"message,omitempty"`
 	GameOverWin    bool                    `json:"gameOverWin,omitempty"`
+	RaidResult     *RaidResultData         `json:"raidResult,omitempty"`
 }
 
 // PVPBJResponse는 PVP 블랙잭 메시지 최상위 구조입니다.
@@ -67,6 +75,7 @@ type BlackjackPVPGame struct {
 	phase          BJPVPPhase
 	gameStarted    bool
 	stopDealer     chan struct{}
+	lastRaidResult *RaidResultData
 }
 
 func NewBlackjackPVPGame(room *Room) *BlackjackPVPGame {
@@ -376,6 +385,12 @@ func (g *BlackjackPVPGame) settle(stopCh chan struct{}) {
 	g.mu.Lock()
 	defer g.mu.Unlock()
 
+	prevDealerHearts := g.dealerHearts
+	prevPlayerHearts := make(map[string]int)
+	for uid, p := range g.players {
+		prevPlayerHearts[uid] = p.Hearts
+	}
+
 	dScore := handScore(g.dealerHand)
 	dealerBJ := isNaturalBlackjack(g.dealerHand)
 
@@ -417,6 +432,23 @@ func (g *BlackjackPVPGame) settle(stopCh chan struct{}) {
 	}
 
 	g.phase = BJPVPSettlement
+
+	playerChanges := make(map[string]int)
+	for uid, p := range g.players {
+		diff := prevPlayerHearts[uid] - p.Hearts
+		if diff != 0 {
+			playerChanges[uid] = -diff
+		}
+	}
+	dealerDamage := prevDealerHearts - g.dealerHearts
+	if dealerDamage < 0 {
+		dealerDamage = 0
+	}
+	g.lastRaidResult = &RaidResultData{
+		DealerHP:      g.dealerHearts,
+		DealerDamage:  dealerDamage,
+		PlayerChanges: playerChanges,
+	}
 
 	if g.dealerHearts <= 0 {
 		g.finishGameOverLocked(true)
@@ -462,12 +494,18 @@ func (g *BlackjackPVPGame) finishGameOverLocked(playerWin bool) {
 	// playerWin=false(딜러 승리) 시: 탈락 시점에 이미 RecordResult("blackjack_raid","lose") 기록됨 → 중복 기록 없음
 
 	msg := fmt.Sprintf("🏆 게임 종료! [%s] 승리!", winner)
+	resultData := map[string]any{"playerWin": playerWin}
+	if g.lastRaidResult != nil {
+		resultData["dealerHp"] = g.lastRaidResult.DealerHP
+		resultData["dealerDamage"] = g.lastRaidResult.DealerDamage
+		resultData["playerChanges"] = g.lastRaidResult.PlayerChanges
+	}
 	data, _ := json.Marshal(GameResultResponse{
 		Type:           "game_result",
 		Message:        msg,
 		RoomID:         g.room.ID,
 		RematchEnabled: true,
-		Data:           map[string]any{"playerWin": playerWin},
+		Data:           resultData,
 	})
 	g.room.broadcastAll(data)
 	g.broadcastStateLocked(msg)
@@ -549,7 +587,7 @@ func (g *BlackjackPVPGame) makePVPBJDataLocked(msg string) PVPBJData {
 		readyCopy[uid] = v
 	}
 
-	return PVPBJData{
+	data := PVPBJData{
 		Phase:          string(g.phase),
 		Players:        playersCopy,
 		TurnOrder:      turnOrderCopy,
@@ -560,6 +598,10 @@ func (g *BlackjackPVPGame) makePVPBJDataLocked(msg string) PVPBJData {
 		Message:        msg,
 		GameOverWin:    g.phase == BJPVPGameOver && g.dealerHearts <= 0,
 	}
+	if g.phase == BJPVPSettlement || g.phase == BJPVPGameOver {
+		data.RaidResult = g.lastRaidResult
+	}
+	return data
 }
 
 func (g *BlackjackPVPGame) broadcastStateLocked(msg string) {

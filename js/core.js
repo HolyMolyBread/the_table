@@ -1318,7 +1318,11 @@
             case 'game_result':
               addLog('game-result', raw);
               addChatMessage('game_result', parsed);
-              showResultModal(parsed.message || '게임이 종료되었습니다');
+              if (currentRoomId && currentRoomId.startsWith('blackjack_raid') && typeof window.showBlackjackRaidResultOverlay === 'function') {
+                window.showBlackjackRaidResultOverlay(parsed);
+              } else {
+                showResultModal(parsed.message || '게임이 종료되었습니다');
+              }
               if (parsed.data && parsed.data.board) {
                 showGomokuBoard();
                 renderBoard({ board: parsed.data.board, turn: '', colors: parsed.data.colors || {}, lastMove: parsed.data.lastMove || [-1,-1] });
@@ -1326,11 +1330,20 @@
               }
               if (parsed.rematchEnabled) {
                 const total = parsed.data?.totalCount ?? 2;
-                document.getElementById('rematch-count').textContent = `0/${total}`;
-                document.getElementById('btn-rematch').disabled = false;
-                const rematchArea = document.getElementById('rematch-area');
-                rematchArea.style.display = 'flex';
-                rematchArea.classList.add('visible');
+                if (currentRoomId && currentRoomId.startsWith('alkkagi')) {
+                  document.getElementById('ready-count').textContent = `0/${total}`;
+                  document.getElementById('btn-ready').disabled = false;
+                  const readyArea = document.getElementById('ready-area');
+                  if (readyArea) { readyArea.style.display = 'flex'; }
+                  const rematchArea = document.getElementById('rematch-area');
+                  if (rematchArea) { rematchArea.style.display = 'none'; }
+                } else {
+                  document.getElementById('rematch-count').textContent = `0/${total}`;
+                  document.getElementById('btn-rematch').disabled = false;
+                  const rematchArea = document.getElementById('rematch-area');
+                  rematchArea.style.display = 'flex';
+                  rematchArea.classList.add('visible');
+                }
               }
               break;
             case 'game_notice':
@@ -1340,10 +1353,12 @@
             case 'ready_update': {
               const ready = parsed.readyCount ?? 0;
               const total = parsed.totalCount ?? 0;
+              const readyBtn = document.getElementById('btn-ready');
               document.getElementById('ready-count').textContent = `${ready}/${total}`;
+              if (parsed.myReady === true && readyBtn) readyBtn.style.display = 'none';
               if (ready >= total && total > 1) {
                 document.getElementById('ready-area').style.display = 'none';
-                document.getElementById('btn-ready').disabled = false;
+                if (readyBtn) readyBtn.disabled = false;
               }
               break;
             }
@@ -1650,7 +1665,11 @@
       return;
     }
     sendGameAction({ cmd: 'ready' });
-    document.getElementById('btn-ready').disabled = true;
+    const readyBtn = document.getElementById('btn-ready');
+    if (readyBtn) {
+      readyBtn.disabled = true;
+      readyBtn.style.display = 'none';
+    }
   }
 
   function sendRematch() {

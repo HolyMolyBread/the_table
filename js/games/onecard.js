@@ -114,15 +114,27 @@
     const playersEl = document.getElementById('onecard-players');
     if (playersEl && data.players) {
       const players = data.players;
-      const numPlayers = players.length;
+      const totalPlayers = players.length;
       const myIdx = players.findIndex(p => p.userId === currentUserId);
-      const RELATIVE_INDEX_TO_SEAT = { 1: 'seat-left', 2: 'seat-top', 3: 'seat-right' };
+      let seatMap;
+      if (totalPlayers === 2) {
+        seatMap = { top: (myIdx + 1) % 2, left: -1, right: -1 };
+      } else if (totalPlayers === 3) {
+        seatMap = { right: (myIdx + 1) % 3, top: (myIdx + 2) % 3, left: -1 };
+      } else {
+        const n = totalPlayers;
+        seatMap = { right: (myIdx + 1) % n, top: (myIdx + 2) % n, left: (myIdx + 3) % n };
+      }
+      const idxToSeat = {};
+      if (seatMap.top >= 0) idxToSeat[seatMap.top] = 'seat-top';
+      if (seatMap.left >= 0) idxToSeat[seatMap.left] = 'seat-left';
+      if (seatMap.right >= 0) idxToSeat[seatMap.right] = 'seat-right';
       const opponents = players
-        .map((p, playerIdx) => ({ ...p, playerIdx, relativeIdx: (playerIdx - myIdx + numPlayers) % numPlayers }))
-        .filter(p => p.userId !== currentUserId)
-        .sort((a, b) => a.relativeIdx - b.relativeIdx);
+        .map((p, playerIdx) => ({ ...p, playerIdx }))
+        .filter(p => p.userId !== currentUserId && idxToSeat[p.playerIdx])
+        .sort((a, b) => a.playerIdx - b.playerIdx);
       playersEl.innerHTML = opponents.map((p) => {
-        const seatClass = opponents.length === 1 ? 'seat-left' : (RELATIVE_INDEX_TO_SEAT[p.relativeIdx] || 'seat-top');
+        const seatClass = idxToSeat[p.playerIdx];
         let countText = `🃏 ${p.cardCount || 0}장`;
         if (p.status === 'escaped') countText = '탈출 성공';
         else if (p.status === 'bankrupt') countText = '파산';

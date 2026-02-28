@@ -61,8 +61,8 @@ var tetrisShapes = [7][4][4][2]int{
 	{{{-1, 0}, {0, 0}, {0, 1}, {1, 1}}, {{0, 0}, {0, 1}, {1, 1}, {1, 2}}, {{-1, 0}, {0, 0}, {0, 1}, {1, 1}}, {{0, 0}, {0, 1}, {1, 1}, {1, 2}}},
 	// J: ┌── / ─┬ / ──┐ / ┬─
 	{{{-1, 0}, {-1, 1}, {0, 1}, {1, 1}}, {{0, 0}, {1, 0}, {0, -1}, {0, 1}}, {{-1, 0}, {0, 0}, {1, 0}, {1, 1}}, {{0, 0}, {-1, 0}, {0, -1}, {0, 1}}},
-	// L: ──┐ / ┬─ / ┌── / ─┴
-	{{{1, 0}, {-1, 1}, {0, 1}, {1, 1}}, {{0, 0}, {0, -1}, {0, 1}, {1, -1}}, {{-1, 0}, {0, 0}, {1, 0}, {-1, 1}}, {{0, 0}, {-1, 0}, {0, -1}, {0, 1}}},
+	// L: ──┐ / ┬─ / ┌── / ─┴ (SRS: stem bottom-right at rot1)
+	{{{1, 0}, {-1, 1}, {0, 1}, {1, 1}}, {{0, 0}, {0, -1}, {0, 1}, {1, 1}}, {{-1, 0}, {0, 0}, {1, 0}, {-1, 1}}, {{0, 0}, {-1, 0}, {0, -1}, {0, 1}}},
 }
 
 type TetrisGame struct {
@@ -248,9 +248,9 @@ func (g *TetrisGame) startGravityTickerLocked() {
 	g.stopGravityTickerLocked()
 	stopCh := make(chan struct{})
 	g.stopTick = stopCh
-	ticker := time.NewTicker(time.Second)
-	defer ticker.Stop()
 	go func() {
+		ticker := time.NewTicker(time.Second)
+		defer ticker.Stop()
 		for {
 			select {
 			case <-stopCh:

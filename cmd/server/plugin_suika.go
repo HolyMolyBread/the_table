@@ -57,13 +57,14 @@ type PlayerCharge struct {
 
 // SuikaData는 suika_state 응답의 data 필드입니다.
 type SuikaData struct {
-	Players     [4]string       `json:"players"`
-	Fruits      []SuikaFruit    `json:"fruits"`
-	Charges     [4]PlayerCharge `json:"charges"`
-	Scores      [4]float64      `json:"scores"` // 지분 비율에 따른 소수점 정밀 배분
-	GameStarted bool            `json:"gameStarted"`
-	GameOver    bool            `json:"gameOver"`
-	HostUserID  string          `json:"hostUserId"` // 첫 번째 플레이어 = Host
+	Players        [4]string       `json:"players"`
+	Fruits         []SuikaFruit    `json:"fruits"`
+	Charges        [4]PlayerCharge `json:"charges"`
+	Scores         [4]float64      `json:"scores"` // 지분 비율에 따른 소수점 정밀 배분
+	NextFruitTypes [4]int          `json:"nextFruitTypes"` // 각 슬롯의 다음 과일 타입 (0~3)
+	GameStarted    bool            `json:"gameStarted"`
+	GameOver       bool            `json:"gameOver"`
+	HostUserID     string          `json:"hostUserId"` // 첫 번째 플레이어 = Host
 }
 
 // SuikaStateResponse는 수박게임 상태 응답입니다.
@@ -91,11 +92,13 @@ type SuikaGame struct {
 	fruits         []SuikaFruit
 	charges        [4]PlayerCharge
 	scores         [4]float64
+	nextFruitTypes [4]int
 	gameStarted    bool
 	gameOver       bool
 	startReady     map[*Client]bool
 	nextFruitID    int
 	lastDropUserID string // 게임오버 시 패널티 대상
+	stopTick       chan struct{}
 	mu             sync.Mutex
 }
 
@@ -246,14 +249,61 @@ func (g *SuikaGame) startGameLocked() {
 	for i := 0; i < suikaMaxPlayers; i++ {
 		if g.players[i] != nil {
 			g.charges[i] = PlayerCharge{ChargedCount: 1, LastChargeAt: now}
+			g.nextFruitTypes[i] = rand.Intn(4)
 		}
 	}
+	g.startChargeTickerLocked()
 	g.sendStateToAllLocked()
+}
+
+func (g *SuikaGame) stopChargeTickerLocked() {
+	if g.stopTick != nil {
+		close(g.stopTick)
+		g.stopTick = nil
+	}
+}
+
+func (g *SuikaGame) startChargeTickerLocked() {
+	g.stopChargeTickerLocked()
+	stopCh := make(chan struct{})
+	g.stopTick = stopCh
+	go func() {
+		ticker := time.NewTicker(time.Second)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-stopCh:
+				return
+			case <-ticker.C:
+				g.mu.Lock()
+				if !g.gameStarted || g.gameOver {
+					g.mu.Unlock()
+					return
+				}
+				changed := false
+				for i := 0; i < suikaMaxPlayers; i++ {
+					if g.players[i] == nil {
+						continue
+					}
+					prev := g.charges[i].ChargedCount
+					g.updateChargesLocked(i)
+					if g.charges[i].ChargedCount != prev {
+						changed = true
+					}
+				}
+				if changed {
+					g.sendStateToAllLocked()
+				}
+				g.mu.Unlock()
+			}
+		}
+	}()
 }
 
 func (g *SuikaGame) resetLocked() {
 	g.gameStarted = false
 	g.gameOver = false
+	g.stopChargeTickerLocked()
 	g.fruits = nil
 	g.scores = [4]float64{0, 0, 0, 0}
 	g.lastDropUserID = ""
@@ -271,9 +321,13 @@ func (g *SuikaGame) updateChargesLocked(slot int) {
 	now := time.Now().UnixMilli()
 	elapsed := now - c.LastChargeAt
 	for c.ChargedCount < suikaMaxCharges && elapsed >= suikaRechargeSec*1000 {
+		prev := c.ChargedCount
 		c.ChargedCount++
 		elapsed -= suikaRechargeSec * 1000
 		c.LastChargeAt += suikaRechargeSec * 1000
+		if prev == 0 {
+			g.nextFruitTypes[slot] = rand.Intn(4)
+		}
 	}
 }
 
@@ -340,11 +394,8 @@ func (g *SuikaGame) handleDropLocked(client *Client, payload json.RawMessage) {
 	g.charges[slot].LastChargeAt = time.Now().UnixMilli()
 	g.lastDropUserID = userId
 
-	// 클라이언트 Ghost와 동기화: type이 유효(0~3)하면 사용, 아니면 랜덤
-	fruitType := rand.Intn(4)
-	if p.Type != nil && *p.Type >= 0 && *p.Type <= 3 {
-		fruitType = *p.Type
-	}
+	fruitType := g.nextFruitTypes[slot]
+	g.nextFruitTypes[slot] = rand.Intn(4)
 	def = suikaFruitDefs[fruitType]
 	ownerEquity := map[string]float64{userId: 1.0}
 
@@ -474,13 +525,14 @@ func (g *SuikaGame) makeDataLocked() SuikaData {
 	}
 
 	return SuikaData{
-		Players:     g.playersUserIDsLocked(),
-		Fruits:      fruitsCopy,
-		Charges:     g.charges,
-		Scores:      g.scores,
-		GameStarted: g.gameStarted,
-		GameOver:    g.gameOver,
-		HostUserID:  g.hostUserIDLocked(),
+		Players:        g.playersUserIDsLocked(),
+		Fruits:         fruitsCopy,
+		Charges:        g.charges,
+		NextFruitTypes: g.nextFruitTypes,
+		Scores:         g.scores,
+		GameStarted:    g.gameStarted,
+		GameOver:       g.gameOver,
+		HostUserID:     g.hostUserIDLocked(),
 	}
 }
 

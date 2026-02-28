@@ -69,12 +69,18 @@
     const centerPond = document.getElementById('mahjong-center-pond');
     if (centerPond) clearAndAppend(centerPond, []);
 
-    const is3p = Array.isArray(data.players) && data.players.length === 3;
     const players = Array.isArray(data.players) ? [...data.players] : [];
+    const totalPlayers = players.length;
     const myIdx = players.findIndex(p => p && p.userId === currentUserId);
-    const seatMap = is3p
-      ? { top: (myIdx + 2) % 3, left: -1, right: (myIdx + 1) % 3 }
-      : { top: (myIdx + 2) % 4, left: (myIdx + 3) % 4, right: (myIdx + 1) % 4 };
+    let seatMap;
+    if (totalPlayers === 2) {
+      seatMap = { top: (myIdx + 1) % 2, left: -1, right: -1 };
+    } else if (totalPlayers === 3) {
+      seatMap = { right: (myIdx + 1) % 3, top: (myIdx + 2) % 3, left: -1 };
+    } else {
+      const n = totalPlayers;
+      seatMap = { right: (myIdx + 1) % n, top: (myIdx + 2) % n, left: (myIdx + 3) % n };
+    }
 
     function appendSeatContent(container, playerIdx) {
       const p = playerIdx >= 0 ? players[playerIdx] : null;
@@ -118,16 +124,19 @@
       clearAndAppend(seatTop, []);
       if (seatMap.top >= 0) appendSeatContent(seatTop, seatMap.top);
       seatTop.classList.toggle('my-turn', players[seatMap.top]?.userId === data.currentTurn);
+      seatTop.style.display = seatMap.top >= 0 ? '' : 'none';
     }
     if (seatLeft) {
       clearAndAppend(seatLeft, []);
       if (seatMap.left >= 0) appendSeatContent(seatLeft, seatMap.left);
       seatLeft.classList.toggle('my-turn', seatMap.left >= 0 && players[seatMap.left]?.userId === data.currentTurn);
+      seatLeft.style.display = seatMap.left >= 0 ? '' : 'none';
     }
     if (seatRight) {
       clearAndAppend(seatRight, []);
       if (seatMap.right >= 0) appendSeatContent(seatRight, seatMap.right);
       seatRight.classList.toggle('my-turn', players[seatMap.right]?.userId === data.currentTurn);
+      seatRight.style.display = seatMap.right >= 0 ? '' : 'none';
     }
 
     const seatBottom = document.getElementById('mahjong-seat-bottom');

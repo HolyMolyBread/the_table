@@ -25,8 +25,6 @@
     return `<div class="thief-card ${isRed ? 'red-suit' : 'black-suit'}${fingerClass}${discardClass}"><span>${val}</span><span>${suit}</span></div>`;
   }
 
-  // 시계방향 좌석 매핑: 상대 인덱스 1=왼쪽, 2=위, 3=오른쪽 (내 다음 사람이 왼쪽에 표시)
-  const RELATIVE_INDEX_TO_SEAT = { 1: 'seat-left', 2: 'seat-top', 3: 'seat-right' };
   let lastThiefHandJson = '';
 
   function renderThief(data) {
@@ -49,16 +47,28 @@
       : '';
 
     const players = data.players || [];
-    const numPlayers = players.length;
+    const totalPlayers = players.length;
     const myIdx = players.findIndex(p => p.userId === currentUserId);
+    let seatMap;
+    if (totalPlayers === 2) {
+      seatMap = { top: (myIdx + 1) % 2, left: -1, right: -1 };
+    } else if (totalPlayers === 3) {
+      seatMap = { right: (myIdx + 1) % 3, top: (myIdx + 2) % 3, left: -1 };
+    } else {
+      const n = totalPlayers;
+      seatMap = { right: (myIdx + 1) % n, top: (myIdx + 2) % n, left: (myIdx + 3) % n };
+    }
+    const idxToSeat = {};
+    if (seatMap.top >= 0) idxToSeat[seatMap.top] = 'seat-top';
+    if (seatMap.left >= 0) idxToSeat[seatMap.left] = 'seat-left';
+    if (seatMap.right >= 0) idxToSeat[seatMap.right] = 'seat-right';
     const opponents = players
       .map((p, playerIdx) => ({ ...p, playerIdx }))
-      .filter(p => p.userId !== currentUserId);
+      .filter(p => p.userId !== currentUserId && idxToSeat[p.playerIdx]);
     const playersEl = document.getElementById('thief-players');
     if (playersEl) {
       playersEl.innerHTML = opponents.map((p) => {
-        const relativeIdx = (p.playerIdx - myIdx + numPlayers) % numPlayers;
-        const seatClass = opponents.length === 1 ? 'seat-top' : (RELATIVE_INDEX_TO_SEAT[relativeIdx] || 'seat-top');
+        const seatClass = idxToSeat[p.playerIdx];
         const isTarget = data.targetUserId === p.userId;
         const cardCount = p.cardCount || 0;
         let targetCardsHtml = '';

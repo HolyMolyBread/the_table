@@ -248,6 +248,14 @@ func init() { RegisterPlugin("omok", func(room *Room) GamePlugin { return NewGom
 
 WebSocket 쓰기는 `writePump` 고루틴이 단독으로 담당한다 (gorilla/websocket 동시 쓰기 제약 준수).
 
+### 4.5 게임 UI 및 좌석 배치 규칙
+
+| 규칙 | 설명 |
+|------|------|
+| **1:1 대전** | 상대를 정면(Top)에 배치하는 **마주보기 모드** 표준화. 본인은 항상 하단 중앙(seat-bottom). |
+| **다인용(3~4인)** | 시계방향 배치: 우측(seat-right) → 정면(seat-top) → 좌측(seat-left). 본인은 seat-bottom. |
+| **UI 격리** | 게임별 디자인 요소는 `css/style.css`에서 관리. `index.html`은 구조만 유지하는 원칙. |
+
 ---
 
 ## 5. 코어 시스템 명세

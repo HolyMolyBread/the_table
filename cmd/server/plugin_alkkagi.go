@@ -11,7 +11,7 @@ import (
 )
 
 const (
-	alkkagiStonesPerPlayer = 5
+	alkkagiStonesPerPlayer = 7
 	alkkagiPlacementTime   = 20
 	alkkagiBoardSize       = 15
 	alkkagiCellPx          = 28
@@ -103,11 +103,11 @@ func cellToPx(col, row int) (x, y float64) {
 	return x, y
 }
 
-// alkkagiJanggiRoles: 궁(K), 차(R), 포(P), 마(H), 상(E)
-var alkkagiJanggiRoles = [5]string{"K", "R", "P", "H", "E"}
+// alkkagiJanggiRoles: 궁(K), 차(R), 포(P), 마(H), 상(E), 사/졸(S)×2
+var alkkagiJanggiRoles = [7]string{"K", "R", "P", "H", "E", "S", "S"}
 
-// alkkagiChessRoles: King(K), Queen(Q), Rook(R), Bishop(B), Knight(N)
-var alkkagiChessRoles = [5]string{"K", "Q", "R", "B", "N"}
+// alkkagiChessRoles: King(K), Queen(Q), Rook(R), Bishop(B), Knight(N), Pawn(P)×2
+var alkkagiChessRoles = [7]string{"K", "Q", "R", "B", "N", "P", "P"}
 
 // makeOriginalStones returns 5 plain stones per side with no role.
 func makeOriginalStones() []AlkkagiStone {
@@ -305,7 +305,7 @@ func (g *AlkkagiGame) startPlacementPhaseLocked() {
 	g.startReady = make(map[*Client]bool)
 	g.phase = "placement"
 	g.placementCnt = [2]int{0, 0}
-	g.stones = make([]AlkkagiStone, 0, 10)
+	g.stones = make([]AlkkagiStone, 0, alkkagiStonesPerPlayer*2)
 	// 모드는 NewAlkkagiGame에서 room.ID 접두사로 이미 설정됨
 
 	// 랜덤 배정: 0/1 순서를 섞음
@@ -387,7 +387,7 @@ func (g *AlkkagiGame) sendStateWithRemainingLocked(remaining int) {
 			Phase:              g.phase,
 			CurrentTurn:        g.turnUserIDLocked(),
 			Players:            g.playersUserIDsLocked(),
-			Teams:              [2]string{"한", "초"},
+			Teams:              g.teamsLocked(),
 			Stones:             g.stones,
 			PlacementRemaining: remaining,
 			NextRoleBlack:      nb,
@@ -410,8 +410,8 @@ func (g *AlkkagiGame) placementTimeout() {
 		row := int(s.Y/float64(alkkagiCellPx) + 0.5)
 		placed[[2]int{col, row}] = true
 	}
-	blackDefaults := [][2]int{{2, 11}, {6, 11}, {10, 11}, {3, 13}, {9, 13}}
-	whiteDefaults := [][2]int{{2, 3}, {6, 3}, {10, 3}, {3, 1}, {9, 1}}
+	blackDefaults := [][2]int{{2, 11}, {6, 11}, {10, 11}, {3, 13}, {9, 13}, {4, 12}, {8, 12}}
+	whiteDefaults := [][2]int{{2, 3}, {6, 3}, {10, 3}, {3, 1}, {9, 1}, {4, 2}, {8, 2}}
 	findEmpty := func(minRow, maxRow int) (int, int) {
 		for cc := 0; cc < alkkagiBoardSize; cc++ {
 			for rr := minRow; rr <= maxRow; rr++ {
@@ -476,18 +476,30 @@ func (g *AlkkagiGame) handlePlaceLocked(client *Client, payload json.RawMessage)
 		return
 	}
 
-	// 한(1): row 10~14, 초(2): row 0~4
+	// color 1: row 10~14 (bottom), color 2: row 0~4 (top)
 	if color == 1 && (p.Row < 10 || p.Row > 14) {
-		client.SendJSON(ServerResponse{Type: "error", Message: "한(漢)은 아래쪽 5줄(10~14행)에만 배치할 수 있습니다."})
+		msg := "한(漢)은 아래쪽 5줄(10~14행)에만 배치할 수 있습니다."
+		if g.mode == "chess" {
+			msg = "White는 아래쪽 5줄(10~14행)에만 배치할 수 있습니다."
+		} else if g.mode == "original" {
+			msg = "Black은 아래쪽 5줄(10~14행)에만 배치할 수 있습니다."
+		}
+		client.SendJSON(ServerResponse{Type: "error", Message: msg})
 		return
 	}
 	if color == 2 && (p.Row < 0 || p.Row > 4) {
-		client.SendJSON(ServerResponse{Type: "error", Message: "초(楚)는 위쪽 5줄(0~4행)에만 배치할 수 있습니다."})
+		msg := "초(楚)는 위쪽 5줄(0~4행)에만 배치할 수 있습니다."
+		if g.mode == "chess" {
+			msg = "Black은 위쪽 5줄(0~4행)에만 배치할 수 있습니다."
+		} else if g.mode == "original" {
+			msg = "White는 위쪽 5줄(0~4행)에만 배치할 수 있습니다."
+		}
+		client.SendJSON(ServerResponse{Type: "error", Message: msg})
 		return
 	}
 
 	if g.placementCnt[color-1] >= alkkagiStonesPerPlayer {
-		client.SendJSON(ServerResponse{Type: "error", Message: "이미 5개를 모두 배치했습니다."})
+		client.SendJSON(ServerResponse{Type: "error", Message: "이미 7개를 모두 배치했습니다."})
 		return
 	}
 
@@ -517,7 +529,7 @@ func (g *AlkkagiGame) handleSyncLocked(client *Client, payload json.RawMessage) 
 		client.SendJSON(ServerResponse{Type: "error", Message: "sync 페이로드 파싱 오류"})
 		return
 	}
-	if len(p.Stones) > 20 {
+	if len(p.Stones) > alkkagiStonesPerPlayer*2+4 {
 		client.SendJSON(ServerResponse{Type: "error", Message: "stones 개수 오류"})
 		return
 	}
@@ -556,11 +568,23 @@ func (g *AlkkagiGame) handleSyncLocked(client *Client, payload json.RawMessage) 
 		}
 	}
 	if blackCount == 0 {
-		g.endMatchLocked(1, "초(楚) 승리! 한(漢) 기물이 모두 밀려났습니다.")
+		msg := "초(楚) 승리! 한(漢) 기물이 모두 밀려났습니다."
+		if g.mode == "chess" {
+			msg = "Black 승리! White 기물이 모두 밀려났습니다."
+		} else if g.mode == "original" {
+			msg = "White 승리! Black 기물이 모두 밀려났습니다."
+		}
+		g.endMatchLocked(1, msg)
 		return
 	}
 	if whiteCount == 0 {
-		g.endMatchLocked(0, "한(漢) 승리! 초(楚) 기물이 모두 밀려났습니다.")
+		msg := "한(漢) 승리! 초(楚) 기물이 모두 밀려났습니다."
+		if g.mode == "chess" {
+			msg = "White 승리! Black 기물이 모두 밀려났습니다."
+		} else if g.mode == "original" {
+			msg = "Black 승리! White 기물이 모두 밀려났습니다."
+		}
+		g.endMatchLocked(0, msg)
 		return
 	}
 }
@@ -588,7 +612,18 @@ func (g *AlkkagiGame) endMatchLocked(winnerSlot int, msg string) {
 	g.room.broadcastAll(data)
 	g.stones = nil
 	g.placementCnt = [2]int{0, 0}
+	g.startReady = make(map[*Client]bool)
+	total := 0
+	for i := 0; i < 2; i++ {
+		if g.players[i] != nil {
+			total++
+		}
+	}
 	g.sendStateToAllLocked()
+	upd, _ := json.Marshal(ReadyUpdateMessage{
+		Type: "ready_update", RoomID: g.room.ID, ReadyCount: 0, TotalCount: total,
+	})
+	g.room.broadcastAll(upd)
 }
 
 func (g *AlkkagiGame) handleFlickLocked(client *Client, payload json.RawMessage) {
@@ -609,7 +644,7 @@ func (g *AlkkagiGame) handleFlickLocked(client *Client, payload json.RawMessage)
 		client.SendJSON(ServerResponse{Type: "error", Message: "flick 페이로드 파싱 오류"})
 		return
 	}
-	if p.ID < 0 || p.ID >= 10 {
+	if p.ID < 0 || p.ID >= alkkagiStonesPerPlayer*2 {
 		client.SendJSON(ServerResponse{Type: "error", Message: "stone id 범위 오류"})
 		return
 	}
@@ -642,7 +677,7 @@ func (g *AlkkagiGame) sendStateToAllLocked() {
 			Phase:              g.phase,
 			CurrentTurn:        g.turnUserIDLocked(),
 			Players:            g.playersUserIDsLocked(),
-			Teams:              [2]string{"한", "초"},
+			Teams:              g.teamsLocked(),
 			Stones:             g.stones,
 			PlacementRemaining: 0,
 			NextRoleBlack:      nb,
@@ -666,7 +701,7 @@ func (g *AlkkagiGame) sendStateToClientLocked(client *Client) {
 			Phase:              g.phase,
 			CurrentTurn:        g.turnUserIDLocked(),
 			Players:            g.playersUserIDsLocked(),
-			Teams:              [2]string{"한", "초"},
+			Teams:              g.teamsLocked(),
 			Stones:             g.stones,
 			PlacementRemaining: 0,
 			NextRoleBlack:      nb,
@@ -674,6 +709,17 @@ func (g *AlkkagiGame) sendStateToClientLocked(client *Client) {
 		},
 	})
 	client.SafeSend(msg)
+}
+
+func (g *AlkkagiGame) teamsLocked() [2]string {
+	switch g.mode {
+	case "original":
+		return [2]string{"Black", "White"}
+	case "chess":
+		return [2]string{"White", "Black"}
+	default:
+		return [2]string{"한", "초"}
+	}
 }
 
 func (g *AlkkagiGame) turnUserIDLocked() string {
